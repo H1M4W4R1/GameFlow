@@ -134,6 +134,20 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
     except ImportError as e:
         log.warning("Lovense devices unavailable (bleak not installed?): %s", e)
 
+    # ── H1M4W4R1 pump device + nodes ───────────────────────────────────────────
+    try:
+        from devices.h1m4w4r1 import ALL_DEVICE_CLASSES as _pump_dev, ALL_NODE_CLASSES as _pump_nod
+        for cls in _pump_dev:
+            key = f"{cls.__module__}.{cls.__name__}"
+            registry._device_classes[key] = cls
+        for cls in _pump_nod:
+            key = f"{cls.__module__}.{cls.__name__}"
+            registry._node_classes[key] = cls
+        log.info("Registered %d H1M4W4R1 pump device(s), %d node(s)",
+                 len(_pump_dev), len(_pump_nod))
+    except ImportError as e:
+        log.warning("H1M4W4R1 pump unavailable: %s", e)
+
 
 if __name__ == "__main__":
     main()

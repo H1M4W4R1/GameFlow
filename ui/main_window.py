@@ -355,8 +355,7 @@ class MainWindow(QWidget):
         device = self._registry.create_device(class_key, descriptor)
         if device:
             self._status_bar.setText(
-                f"Connecting to {device.DEVICE_NAME} @ {descriptor.address}…", 3000
-            )
+                f"Connecting to {device.DEVICE_NAME} @ {descriptor.address}…")
 
     def _on_rename_device(self, device_id: str, alias: str) -> None:
         self._registry.rename_device(device_id, alias)

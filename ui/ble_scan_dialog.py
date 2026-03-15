@@ -216,7 +216,7 @@ class BLEScanDialog(QDialog):
 
         # Header row
         hrow = QHBoxLayout()
-        self._status_lbl = QLabel("Scanning for nearby Lovense devices…")
+        self._status_lbl = QLabel(self._scan_status_text())
         self._status_lbl.setStyleSheet("font-size:10pt;font-weight:bold;")
         hrow.addWidget(self._status_lbl, stretch=1)
         self._scan_btn = QPushButton("Scan Again")
@@ -277,6 +277,14 @@ class BLEScanDialog(QDialog):
         btn_row.addWidget(self._connect_btn)
         root.addLayout(btn_row)
 
+    def _scan_status_text(self) -> str:
+        """Status message based on preselected device type."""
+        if self._preselected_key and self._preselected_key in self._device_classes:
+            cls = self._device_classes[self._preselected_key]
+            name = getattr(cls, "DEVICE_NAME", "device")
+            return f"Scanning for {name}…"
+        return "Scanning for nearby BLE devices…"
+
     # ── Scan logic (background thread) ────────────────────────────────────────
 
     def _start_scan(self) -> None:
@@ -285,7 +293,7 @@ class BLEScanDialog(QDialog):
         self._scanning = True
         self._scan_btn.setEnabled(False)
         self._connect_btn.setEnabled(False)
-        self._status_lbl.setText("Scanning for nearby Lovense devices…")
+        self._status_lbl.setText(self._scan_status_text())
         self._progress.setRange(0, 0)
         self._hint_lbl.setText(
             "Make sure your device is turned on and not connected to another app.")
@@ -314,29 +322,37 @@ class BLEScanDialog(QDialog):
             )
 
         def _cb(device, adv) -> None:  # type: ignore
-            name = (device.name or "") or (adv.local_name or "")
-            if not name:
-                return
+            name = (device.name or "") or (adv.local_name or "") or "(unknown)"
+            adv_svcs = {s.lower() for s in (adv.service_uuids or [])}
 
-            # Filter: must match name prefix OR known service UUID
+            # Filter: Lovense (name prefix or static service) OR preselected device's service UUID
             name_ok = any(name.upper().startswith(p.upper())
                           for p in BLE_NAME_PREFIXES)
-            if not name_ok:
-                adv_svcs   = {s.lower() for s in (adv.service_uuids or [])}
-                static_svcs = {
-                    "0000fff0-0000-1000-8000-00805f9b34fb",   # Gen1
-                    "6e400001-b5a3-f393-e0a9-e50e24dcca9e",   # Gen2 NUS
-                }
+            static_svcs = {
+                "0000fff0-0000-1000-8000-00805f9b34fb",   # Gen1
+                "6e400001-b5a3-f393-e0a9-e50e24dcca9e",   # Gen2 NUS
+            }
+            preselected_svc_match = False
+            if self._preselected_key and self._preselected_key in self._device_classes:
+                cls = self._device_classes[self._preselected_key]
+                svc = getattr(cls, "BLE_SERVICE_UUID", None)
+                if svc and svc.lower() in adv_svcs:
+                    preselected_svc_match = True
+            if not name_ok and not preselected_svc_match:
                 if not adv_svcs.intersection(static_svcs):
                     return
 
             rssi = getattr(adv, "rssi", -100) or -100
-            c    = BLECandidate(
+            if preselected_svc_match:
+                matched_key = self._preselected_key
+            else:
+                matched_key = self._resolve_class_key(name)
+            c = BLECandidate(
                 address       = device.address,
                 name          = name,
                 rssi          = rssi,
                 service_uuids = list(adv.service_uuids or []),
-                matched_key   = self._resolve_class_key(name),
+                matched_key   = matched_key,
             )
             self._bridge.device_found.emit(c)
 
