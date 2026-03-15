@@ -127,6 +127,15 @@ class GraphRuntime(QObject):
                 node.on_start()
             except Exception as exc:
                 log.error("on_start error in %s: %s", node, exc)
+        # Fire Start node outputs after all nodes are initialized, so downstream
+        # nodes (e.g. Timer, Delay) are not reset after receiving the start tick.
+        from nodes.flow_nodes import StartNode
+        for node in self._nodes.values():
+            if isinstance(node, StartNode):
+                try:
+                    self._fire_tick(node.node_id, "exec_out")
+                except Exception as exc:
+                    log.error("Start node fire error in %s: %s", node, exc)
         self._tick_thread = threading.Thread(
             target=self._tick_loop, name="GraphRuntime-tick", daemon=True
         )

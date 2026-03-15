@@ -251,10 +251,29 @@ class TimerNode(NodeBase):
             self.node_changed.emit()
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#f95979"))
-        painter.setFont(QFont("Courier New", 8))
-        ms = float(self.get_var_input("interval_ms") or 1000.0)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"every {ms:.0f} ms")
+        interval_ms = float(self.get_var_input("interval_ms") or 1000.0)
+        interval_s  = max(0.01, interval_ms / 1000.0)
+        if self._active:
+            now       = time.monotonic()
+            interval_start = self._next_fire - interval_s
+            elapsed   = now - interval_start
+            pct       = min(1.0, max(0.0, elapsed / interval_s))
+            bar_w     = (rect.width() - 8) * pct
+            bar_rect  = QRectF(rect.x() + 4, rect.y() + 4, bar_w, 8)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(QColor("#f95979")))
+            painter.drawRoundedRect(bar_rect, 3, 3)
+            painter.setPen(QColor("#c8889a"))
+            painter.setFont(QFont("Courier New", 8))
+            painter.drawText(
+                QRectF(rect.x(), rect.y() + 14, rect.width(), 18),
+                Qt.AlignmentFlag.AlignCenter,
+                f"{elapsed * 1000:.0f} / {interval_ms:.0f} ms",
+            )
+        else:
+            painter.setPen(QColor("#f95979"))
+            painter.setFont(QFont("Courier New", 8))
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"every {interval_ms:.0f} ms")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -94,7 +94,9 @@ class StartNode(NodeBase):
     MIN_HEIGHT = 60.0
 
     def on_start(self) -> None:
-        self.fire_tick("exec_out")
+        # Do not fire here — runtime fires exec_out after all nodes' on_start()
+        # so downstream nodes (Timer, Delay, etc.) are already initialized.
+        pass
 
     def execute(self, trigger_pin: str) -> None:
         pass
