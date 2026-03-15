@@ -212,19 +212,17 @@ class GraphRuntime(QObject):
     def _dispatch_tick_nodes(self) -> None:
         """
         Drive all clock-like nodes every 10 ms:
-          TickNode             -> fires its output tick unconditionally
-          ConfigurableTickNode -> self-gates to its configured interval
-          TimerNode            -> checks countdown, fires exec_out when done
+          TickNode, ConfigurableTickNode -> execute("tick")
+          Any node with on_tick_check      -> call it (Delay, Timer, time sources)
         """
         from nodes.flow_nodes import TickNode, ConfigurableTickNode
-        from nodes.utility_nodes import TimerNode
         with self._lock:
             all_nodes = list(self._nodes.values())
         for node in all_nodes:
             try:
                 if isinstance(node, (TickNode, ConfigurableTickNode)):
                     node.execute("tick")
-                elif isinstance(node, TimerNode):
+                elif hasattr(node, "on_tick_check"):
                     node.on_tick_check()
             except Exception as exc:
                 log.error("Tick dispatch error in %s: %s", node, exc)

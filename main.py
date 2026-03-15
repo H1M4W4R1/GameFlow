@@ -82,10 +82,16 @@ def main() -> None:
 def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
     """Register all built-in node classes from their respective modules."""
     from nodes.flow_nodes import (
-        TickNode, ConfigurableTickNode, StartNode, ConditionNode,
+        TickNode, ConfigurableTickNode, StartNode,
+        EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
+        LessNode, LessEqualNode,
     )
     from nodes.utility_nodes import (
-        CounterNode, TimerNode, RandomNode, LogNode, LoopNode,
+        CounterNode, RandomNode, LogNode, LoopNode, LoopWhileNode,
+    )
+    from nodes.time_nodes import (
+        TimeSinceStartNode, EpochMillisecondsNode, CurrentDateTimeNode,
+        SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,
     )
     from nodes.math_nodes import (
         AddNode, SubtractNode, MultiplyNode, DivideNode, ModuloNode,
@@ -93,28 +99,54 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         AbsNode, NegateNode, SinNode, CosNode, TanNode,
         SqrtNode, FloorNode, CeilNode, RoundNode,
         ClampNode, LerpNode, MapRangeNode,
+        Vector2DConstructorNode, Vector3DConstructorNode, Vector4DConstructorNode,
+        Vector2DSplitNode, Vector3DSplitNode, Vector4DSplitNode,
+        Vector2DAddNode, Vector3DAddNode, Vector4DAddNode,
+        Vector2DSubtractNode, Vector3DSubtractNode, Vector4DSubtractNode,
+        Vector2DScaleNode, Vector3DScaleNode, Vector4DScaleNode,
+        Vector2DDotNode, Vector3DDotNode,
+        ColorAddNode, ColorBlendNode,
+        DateTimeDifferenceNode, DateTimeAddSecondsNode,
         IntToFloatNode, FloatToIntNode, BoolToFloatNode,
         AnyToStringNode, StringToFloatNode,
     )
     from nodes.constant_nodes import (
         FloatConstantNode, IntConstantNode, StringConstantNode, BoolConstantNode,
+        ColorConstantNode,
     )
     all_classes = [
         # Flow
-        TickNode, ConfigurableTickNode, StartNode, ConditionNode,
-        # Utility
-        CounterNode, TimerNode, RandomNode, LogNode, LoopNode,
-        # Math
+        TickNode, ConfigurableTickNode, StartNode,
+        EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
+        LessNode, LessEqualNode,
+        # Utility (Loop, Loop While)
+        CounterNode, RandomNode, LogNode, LoopNode, LoopWhileNode,
+        # Time
+        TimeSinceStartNode, EpochMillisecondsNode, CurrentDateTimeNode,
+        SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,
+        # Math / Float
         AddNode, SubtractNode, MultiplyNode, DivideNode, ModuloNode,
         PowerNode, MinNode, MaxNode,
         AbsNode, NegateNode, SinNode, CosNode, TanNode,
         SqrtNode, FloorNode, CeilNode, RoundNode,
         ClampNode, LerpNode, MapRangeNode,
+        # Math / Vector
+        Vector2DConstructorNode, Vector3DConstructorNode, Vector4DConstructorNode,
+        Vector2DSplitNode, Vector3DSplitNode, Vector4DSplitNode,
+        Vector2DAddNode, Vector3DAddNode, Vector4DAddNode,
+        Vector2DSubtractNode, Vector3DSubtractNode, Vector4DSubtractNode,
+        Vector2DScaleNode, Vector3DScaleNode, Vector4DScaleNode,
+        Vector2DDotNode, Vector3DDotNode,
+        # Math / Color
+        ColorAddNode, ColorBlendNode,
+        # Math / DateTime
+        DateTimeDifferenceNode, DateTimeAddSecondsNode,
         # Conversion
         IntToFloatNode, FloatToIntNode, BoolToFloatNode,
         AnyToStringNode, StringToFloatNode,
         # Constants
         FloatConstantNode, IntConstantNode, StringConstantNode, BoolConstantNode,
+        ColorConstantNode,
     ]
     for cls in all_classes:
         key = f"{cls.__module__}.{cls.__name__}"

@@ -69,32 +69,49 @@ class PinDirection(Enum):
 
 class PinType(Enum):
     """Determines visual colour and compatibility rules."""
-    TICK    = auto()   # execution flow (pink wire)
-    FLOAT   = auto()   # float64
-    INT     = auto()   # int64
-    BOOL    = auto()   # bool
-    STRING  = auto()   # str
-    ANY     = auto()   # accepts/emits any data type
+    TICK     = auto()   # execution flow (pink wire)
+    FLOAT    = auto()   # float64
+    INT      = auto()   # int64
+    BOOL     = auto()   # bool
+    STRING   = auto()   # str
+    ANY      = auto()   # accepts/emits any data type
+    VECTOR2D = auto()   # (x, y)
+    VECTOR3D = auto()   # (x, y, z)
+    VECTOR4D = auto()   # (x, y, z, w)
+    COLOR    = auto()   # (r, g, b, a) 0–1 float
+    DATETIME = auto()   # datetime-like (seconds since epoch or datetime)
 
 
 PIN_COLORS: dict[PinType, str] = {
-    PinType.TICK:   "#f95979",
-    PinType.FLOAT:  "#4fc3f7",
-    PinType.INT:    "#aed581",
-    PinType.BOOL:   "#ffb74d",
-    PinType.STRING: "#ce93d8",
-    PinType.ANY:    "#90a4ae",
+    PinType.TICK:     "#f95979",
+    PinType.FLOAT:    "#4fc3f7",
+    PinType.INT:      "#aed581",
+    PinType.BOOL:     "#ffb74d",
+    PinType.STRING:   "#ce93d8",
+    PinType.ANY:      "#90a4ae",
+    PinType.VECTOR2D: "#81c784",
+    PinType.VECTOR3D: "#66bb6a",
+    PinType.VECTOR4D: "#4caf50",
+    PinType.COLOR:    "#e57373",
+    PinType.DATETIME: "#ba68c8",
 }
 
 # Which PinTypes can connect to which.
 # INT and FLOAT are mutually compatible — values are auto-coerced at receive time.
 PIN_COMPATIBILITY: dict[PinType, set[PinType]] = {
-    PinType.TICK:   {PinType.TICK},
-    PinType.FLOAT:  {PinType.FLOAT, PinType.INT,  PinType.ANY},
-    PinType.INT:    {PinType.INT,   PinType.FLOAT, PinType.ANY},
-    PinType.BOOL:   {PinType.BOOL,  PinType.ANY},
-    PinType.STRING: {PinType.STRING, PinType.ANY},
-    PinType.ANY:    {PinType.FLOAT, PinType.INT, PinType.BOOL, PinType.STRING, PinType.ANY},
+    PinType.TICK:     {PinType.TICK},
+    PinType.FLOAT:    {PinType.FLOAT, PinType.INT, PinType.ANY},
+    PinType.INT:      {PinType.INT, PinType.FLOAT, PinType.ANY},
+    PinType.BOOL:     {PinType.BOOL, PinType.ANY},
+    PinType.STRING:   {PinType.STRING, PinType.ANY},
+    PinType.ANY:      {PinType.FLOAT, PinType.INT, PinType.BOOL, PinType.STRING,
+                       PinType.VECTOR2D, PinType.VECTOR3D, PinType.VECTOR4D,
+                       PinType.COLOR, PinType.DATETIME, PinType.ANY},
+    PinType.VECTOR2D: {PinType.VECTOR2D, PinType.ANY},
+    PinType.VECTOR3D: {PinType.VECTOR3D, PinType.ANY},
+    PinType.VECTOR4D: {PinType.VECTOR4D, PinType.ANY},
+    PinType.COLOR:    {PinType.COLOR, PinType.ANY},
+    PinType.DATETIME: {PinType.DATETIME, PinType.ANY},
 }
 
 # Auto-coercion applied in NodeBase.receive_data when src/dst types differ.

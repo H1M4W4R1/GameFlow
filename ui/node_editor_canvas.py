@@ -42,7 +42,7 @@ from PyQt6.QtGui import (
     QMouseEvent, QPaintEvent, QPainter, QPainterPath, QPen,
     QRadialGradient, QWheelEvent,
 )
-from PyQt6.QtWidgets import QLineEdit, QMenu, QWidget, QToolTip
+from PyQt6.QtWidgets import QLineEdit, QMenu, QWidget, QToolTip, QColorDialog
 
 from core.graph_runtime import GraphRuntime
 from core.node_base import NodeBase
@@ -819,6 +819,16 @@ class NodeEditorCanvas(QWidget):
         node = self._runtime.get_node(rf.node_id)
         if not node:
             return
+        # ColorPicker: for editable field named "color" (str), open QColorDialog
+        if not rf.is_var and rf.field_name == "color":
+            current = node.get_field("color") or "#ffffff"
+            initial = _parse_hex_to_qcolor(str(current))
+            color = QColorDialog.getColor(initial, self, "Pick color")
+            if color.isValid():
+                hex_val = f"#{color.red():02x}{color.green():02x}{color.blue():02x}"
+                node.set_field("color", hex_val)
+                self.update()
+                return
         tl = self._s2v(rf.scene_rect.topLeft())
         br = self._s2v(rf.scene_rect.bottomRight())
 
@@ -1028,6 +1038,21 @@ class NodeEditorCanvas(QWidget):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _parse_hex_to_qcolor(s: str) -> QColor:
+    """Parse #RRGGBB or #RRGGBBAA into QColor."""
+    s = (s or "").strip()
+    if not s.startswith("#") or len(s) < 7:
+        return QColor(255, 255, 255)
+    s = s[1:]
+    try:
+        r = int(s[0:2], 16)
+        g = int(s[2:4], 16)
+        b = int(s[4:6], 16)
+        return QColor(r, g, b)
+    except ValueError:
+        return QColor(255, 255, 255)
+
 
 def _format_value(val, typ: type, dim: bool) -> tuple[str, QColor]:
     """Return (display_string, QColor) for a field value."""

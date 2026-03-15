@@ -101,57 +101,93 @@ class StartNode(NodeBase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CONDITION / IF
+# Condition nodes (Any comparison; route tick to on_true or on_false)
 # ─────────────────────────────────────────────────────────────────────────────
 
-class ConditionNode(NodeBase):
-    """
-    Evaluates  a OP b  and routes the incoming tick to on_true or on_false.
-    Set the operator via the editable field (double-click).
-    Supported operators: ==  !=  >  >=  <  <=
-    """
-    NODE_NAME  = "Condition / If"
+class _CompareNodeBase(NodeBase):
+    """Base for a OP b with Any pins; subclasses set _op_name and _result."""
     NODE_GROUP = "Flow"
     PINS = [
         PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
-        PinDescriptor("a",        PinDirection.INPUT,  PinType.FLOAT, default=0.0),
-        PinDescriptor("b",        PinDirection.INPUT,  PinType.FLOAT, default=0.0),
-        PinDescriptor("on_true",  PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("a",       PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("b",       PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("on_true", PinDirection.OUTPUT, PinType.TICK),
         PinDescriptor("on_false", PinDirection.OUTPUT, PinType.TICK),
-        PinDescriptor("result",   PinDirection.OUTPUT, PinType.BOOL),
+        PinDescriptor("result",  PinDirection.OUTPUT, PinType.BOOL),
     ]
-    EDITABLE_FIELDS = {
-        "op": (str, "=="),
-    }
-    MIN_WIDTH = 180.0
+    MIN_WIDTH = 160.0
 
     def execute(self, trigger_pin: str) -> None:
-        a  = float(self.get_input("a") or 0.0)
-        b  = float(self.get_input("b") or 0.0)
-        op = str(self.get_field("op") or "==").strip()
-        result = _compare(op, a, b)
+        a = self.get_input("a")
+        b = self.get_input("b")
+        result = self._compare(a, b)
         self.set_output("result", result)
         self.fire_tick("on_true" if result else "on_false")
 
+    def _compare(self, a: Any, b: Any) -> bool:
+        raise NotImplementedError
+
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        op = str(self.get_field("op") or "==")
-        a  = self.get_input("a")
-        b  = self.get_input("b")
         painter.setPen(QColor("#90a4ae"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(
-            QRectF(rect.x(), rect.y(), rect.width(), 24),
-            Qt.AlignmentFlag.AlignCenter,
-            f"{a} {op} {b}",
-        )
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.NODE_NAME)
 
 
-def _compare(op: str, a: float, b: float) -> bool:
-    return {
-        "==": a == b,
-        "!=": a != b,
-        ">":  a >  b,
-        ">=": a >= b,
-        "<":  a <  b,
-        "<=": a <= b,
-    }.get(op, False)
+class EqualNode(_CompareNodeBase):
+    """a == b (Any types)."""
+    NODE_NAME = "Equal"
+
+    def _compare(self, a: Any, b: Any) -> bool:
+        return a == b
+
+
+class NotEqualNode(_CompareNodeBase):
+    """a != b (Any types)."""
+    NODE_NAME = "Not Equal"
+
+    def _compare(self, a: Any, b: Any) -> bool:
+        return a != b
+
+
+class GreaterNode(_CompareNodeBase):
+    """a > b (Any comparable types)."""
+    NODE_NAME = "Greater"
+
+    def _compare(self, a: Any, b: Any) -> bool:
+        try:
+            return a > b
+        except TypeError:
+            return False
+
+
+class GreaterEqualNode(_CompareNodeBase):
+    """a >= b (Any comparable types)."""
+    NODE_NAME = "Greater or Equal"
+
+    def _compare(self, a: Any, b: Any) -> bool:
+        try:
+            return a >= b
+        except TypeError:
+            return False
+
+
+class LessNode(_CompareNodeBase):
+    """a < b (Any comparable types)."""
+    NODE_NAME = "Less"
+
+    def _compare(self, a: Any, b: Any) -> bool:
+        try:
+            return a < b
+        except TypeError:
+            return False
+
+
+class LessEqualNode(_CompareNodeBase):
+    """a <= b (Any comparable types)."""
+    NODE_NAME = "Less or Equal"
+
+    def _compare(self, a: Any, b: Any) -> bool:
+        try:
+            return a <= b
+        except TypeError:
+            return False

@@ -29,7 +29,7 @@ class _BinaryMathNode(NodeBase):
     Internal base for nodes with two float inputs and one float output.
     Subclasses set _op() and paint_symbol.
     """
-    NODE_GROUP = "Math"
+    NODE_GROUP = "Math / Arithmetic"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
@@ -66,7 +66,7 @@ class _BinaryMathNode(NodeBase):
 
 class _UnaryMathNode(NodeBase):
     """Internal base for single-input math nodes."""
-    NODE_GROUP = "Math"
+    NODE_GROUP = "Math / Arithmetic"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("result", PinDirection.OUTPUT, PinType.FLOAT),
@@ -159,6 +159,7 @@ class PowerNode(_BinaryMathNode):
 class MinNode(_BinaryMathNode):
     """min(a, b)"""
     NODE_NAME    = "Min"
+    NODE_GROUP   = "Math / Min-Max"
     PAINT_SYMBOL = "min(a,b)"
 
     def _compute(self) -> None:
@@ -168,6 +169,7 @@ class MinNode(_BinaryMathNode):
 class MaxNode(_BinaryMathNode):
     """max(a, b)"""
     NODE_NAME    = "Max"
+    NODE_GROUP   = "Math / Min-Max"
     PAINT_SYMBOL = "max(a,b)"
 
     def _compute(self) -> None:
@@ -199,6 +201,7 @@ class NegateNode(_UnaryMathNode):
 class SinNode(_UnaryMathNode):
     """sin(a)  [radians]"""
     NODE_NAME    = "Sin"
+    NODE_GROUP   = "Math / Trigonometric"
     PAINT_SYMBOL = "sin(a)"
 
     def _compute(self) -> None:
@@ -208,6 +211,7 @@ class SinNode(_UnaryMathNode):
 class CosNode(_UnaryMathNode):
     """cos(a)  [radians]"""
     NODE_NAME    = "Cos"
+    NODE_GROUP   = "Math / Trigonometric"
     PAINT_SYMBOL = "cos(a)"
 
     def _compute(self) -> None:
@@ -217,6 +221,7 @@ class CosNode(_UnaryMathNode):
 class TanNode(_UnaryMathNode):
     """tan(a)  [radians]"""
     NODE_NAME    = "Tan"
+    NODE_GROUP   = "Math / Trigonometric"
     PAINT_SYMBOL = "tan(a)"
 
     def _compute(self) -> None:
@@ -235,6 +240,7 @@ class SqrtNode(_UnaryMathNode):
 class FloorNode(_UnaryMathNode):
     """⌊ a ⌋"""
     NODE_NAME    = "Floor"
+    NODE_GROUP   = "Math / Rounding"
     PAINT_SYMBOL = "⌊ a ⌋"
 
     def _compute(self) -> None:
@@ -244,6 +250,7 @@ class FloorNode(_UnaryMathNode):
 class CeilNode(_UnaryMathNode):
     """⌈ a ⌉"""
     NODE_NAME    = "Ceil"
+    NODE_GROUP   = "Math / Rounding"
     PAINT_SYMBOL = "⌈ a ⌉"
 
     def _compute(self) -> None:
@@ -253,6 +260,7 @@ class CeilNode(_UnaryMathNode):
 class RoundNode(_UnaryMathNode):
     """round(a)"""
     NODE_NAME    = "Round"
+    NODE_GROUP   = "Math / Rounding"
     PAINT_SYMBOL = "round(a)"
 
     def _compute(self) -> None:
@@ -270,7 +278,7 @@ class ClampNode(NodeBase):
     Pure data — reacts instantly on any input change.
     """
     NODE_NAME  = "Clamp"
-    NODE_GROUP = "Math"
+    NODE_GROUP = "Math / Min-Max"
     PINS = [
         PinDescriptor("value",   PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("min_val", PinDirection.INPUT,  PinType.FLOAT, default=0.0),
@@ -328,7 +336,7 @@ class LerpNode(NodeBase):
     Pure data node.
     """
     NODE_NAME  = "Lerp"
-    NODE_GROUP = "Math"
+    NODE_GROUP = "Math / Interpolation"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.FLOAT, default=1.0),
@@ -371,7 +379,7 @@ class MapRangeNode(NodeBase):
     Pure data node; range limits settable via editable fields.
     """
     NODE_NAME  = "Map Range"
-    NODE_GROUP = "Math"
+    NODE_GROUP = "Math / Interpolation"
     PINS = [
         PinDescriptor("value",   PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("result",  PinDirection.OUTPUT, PinType.FLOAT),
@@ -422,6 +430,714 @@ class MapRangeNode(NodeBase):
             Qt.AlignmentFlag.AlignCenter,
             f"[{i0:.3g},{i1:.3g}] → [{o0:.3g},{o1:.3g}]",
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Vector nodes (Math / Vector)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _vec2(x=0.0, y=0.0): return (float(x), float(y))
+def _vec3(x=0.0, y=0.0, z=0.0): return (float(x), float(y), float(z))
+def _vec4(x=0.0, y=0.0, z=0.0, w=0.0): return (float(x), float(y), float(z), float(w))
+
+
+def _f(v, i):
+    return float(v[i]) if isinstance(v, (tuple, list)) and len(v) > i else 0.0
+
+
+class Vector2DConstructorNode(NodeBase):
+    """Build a Vector2D from x, y components."""
+    NODE_NAME  = "Vector2D"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("x",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("y",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR2D),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        x = float(self.get_input("x") or 0.0)
+        y = float(self.get_input("y") or 0.0)
+        self.set_output("result", _vec2(x, y))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#81c784"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2")
+
+
+class Vector3DConstructorNode(NodeBase):
+    """Build a Vector3D from x, y, z components."""
+    NODE_NAME  = "Vector3D"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("x",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("y",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("z",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR3D),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 70.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        x = float(self.get_input("x") or 0.0)
+        y = float(self.get_input("y") or 0.0)
+        z = float(self.get_input("z") or 0.0)
+        self.set_output("result", _vec3(x, y, z))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#66bb6a"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3")
+
+
+class Vector4DConstructorNode(NodeBase):
+    """Build a Vector4D from x, y, z, w components."""
+    NODE_NAME  = "Vector4D"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("x",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("y",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("z",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("w",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR4D),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 80.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        x = float(self.get_input("x") or 0.0)
+        y = float(self.get_input("y") or 0.0)
+        z = float(self.get_input("z") or 0.0)
+        w = float(self.get_input("w") or 0.0)
+        self.set_output("result", _vec4(x, y, z, w))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#4caf50"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec4")
+
+
+class Vector2DSplitNode(NodeBase):
+    """Split Vector2D into x, y components."""
+    NODE_NAME  = "Split Vector2D"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("x",      PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("y",      PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        v = self.get_input("vector")
+        if v is not None and isinstance(v, (tuple, list)) and len(v) >= 2:
+            self.set_output("x", float(v[0]))
+            self.set_output("y", float(v[1]))
+        else:
+            self.set_output("x", 0.0)
+            self.set_output("y", 0.0)
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#81c784"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "split Vec2")
+
+
+class Vector3DSplitNode(NodeBase):
+    """Split Vector3D into x, y, z components."""
+    NODE_NAME  = "Split Vector3D"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("x",      PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("y",      PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("z",      PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 70.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        v = self.get_input("vector")
+        if v is not None and isinstance(v, (tuple, list)) and len(v) >= 3:
+            self.set_output("x", float(v[0]))
+            self.set_output("y", float(v[1]))
+            self.set_output("z", float(v[2]))
+        else:
+            self.set_output("x", 0.0)
+            self.set_output("y", 0.0)
+            self.set_output("z", 0.0)
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#66bb6a"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "split Vec3")
+
+
+class Vector4DSplitNode(NodeBase):
+    """Split Vector4D into x, y, z, w components."""
+    NODE_NAME  = "Split Vector4D"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR4D),
+        PinDescriptor("x",      PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("y",      PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("z",      PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("w",      PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 80.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        v = self.get_input("vector")
+        if v is not None and isinstance(v, (tuple, list)) and len(v) >= 4:
+            self.set_output("x", float(v[0]))
+            self.set_output("y", float(v[1]))
+            self.set_output("z", float(v[2]))
+            self.set_output("w", float(v[3]))
+        else:
+            self.set_output("x", 0.0)
+            self.set_output("y", 0.0)
+            self.set_output("z", 0.0)
+            self.set_output("w", 0.0)
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#4caf50"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "split Vec4")
+
+
+class Vector2DAddNode(NodeBase):
+    """Component-wise a + b for Vector2D."""
+    NODE_NAME  = "Vector2D Add"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR2D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0)
+        a = (float(a[0]) if len(a) >= 1 else 0.0, float(a[1]) if len(a) >= 2 else 0.0)
+        b = (float(b[0]) if len(b) >= 1 else 0.0, float(b[1]) if len(b) >= 2 else 0.0)
+        self.set_output("result", (a[0] + b[0], a[1] + b[1]))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#81c784"))
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 +")
+
+
+class Vector3DAddNode(NodeBase):
+    """Component-wise a + b for Vector3D."""
+    NODE_NAME  = "Vector3D Add"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR3D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0, 0.0)
+        a = (_f(a, 0), _f(a, 1), _f(a, 2))
+        b = (_f(b, 0), _f(b, 1), _f(b, 2))
+        self.set_output("result", (a[0] + b[0], a[1] + b[1], a[2] + b[2]))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#66bb6a"))
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 +")
+
+
+class Vector4DAddNode(NodeBase):
+    """Component-wise a + b for Vector4D."""
+    NODE_NAME  = "Vector4D Add"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR4D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR4D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR4D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0, 0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0, 0.0, 0.0)
+        a = (_f(a, 0), _f(a, 1), _f(a, 2), _f(a, 3))
+        b = (_f(b, 0), _f(b, 1), _f(b, 2), _f(b, 3))
+        self.set_output("result", (a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#4caf50"))
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec4 +")
+
+
+class Vector2DSubtractNode(NodeBase):
+    """Component-wise a - b for Vector2D."""
+    NODE_NAME  = "Vector2D Subtract"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR2D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0)
+        a = (_f(a, 0), _f(a, 1))
+        b = (_f(b, 0), _f(b, 1))
+        self.set_output("result", (a[0] - b[0], a[1] - b[1]))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#81c784"))
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 −")
+
+
+class Vector3DSubtractNode(NodeBase):
+    """Component-wise a - b for Vector3D."""
+    NODE_NAME  = "Vector3D Subtract"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR3D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0, 0.0)
+        a = (_f(a, 0), _f(a, 1), _f(a, 2))
+        b = (_f(b, 0), _f(b, 1), _f(b, 2))
+        self.set_output("result", (a[0] - b[0], a[1] - b[1], a[2] - b[2]))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#66bb6a"))
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 −")
+
+
+class Vector4DSubtractNode(NodeBase):
+    """Component-wise a - b for Vector4D."""
+    NODE_NAME  = "Vector4D Subtract"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR4D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR4D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR4D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0, 0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0, 0.0, 0.0)
+        a = (_f(a, 0), _f(a, 1), _f(a, 2), _f(a, 3))
+        b = (_f(b, 0), _f(b, 1), _f(b, 2), _f(b, 3))
+        self.set_output("result", (a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#4caf50"))
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec4 −")
+
+
+class Vector2DScaleNode(NodeBase):
+    """Scale Vector2D by scalar."""
+    NODE_NAME  = "Vector2D Scale"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("scale",  PinDirection.INPUT,  PinType.FLOAT, default=1.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR2D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        v = self.get_input("vector") or (0.0, 0.0)
+        s = float(self.get_input("scale") or 1.0)
+        v = (_f(v, 0), _f(v, 1))
+        self.set_output("result", (v[0] * s, v[1] * s))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#81c784"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 × s")
+
+
+class Vector3DScaleNode(NodeBase):
+    """Scale Vector3D by scalar."""
+    NODE_NAME  = "Vector3D Scale"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("scale",  PinDirection.INPUT,  PinType.FLOAT, default=1.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR3D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        v = self.get_input("vector") or (0.0, 0.0, 0.0)
+        s = float(self.get_input("scale") or 1.0)
+        v = (_f(v, 0), _f(v, 1), _f(v, 2))
+        self.set_output("result", (v[0] * s, v[1] * s, v[2] * s))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#66bb6a"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 × s")
+
+
+class Vector4DScaleNode(NodeBase):
+    """Scale Vector4D by scalar."""
+    NODE_NAME  = "Vector4D Scale"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR4D),
+        PinDescriptor("scale",  PinDirection.INPUT,  PinType.FLOAT, default=1.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR4D),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        v = self.get_input("vector") or (0.0, 0.0, 0.0, 0.0)
+        s = float(self.get_input("scale") or 1.0)
+        v = (_f(v, 0), _f(v, 1), _f(v, 2), _f(v, 3))
+        self.set_output("result", (v[0] * s, v[1] * s, v[2] * s, v[3] * s))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#4caf50"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec4 × s")
+
+
+class Vector2DDotNode(NodeBase):
+    """Dot product of two Vector2D; outputs float."""
+    NODE_NAME  = "Vector2D Dot"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0)
+        a = (_f(a, 0), _f(a, 1))
+        b = (_f(b, 0), _f(b, 1))
+        self.set_output("result", a[0] * b[0] + a[1] * b[1])
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#81c784"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 ·")
+
+
+class Vector3DDotNode(NodeBase):
+    """Dot product of two Vector3D; outputs float."""
+    NODE_NAME  = "Vector3D Dot"
+    NODE_GROUP = "Math / Vector"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR3D),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = self.get_input("a") or (0.0, 0.0, 0.0)
+        b = self.get_input("b") or (0.0, 0.0, 0.0)
+        a = (_f(a, 0), _f(a, 1), _f(a, 2))
+        b = (_f(b, 0), _f(b, 1), _f(b, 2))
+        self.set_output("result", a[0] * b[0] + a[1] * b[1] + a[2] * b[2])
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#66bb6a"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 ·")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Color nodes (Math / Color)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _parse_color(s: Any) -> tuple[float, float, float, float]:
+    """Parse color from hex string #RRGGBB or #RRGGBBAA or (r,g,b,a). Returns (r,g,b,a) 0-1."""
+    if s is None:
+        return (1.0, 1.0, 1.0, 1.0)
+    if isinstance(s, (tuple, list)) and len(s) >= 3:
+        r = max(0, min(1, float(s[0])))
+        g = max(0, min(1, float(s[1])))
+        b = max(0, min(1, float(s[2])))
+        a = max(0, min(1, float(s[3]))) if len(s) > 3 else 1.0
+        return (r, g, b, a)
+    s = str(s).strip()
+    if s.startswith("#"):
+        s = s[1:]
+        if len(s) == 6:
+            return (int(s[0:2], 16) / 255, int(s[2:4], 16) / 255,
+                    int(s[4:6], 16) / 255, 1.0)
+        if len(s) == 8:
+            return (int(s[0:2], 16) / 255, int(s[2:4], 16) / 255,
+                    int(s[4:6], 16) / 255, int(s[6:8], 16) / 255)
+    return (1.0, 1.0, 1.0, 1.0)
+
+
+class ColorAddNode(NodeBase):
+    """Component-wise color add (clamped 0-1)."""
+    NODE_NAME  = "Color Add"
+    NODE_GROUP = "Math / Color"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.COLOR),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.COLOR),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.COLOR),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = _parse_color(self.get_input("a"))
+        b = _parse_color(self.get_input("b"))
+        r = max(0, min(1, a[0] + b[0]))
+        g = max(0, min(1, a[1] + b[1]))
+        bl = max(0, min(1, a[2] + b[2]))
+        al = max(0, min(1, a[3] + b[3]))
+        self.set_output("result", (r, g, bl, al))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#e57373"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Color +")
+
+
+class ColorBlendNode(NodeBase):
+    """Linear blend between two colors: result = a + (b - a) * t, t in [0,1]."""
+    NODE_NAME  = "Color Blend"
+    NODE_GROUP = "Math / Color"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.COLOR),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.COLOR),
+        PinDescriptor("t",      PinDirection.INPUT,  PinType.FLOAT, default=0.5),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.COLOR),
+    ]
+    MIN_WIDTH  = 150.0
+    MIN_HEIGHT = 70.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = _parse_color(self.get_input("a"))
+        b = _parse_color(self.get_input("b"))
+        t = max(0, min(1, float(self.get_input("t") or 0.5)))
+        r = a[0] + (b[0] - a[0]) * t
+        g = a[1] + (b[1] - a[1]) * t
+        bl = a[2] + (b[2] - a[2]) * t
+        al = a[3] + (b[3] - a[3]) * t
+        self.set_output("result", (r, g, bl, al))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#e57373"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "lerp")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DateTime math (Math / DateTime) — values are epoch seconds (float)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DateTimeDifferenceNode(NodeBase):
+    """Outputs a - b in seconds (float)."""
+    NODE_NAME  = "DateTime Difference"
+    NODE_GROUP = "Math / DateTime"
+    PINS = [
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.DATETIME),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.DATETIME),
+        PinDescriptor("seconds", PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 180.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        a = float(self.get_input("a") or 0.0)
+        b = float(self.get_input("b") or 0.0)
+        self.set_output("seconds", a - b)
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#ba68c8"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "a − b (s)")
+
+
+class DateTimeAddSecondsNode(NodeBase):
+    """Add seconds to a DateTime; outputs new DateTime (epoch seconds)."""
+    NODE_NAME  = "DateTime Add Seconds"
+    NODE_GROUP = "Math / DateTime"
+    PINS = [
+        PinDescriptor("datetime", PinDirection.INPUT,  PinType.DATETIME),
+        PinDescriptor("seconds",  PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("result",   PinDirection.OUTPUT, PinType.DATETIME),
+    ]
+    MIN_WIDTH  = 180.0
+    MIN_HEIGHT = 60.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        t = float(self.get_input("datetime") or 0.0)
+        s = float(self.get_input("seconds") or 0.0)
+        self.set_output("result", t + s)
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#ba68c8"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "dt + s")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
