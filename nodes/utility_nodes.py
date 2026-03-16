@@ -1,5 +1,5 @@
 """
-Utility nodes — Counter, Random, Loop, Loop While.
+Utility nodes — Counter, Random, Beep.
 
 Timer and Delay are in nodes.time_nodes.
 Log/Debug and display nodes are in nodes.debug_nodes.
@@ -7,6 +7,9 @@ Log/Debug and display nodes are in nodes.debug_nodes.
 from __future__ import annotations
 
 import random
+import sys
+import threading
+import time
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
@@ -176,4 +179,163 @@ class RandomDataNode(NodeBase):
         lo = float(self.get_var_input("min_val") or 0.0)
         hi = float(self.get_var_input("max_val") or 1.0)
         self.set_output("value", random.uniform(lo, hi))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BEEP (PC SPEAKER)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class BeepNode(NodeBase):
+    """
+    Plays a PC speaker beep when triggered via TICK input.
+    Frequency (Hz) and duration (ms) can be set via wired pins or inline fields.
+    Beep runs in a background thread so it does not block the graph.
+
+    On Windows uses winsound.Beep(); on other platforms attempts the 'beep' CLI.
+    """
+    NODE_NAME  = "Beep (PC)"
+    NODE_GROUP = "Utility"
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("frequency", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("duration",  PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {
+        "frequency": (float, 440.0),
+        "duration":  (float, 200.0),
+    }
+    MIN_WIDTH  = 170.0
+    MIN_HEIGHT = 90.0
+
+    def execute(self, trigger_pin: str) -> None:
+        freq = float(self.get_var_input("frequency") or 440.0)
+        dur  = float(self.get_var_input("duration")  or 200.0)
+        freq = max(37.0, min(32767.0, freq))
+        dur  = max(1.0, dur)
+
+        def _beep():
+            try:
+                if sys.platform == "win32":
+                    import winsound
+                    winsound.Beep(int(freq), int(dur))
+                else:
+                    import subprocess
+                    subprocess.run(
+                        ["beep", f"-f{int(freq)}", f"-l{int(dur)}"],
+                        check=False,
+                    )
+            except Exception:
+                pass
+
+        threading.Thread(target=_beep, daemon=True).start()
+        self.fire_tick("exec_out")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FREQUENCY GENERATOR
+# ─────────────────────────────────────────────────────────────────────────────
+
+class FrequencyGeneratorNode(NodeBase):
+    """
+    Fires exec_out at a configurable rate (Hz) continuously while the graph runs.
+    'frequency' can be wired from an external float or set via the inline field.
+    'enable' (optional bool) gates the output — when not wired, always enabled.
+    Frequency is read on every tick so changes take effect immediately.
+    """
+    NODE_NAME  = "Frequency Generator"
+    NODE_GROUP = "Utility"
+    PINS = [
+        PinDescriptor("frequency", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("enable",    PinDirection.INPUT,  PinType.BOOL,  optional=True),
+        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {
+        "frequency": (float, 1.0),
+    }
+    MIN_WIDTH  = 190.0
+    MIN_HEIGHT = 90.0
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._next_fire: float = 0.0
+
+    def on_start(self) -> None:
+        self._next_fire = time.monotonic()
+
+    def on_tick_check(self) -> None:
+        enable = self.get_input("enable")
+        if enable is not None and not bool(enable):
+            return
+        freq = float(self.get_var_input("frequency") or 1.0)
+        freq = max(0.001, freq)
+        now = time.monotonic()
+        if now >= self._next_fire:
+            self._next_fire = now + 1.0 / freq
+            self.fire_tick("exec_out")
+            self.node_changed.emit()
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        freq = float(self.get_var_input("frequency") or 1.0)
+        enable = self.get_input("enable")
+        enabled = enable is None or bool(enable)
+        color = QColor("#80cbc4") if enabled else QColor("#666666")
+        painter.setPen(color)
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"{freq:.4g} Hz")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAMPLE AND HOLD
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SampleAndHoldNode(NodeBase):
+    """
+    On each 'trigger' tick, captures the current 'input' value and holds it
+    on 'value' until the next trigger. exec_out fires after each sample.
+    The held value persists across ticks — only updated on trigger.
+    """
+    NODE_NAME  = "Sample & Hold"
+    NODE_GROUP = "Utility"
+    PINS = [
+        PinDescriptor("trigger",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("input",    PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",    PinDirection.OUTPUT, PinType.ANY),
+    ]
+    MIN_WIDTH  = 170.0
+    MIN_HEIGHT = 80.0
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._held: Any = None
+
+    def on_start(self) -> None:
+        self._held = None
+
+    def execute(self, trigger_pin: str) -> None:
+        self._held = self.get_input("input")
+        self.set_output("value", self._held)
+        self.fire_tick("exec_out")
+        self.node_changed.emit()
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        v = self._held
+        if v is None:
+            label = "—"
+        elif isinstance(v, float):
+            label = f"{v:.4g}"
+        elif isinstance(v, int):
+            label = str(v)
+        elif isinstance(v, (tuple, list)):
+            parts = ", ".join(f"{x:.3g}" for x in list(v)[:3])
+            label = f"({parts}{'…' if len(v) > 3 else ''})"
+        else:
+            label = str(v)[:16]
+        painter.setPen(QColor("#80cbc4"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
 

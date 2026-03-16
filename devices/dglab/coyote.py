@@ -19,6 +19,7 @@ from typing import Any, List, Optional
 
 from core.device_base import DeviceBase, DeviceCommand
 from core.device_node_base import DeviceNodeBase, register_device_instance
+from core.node_base import NodeBase
 from core.types import (
     ConnectionDescriptor,
     PortKind,
@@ -1033,6 +1034,80 @@ class CoyoteOutputGateNode(_CoyoteNodeBase):
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
 
 
+class CoyoteWaveformSplitNode(NodeBase):
+    """
+    Splits a CoyoteWaveformFrame (arriving every 100 ms) into individual
+    intensity + frequency pairs emitted every 25 ms via an internal timer.
+
+    The node buffers the latest received frame and uses on_tick_check to
+    emit one sample slot every 25 ms (4 slots per frame = 100 ms cycle).
+    on_conversion fires each time a sample pair is output.
+
+    This node does not require a Coyote device instance — it is a pure
+    data-transformation node that understands the CoyoteWaveformFrame type.
+    """
+    NODE_NAME  = "Coyote: Waveform Split"
+    NODE_GROUP = "Devices/DGLab/Coyote"
+    ICON_PATH  = "assets/icons/dglab/coyote.svg"
+    PINS = [
+        PinDescriptor("frame",         PinDirection.INPUT,  PinType.COYOTE_FRAME),
+        PinDescriptor("on_conversion", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("intensity",     PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("frequency",     PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 200.0
+    MIN_HEIGHT = 80.0
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._current_frame: Optional[CoyoteWaveformFrame] = None
+        self._sample_idx: int = 0
+        self._last_emit_time: float = 0.0
+
+    def on_start(self) -> None:
+        self._current_frame = None
+        self._sample_idx = 0
+        self._last_emit_time = time.monotonic()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        if pin_name != "frame" or value is None:
+            return
+        if isinstance(value, dict):
+            self._current_frame = CoyoteWaveformFrame.from_dict(value)
+        elif isinstance(value, CoyoteWaveformFrame):
+            self._current_frame = value
+        # Reset to slot 0 on each new frame so outputs stay phase-aligned
+        self._sample_idx = 0
+
+    def on_tick_check(self) -> None:
+        now = time.monotonic()
+        if now - self._last_emit_time < SAMPLE_INTERVAL_S:
+            return
+        self._last_emit_time = now
+
+        if self._current_frame is None:
+            return
+
+        idx = self._sample_idx % FRAME_SAMPLES
+        self.set_output("intensity", float(self._current_frame.intensities[idx]))
+        self.set_output("frequency", float(self._current_frame.frequencies[idx]))
+        self.fire_tick("on_conversion")
+
+        self._sample_idx = (self._sample_idx + 1) % FRAME_SAMPLES
+
+    def execute(self, trigger_pin: str) -> None:
+        pass  # data-only; driven by on_tick_check
+
+    def on_stop(self) -> None:
+        self._current_frame = None
+        self._sample_idx = 0
+        self.set_output("intensity", 0.0)
+        self.set_output("frequency", float(WAVEFORM_FREQ_MIN))
+
+    def on_pause(self) -> None:
+        self.on_stop()
+
+
 # ── Exports ─────────────────────────────────────────────────────────────────
 
 ALL_DEVICE_CLASSES = [Coyote]
@@ -1041,6 +1116,7 @@ from devices.dglab.coyote_waveforms import ALL_WAVEFORM_NODE_CLASSES
 
 ALL_NODE_CLASSES = [
     CoyoteWaveformFromInputsNode,
+    CoyoteWaveformSplitNode,
     CoyoteSetWaveformANode,
     CoyoteSetWaveformBNode,
     CoyoteSetStrengthANode,

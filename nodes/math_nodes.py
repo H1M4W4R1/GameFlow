@@ -276,6 +276,74 @@ class SqrtNode(_UnaryMathNode):
         self.set_output("result", _apply_unary(lambda x: math.sqrt(abs(x)), self._a()))
 
 
+class ExpNode(_UnaryMathNode):
+    """e^a  (component-wise for vectors; clamps at overflow)"""
+    NODE_NAME    = "Exp"
+    NODE_GROUP   = "Math / Logarithm"
+    PAINT_SYMBOL = "e^a"
+
+    def _compute(self) -> None:
+        def _safe_exp(x):
+            try:
+                return math.exp(x)
+            except OverflowError:
+                return float("inf")
+        self.set_output("result", _apply_unary(_safe_exp, self._a()))
+
+
+class LogNode(_UnaryMathNode):
+    """ln(a)  — natural logarithm; returns 0 for a ≤ 0 (component-wise for vectors)"""
+    NODE_NAME    = "Log"
+    NODE_GROUP   = "Math / Logarithm"
+    PAINT_SYMBOL = "ln(a)"
+
+    def _compute(self) -> None:
+        def _ln(x):
+            return math.log(x) if x > 0 else 0.0
+        self.set_output("result", _apply_unary(_ln, self._a()))
+
+
+class Log10Node(_UnaryMathNode):
+    """log₁₀(a)  — common logarithm; returns 0 for a ≤ 0 (component-wise for vectors)"""
+    NODE_NAME    = "Log10"
+    NODE_GROUP   = "Math / Logarithm"
+    PAINT_SYMBOL = "log₁₀(a)"
+
+    def _compute(self) -> None:
+        def _log10(x):
+            return math.log10(x) if x > 0 else 0.0
+        self.set_output("result", _apply_unary(_log10, self._a()))
+
+
+class LogNNode(_BinaryMathNode):
+    """log_b(a)  — logarithm of a in base b; returns 0 for invalid domain (component-wise)"""
+    NODE_NAME    = "LogN"
+    NODE_GROUP   = "Math / Logarithm"
+    PAINT_SYMBOL = "log_b(a)"
+
+    def _compute(self) -> None:
+        def _logn(a, b):
+            if a <= 0 or b <= 0 or b == 1.0:
+                return 0.0
+            return math.log(a) / math.log(b)
+        self.set_output("result", _apply_binary(_logn, self._a(), self._b()))
+
+
+class SignNode(_UnaryMathNode):
+    """sgn(a)  — returns −1, 0, or +1 based on sign (component-wise for vectors)"""
+    NODE_NAME    = "Sign"
+    PAINT_SYMBOL = "sgn(a)"
+
+    def _compute(self) -> None:
+        def _sign(x):
+            if x > 0:
+                return 1.0
+            if x < 0:
+                return -1.0
+            return 0.0
+        self.set_output("result", _apply_unary(_sign, self._a()))
+
+
 class FloorNode(_UnaryMathNode):
     """⌊ a ⌋  (component-wise for vectors/colors)"""
     NODE_NAME    = "Floor"
