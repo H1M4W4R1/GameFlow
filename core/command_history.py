@@ -452,3 +452,29 @@ class DeviceCycleCmd(Command):
 
     def redo(self) -> None:
         self._node.cycle_device()
+
+
+class CtrlPropCmd(Command):
+    """Undo/redo a ctrl-property setter call (e.g. set_ctrl_color, set_ctrl_range)."""
+
+    def __init__(self, runtime: "GraphRuntime", node_id: str,
+                 setter_name: str, old_val, new_val, desc: str = "") -> None:
+        self._rt = runtime
+        self._node_id = node_id
+        self._setter_name = setter_name
+        self._old = old_val
+        self._new = new_val
+        self.description = desc or setter_name
+
+    def _apply(self, val) -> None:
+        node = self._rt.get_node(self._node_id)
+        if node:
+            setter = getattr(node, self._setter_name, None)
+            if setter:
+                setter(*val) if isinstance(val, tuple) else setter(val)
+
+    def undo(self) -> None:
+        self._apply(self._old)
+
+    def redo(self) -> None:
+        self._apply(self._new)

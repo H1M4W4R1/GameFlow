@@ -1,13 +1,14 @@
 """
 Control-panel nodes — interactive UI widgets embedded in the node graph.
 
-SliderNode      — drag to set a float in [0, 1]
+SliderNode      — drag to set a float in [min, max] with linear/exp/log scale
 ButtonNode      — monostable: outputs 1.0 while pressed, 0.0 when released
 ToggleNode      — bistable: click to flip between 0.0 and 1.0
 TimeSelectorNode — HH:MM:SS picker with ▲/▼ arrows, outputs total seconds
 """
 from __future__ import annotations
 
+import math
 from typing import Any, Optional
 
 from PyQt6.QtCore import Qt, QRectF, QPointF
@@ -37,18 +38,52 @@ class SliderNode(NodeBase):
 
     def __init__(self, **kw: Any) -> None:
         super().__init__(**kw)
-        self._value: float = 0.0
+        self._value:   float = 0.0   # normalized drag position [0, 1]
+        self._min_val: float = 0.0
+        self._max_val: float = 1.0
+        self._scale:   str   = "linear"  # "linear" | "exponential" | "logarithmic"
+
+    # ── output mapping ─────────────────────────────────────────────────────────
+
+    def _compute_output(self) -> float:
+        """Map normalized [0,1] drag position through scale to [min_val, max_val]."""
+        t = self._value
+        if self._scale == "exponential":
+            t = t * t
+        elif self._scale == "logarithmic":
+            t = math.sqrt(t)
+        return self._min_val + t * (self._max_val - self._min_val)
 
     # ── lifecycle ──────────────────────────────────────────────────────────────
 
     def on_start(self) -> None:
-        self.set_output("value", self._value)
+        self.set_output("value", self._compute_output())
 
     def execute(self, trigger_pin: str) -> None:
-        self.set_output("value", self._value)
+        self.set_output("value", self._compute_output())
 
     def on_output_wire_connected(self, pin_name: str) -> None:
-        self.set_output("value", self._value)
+        self.set_output("value", self._compute_output())
+
+    # ── range / scale protocol (duck-typed by canvas context menu) ─────────────
+
+    def get_ctrl_range(self) -> tuple[float, float]:
+        return (self._min_val, self._max_val)
+
+    def set_ctrl_range(self, min_val: float, max_val: float) -> None:
+        self._min_val = float(min_val)
+        self._max_val = float(max_val)
+        self.set_output("value", self._compute_output())
+        self.node_changed.emit()
+
+    def get_ctrl_scale(self) -> str:
+        return self._scale
+
+    def set_ctrl_scale(self, mode: str) -> None:
+        if mode in ("linear", "exponential", "logarithmic"):
+            self._scale = mode
+            self.set_output("value", self._compute_output())
+            self.node_changed.emit()
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
@@ -64,9 +99,9 @@ class SliderNode(NodeBase):
         track_w = ctrl_rect.width() - pad * 2
         if track_w <= 0:
             return
-        raw          = scene_pos.x() - ctrl_rect.x() - pad
-        self._value  = max(0.0, min(1.0, raw / track_w))
-        self.set_output("value", self._value)
+        raw         = scene_pos.x() - ctrl_rect.x() - pad
+        self._value = max(0.0, min(1.0, raw / track_w))
+        self.set_output("value", self._compute_output())
         self.node_changed.emit()
 
     # ── painting ───────────────────────────────────────────────────────────────
@@ -84,7 +119,7 @@ class SliderNode(NodeBase):
         painter.setBrush(QBrush(QColor("#0d0509")))
         painter.drawRoundedRect(track_rect, track_h / 2, track_h / 2)
 
-        # Filled portion
+        # Filled portion (based on normalized drag position)
         filled_w = track_w * self._value
         if filled_w > 0.5:
             fill_rect = QRectF(track_x, track_rect.y(), filled_w, track_h)
@@ -100,28 +135,48 @@ class SliderNode(NodeBase):
         painter.setBrush(QBrush(QColor("#e1f5fe")))
         painter.drawEllipse(QPointF(thumb_x, cy), 7.0, 7.0)
 
-        # Value label (top-right corner of custom area)
+        # Value label — shows actual output value (top-right of custom area)
+        output_val = self._compute_output()
         painter.setPen(QColor("#4fc3f7"))
         painter.setFont(QFont("Courier New", 8, QFont.Weight.Bold))
         label_rect = QRectF(rect.x(), rect.y() + 2, rect.width() - 4, 14)
         painter.drawText(
             label_rect,
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-            f"{self._value:.3f}",
+            f"{output_val:.3f}",
         )
+
+        # Scale indicator (bottom-left, tiny) when non-linear
+        if self._scale != "linear":
+            painter.setPen(QColor("#455a64"))
+            painter.setFont(QFont("Segoe UI", 7))
+            ind = "exp" if self._scale == "exponential" else "log"
+            painter.drawText(
+                QRectF(rect.x() + 2, rect.y() + 2, 28, 12),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                ind,
+            )
 
     # ── state persistence ──────────────────────────────────────────────────────
 
     def get_state(self) -> dict[str, Any]:
         s = super().get_state()
         s["__ctrl_value__"] = self._value
+        s["__ctrl_min__"]   = self._min_val
+        s["__ctrl_max__"]   = self._max_val
+        s["__ctrl_scale__"] = self._scale
         return s
 
     def set_state(self, state: dict[str, Any]) -> None:
-        v = state.pop("__ctrl_value__", None)
+        v     = state.pop("__ctrl_value__", None)
+        mn    = state.pop("__ctrl_min__",   None)
+        mx    = state.pop("__ctrl_max__",   None)
+        scale = state.pop("__ctrl_scale__", None)
         super().set_state(state)
-        if v is not None:
-            self._value = float(v)
+        if v is not None:     self._value   = float(v)
+        if mn is not None:    self._min_val = float(mn)
+        if mx is not None:    self._max_val = float(mx)
+        if scale is not None: self._scale   = str(scale)
 
 
 # ── Button ─────────────────────────────────────────────────────────────────────
@@ -141,11 +196,13 @@ class ButtonNode(NodeBase):
     MIN_HEIGHT = 96.0   # ~36 px custom zone
 
     _DEFAULT_LABEL = "PRESS"
+    _DEFAULT_COLOR = "#9c27b0"
 
     def __init__(self, **kw: Any) -> None:
         super().__init__(**kw)
-        self._pressed: bool = False
-        self._label:   str  = self._DEFAULT_LABEL
+        self._pressed:   bool = False
+        self._label:     str  = self._DEFAULT_LABEL
+        self._btn_color: str  = self._DEFAULT_COLOR
 
     # ── lifecycle ──────────────────────────────────────────────────────────────
 
@@ -193,6 +250,15 @@ class ButtonNode(NodeBase):
             ctrl_rect.width() - pad * 2, ctrl_rect.height() - 8,
         )
 
+    # ── color protocol (duck-typed by canvas context menu) ─────────────────────
+
+    def get_ctrl_color(self) -> str:
+        return self._btn_color
+
+    def set_ctrl_color(self, hex_color: str) -> None:
+        self._btn_color = hex_color
+        self.node_changed.emit()
+
     # ── painting ───────────────────────────────────────────────────────────────
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
@@ -202,15 +268,18 @@ class ButtonNode(NodeBase):
             rect.width() - pad * 2, rect.height() - 8,
         )
 
+        accent = QColor(self._btn_color)
+        h, s, v, _ = accent.getHsvF()
+
         if self._pressed:
-            bg_col     = QColor("#4a148c")
-            border_col = QColor("#ea80fc")
+            bg_col     = QColor.fromHsvF(h, min(s + 0.05, 1.0), max(0.01, v * 0.55))
+            border_col = QColor.fromHsvF(h, max(0.0, s - 0.3),  min(1.0, v + 0.35))
             text_col   = QColor("#ffffff")
-            offset     = 1.0   # pressed-in effect
+            offset     = 1.0
         else:
-            bg_col     = QColor("#1e0a30")
-            border_col = QColor("#9c27b0")
-            text_col   = QColor("#ce93d8")
+            bg_col     = QColor.fromHsvF(h, min(s + 0.05, 1.0), max(0.01, v * 0.22))
+            border_col = accent
+            text_col   = QColor.fromHsvF(h, max(0.0, s - 0.2),  min(1.0, v + 0.2))
             offset     = 0.0
 
         draw_rect = btn_rect.adjusted(0, offset, 0, offset)
@@ -227,13 +296,15 @@ class ButtonNode(NodeBase):
     def get_state(self) -> dict[str, Any]:
         s = super().get_state()
         s["__ctrl_label__"] = self._label
+        s["__ctrl_color__"] = self._btn_color
         return s
 
     def set_state(self, state: dict[str, Any]) -> None:
-        lbl = state.pop("__ctrl_label__", None)
+        lbl   = state.pop("__ctrl_label__", None)
+        color = state.pop("__ctrl_color__", None)
         super().set_state(state)
-        if lbl is not None:
-            self._label = str(lbl) or self._DEFAULT_LABEL
+        if lbl is not None:   self._label     = str(lbl) or self._DEFAULT_LABEL
+        if color is not None: self._btn_color = str(color)
 
 
 # ── Toggle ─────────────────────────────────────────────────────────────────────

@@ -43,12 +43,14 @@ from PyQt6.QtGui import (
     QRadialGradient, QWheelEvent,
 )
 from PyQt6.QtWidgets import (
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QFrame, QLineEdit, QListWidget, QListWidgetItem,
     QMenu, QVBoxLayout, QWidget, QToolTip, QColorDialog,
 )
 
 from core.command_history import (
     CommandHistory,
+    CtrlPropCmd,
     DeviceCycleCmd, DeviceSelectCmd,
     FieldEditCmd,
     GroupCreateCmd, GroupDeleteCmd, GroupMoveCmd, GroupResizeCmd, GroupRenameCmd,
@@ -1205,7 +1207,10 @@ class NodeEditorCanvas(QWidget):
             self.update()
 
         if event.button() == Qt.MouseButton.RightButton:
-            if not self._hit_node(scene):
+            nid = self._hit_node(scene)
+            if nid:
+                self._show_node_context_menu(nid, event.globalPosition().toPoint())
+            else:
                 self._show_context_menu(event.globalPosition().toPoint(), scene)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
@@ -1485,18 +1490,6 @@ class NodeEditorCanvas(QWidget):
         if event.button() != Qt.MouseButton.LeftButton:
             return
         scene = self._v2s(event.position())
-        # Control-panel node label editor (duck-type: get_ctrl_label / set_ctrl_label)
-        ctrl_hit = self._hit_ctrl(scene)
-        if ctrl_hit:
-            nid, rect = ctrl_hit
-            node = self._runtime.get_node(nid)
-            if (node is not None
-                    and hasattr(node, "get_ctrl_label")
-                    and hasattr(node, "set_ctrl_label")):
-                lbl_rect = (node.ctrl_label_rect(rect)  # type: ignore[union-attr]
-                            if hasattr(node, "ctrl_label_rect") else rect)
-                self._open_ctrl_label_editor(node, lbl_rect)
-                return
         # Field / var-input editor (takes priority)
         rf = self._hit_field(scene)
         if rf:
@@ -2055,6 +2048,226 @@ class NodeEditorCanvas(QWidget):
             self.status_message.emit("Could not create wire")
 
     # ── Context menu ──────────────────────────────────────────────────────────
+
+    # ── Node right-click context menu ─────────────────────────────────────────
+
+    def _get_ctrl_rect(self, node_id: str) -> Optional[QRectF]:
+        """Return the CUSTOM row scene rect for a node, or None."""
+        node = self._runtime.get_node(node_id)
+        if not node:
+            return None
+        extra    = _device_sel_extra(node)
+        body_top = node.y + TITLE_H + extra
+        rows     = _build_rows(node, body_top)
+        width    = _node_width(node)
+        for row in rows:
+            if row.kind == _RowKind.CUSTOM:
+                return QRectF(node.x + 4, row.y, width - 8, row.h)
+        return None
+
+    def _show_node_context_menu(self, node_id: str, global_pos: QPoint) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node:
+            return
+        menu = QMenu(self)
+        menu.setStyleSheet(_MENU_STYLE)
+
+        rename_act = QAction("Rename…", menu)
+        rename_act.triggered.connect(lambda: self._open_node_rename_editor(node_id))
+        menu.addAction(rename_act)
+
+        # Control-specific actions (grouped with a separator when any are present)
+        ctrl_actions: list = []
+
+        if hasattr(node, "get_ctrl_label") and hasattr(node, "set_ctrl_label"):
+            lbl_act = QAction("Rename label…", menu)
+            lbl_act.triggered.connect(lambda: self._trigger_ctrl_label_editor(node_id))
+            ctrl_actions.append(lbl_act)
+
+        if hasattr(node, "get_ctrl_color") and hasattr(node, "set_ctrl_color"):
+            color_act = QAction("Button color…", menu)
+            color_act.triggered.connect(lambda: self._open_ctrl_color_picker(node_id))
+            ctrl_actions.append(color_act)
+
+        if hasattr(node, "get_ctrl_range") and hasattr(node, "set_ctrl_range"):
+            range_act = QAction("Set range…", menu)
+            range_act.triggered.connect(lambda: self._open_ctrl_range_dialog(node_id))
+            ctrl_actions.append(range_act)
+
+        if hasattr(node, "get_ctrl_scale") and hasattr(node, "set_ctrl_scale"):
+            scale_menu = QMenu("Scale mode", menu)
+            scale_menu.setStyleSheet(_MENU_STYLE)
+            current_scale = node.get_ctrl_scale()
+            for mode, label in [
+                ("linear",      "Linear"),
+                ("exponential", "Exponential"),
+                ("logarithmic", "Logarithmic"),
+            ]:
+                act = QAction(label, scale_menu)
+                act.setCheckable(True)
+                act.setChecked(current_scale == mode)
+                act.triggered.connect(
+                    lambda _checked, m=mode: self._set_ctrl_scale(node_id, m)
+                )
+                scale_menu.addAction(act)
+            ctrl_actions.append(scale_menu)
+
+        if ctrl_actions:
+            menu.addSeparator()
+            for item in ctrl_actions:
+                if isinstance(item, QMenu):
+                    menu.addMenu(item)
+                else:
+                    menu.addAction(item)
+
+        menu.addSeparator()
+
+        dup_act = QAction("Duplicate", menu)
+        dup_act.triggered.connect(lambda: self._duplicate_node(node_id))
+        menu.addAction(dup_act)
+
+        node_wires = [w for w in self._runtime.wires.values()
+                      if w.src_node == node_id or w.dst_node == node_id]
+        disc_act = QAction("Remove connections", menu)
+        disc_act.setEnabled(bool(node_wires))
+        disc_act.triggered.connect(lambda: self._remove_node_connections(node_id))
+        menu.addAction(disc_act)
+
+        del_act = QAction("Delete", menu)
+        del_act.triggered.connect(lambda: self._delete_node(node_id))
+        menu.addAction(del_act)
+
+        menu.exec(global_pos)
+
+    def _duplicate_node(self, node_id: str) -> None:
+        self._selected_nodes = {node_id}
+        self._selected_node  = node_id
+        self._duplicate_selected()
+
+    def _remove_node_connections(self, node_id: str) -> None:
+        wires = [w for w in self._runtime.wires.values()
+                 if w.src_node == node_id or w.dst_node == node_id]
+        if not wires:
+            return
+        self._history.begin_macro("Remove connections")
+        for wire in wires:
+            self._runtime.remove_wire(wire.wire_id)
+            self._history.push(WireDeleteCmd(self._runtime, wire))
+        self._history.end_macro()
+        self.update()
+
+    def _delete_node(self, node_id: str) -> None:
+        self._selected_nodes = {node_id}
+        self._selected_node  = node_id
+        self._delete_selected_nodes("Delete")
+
+    def _trigger_ctrl_label_editor(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node:
+            return
+        ctrl_rect = self._get_ctrl_rect(node_id)
+        if ctrl_rect is None:
+            return
+        lbl_rect = (node.ctrl_label_rect(ctrl_rect)  # type: ignore[union-attr]
+                    if hasattr(node, "ctrl_label_rect") else ctrl_rect)
+        self._open_ctrl_label_editor(node, lbl_rect)
+
+    def _open_ctrl_color_picker(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_ctrl_color"):
+            return
+        old_color = node.get_ctrl_color()
+        initial   = _parse_hex_to_qcolor(str(old_color))
+        color     = QColorDialog.getColor(initial, self, "Button color")
+        if color.isValid():
+            new_color = f"#{color.red():02x}{color.green():02x}{color.blue():02x}"
+            if new_color != old_color:
+                node.set_ctrl_color(new_color)
+                self._history.push(CtrlPropCmd(
+                    self._runtime, node_id,
+                    "set_ctrl_color", old_color, new_color, "Button color",
+                ))
+            self.update()
+
+    def _open_ctrl_range_dialog(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_ctrl_range"):
+            return
+        old_min, old_max = node.get_ctrl_range()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Slider Range")
+        dlg.setStyleSheet("""
+            QDialog      { background: #220d14; color: #ffd0de; }
+            QLabel        { color: #ffd0de; font-family: 'Segoe UI'; font-size: 9pt; }
+            QDoubleSpinBox {
+                background: #2a0e1a; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 3px 6px; font-family: 'Courier New'; font-size: 9pt;
+            }
+            QDoubleSpinBox:focus { border-color: #c90084; }
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                background: #3a0d22; border: none; width: 16px;
+            }
+            QPushButton {
+                background: #3a0d22; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt;
+            }
+            QPushButton:hover   { background: #c90084; border-color: #c90084; }
+            QPushButton:default { border-color: #c90084; }
+        """)
+
+        layout = QFormLayout(dlg)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
+
+        min_spin = QDoubleSpinBox()
+        min_spin.setRange(-1e9, 1e9)
+        min_spin.setDecimals(4)
+        min_spin.setSingleStep(0.1)
+        min_spin.setValue(old_min)
+
+        max_spin = QDoubleSpinBox()
+        max_spin.setRange(-1e9, 1e9)
+        max_spin.setDecimals(4)
+        max_spin.setSingleStep(0.1)
+        max_spin.setValue(old_max)
+
+        layout.addRow("Min:", min_spin)
+        layout.addRow("Max:", max_spin)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            new_min = min_spin.value()
+            new_max = max_spin.value()
+            if new_min != old_min or new_max != old_max:
+                node.set_ctrl_range(new_min, new_max)
+                self._history.push(CtrlPropCmd(
+                    self._runtime, node_id,
+                    "set_ctrl_range", (old_min, old_max), (new_min, new_max), "Set range",
+                ))
+            self.update()
+
+    def _set_ctrl_scale(self, node_id: str, mode: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "set_ctrl_scale"):
+            return
+        old_mode = node.get_ctrl_scale()
+        if old_mode == mode:
+            return
+        node.set_ctrl_scale(mode)
+        self._history.push(CtrlPropCmd(
+            self._runtime, node_id,
+            "set_ctrl_scale", old_mode, mode, "Scale mode",
+        ))
+        self.update()
 
     def _show_context_menu(self, global_pos, scene_pos: QPointF) -> None:
         menu = QMenu(self)
