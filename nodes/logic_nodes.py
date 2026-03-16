@@ -1,5 +1,5 @@
 """
-Logic nodes — AND, OR, NOT boolean operations.
+Logic nodes — AND, OR, NOT, XOR, XNOR, NOR, NAND boolean operations.
 
 Design rules:
   • All logic nodes are PURE DATA — no exec_in / exec_out.
@@ -36,7 +36,7 @@ class _MultiInputLogicNode(NodeBase):
     has a free socket to wire into.  Disconnecting a pin trims excess empties.
     """
 
-    NODE_GROUP   = "Logic"
+    NODE_GROUP   = "Logic/Combination"
     MIN_WIDTH    = 140.0
     MIN_HEIGHT   = 70.0
     PAINT_SYMBOL: str = "?"
@@ -199,7 +199,6 @@ class AndNode(_MultiInputLogicNode):
         values = self._connected_values()
         self.set_output("result", all(values) if values else False)
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # OR
 # ─────────────────────────────────────────────────────────────────────────────
@@ -223,7 +222,7 @@ class NotNode(NodeBase):
     """Logical NOT — inverts the truthiness of the input.
     Outputs True when input is disconnected (treat absent signal as False)."""
     NODE_NAME  = "NOT"
-    NODE_GROUP = "Logic"
+    NODE_GROUP = "Logic/Combination"
     PINS = [
         PinDescriptor("input",  PinDirection.INPUT,  PinType.ANY, default=False),
         PinDescriptor("result", PinDirection.OUTPUT, PinType.BOOL),
@@ -248,3 +247,69 @@ class NotNode(NodeBase):
         painter.setPen(QColor("#ffb74d"))
         painter.setFont(QFont("Courier New", 12, QFont.Weight.Bold))
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "NOT")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NAND
+# ─────────────────────────────────────────────────────────────────────────────
+
+class NandNode(_MultiInputLogicNode):
+    """NOT-AND — True unless all connected inputs are truthy.  Output is True
+    when no inputs are connected."""
+    NODE_NAME    = "NAND"
+    PAINT_SYMBOL = "NAND"
+
+    def _compute(self) -> None:
+        values = self._connected_values()
+        self.set_output("result", not all(values) if values else True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NOR
+# ─────────────────────────────────────────────────────────────────────────────
+
+class NorNode(_MultiInputLogicNode):
+    """NOT-OR — True only when all connected inputs are falsy.  Output is True
+    when no inputs are connected."""
+    NODE_NAME    = "NOR"
+    PAINT_SYMBOL = "NOR"
+
+    def _compute(self) -> None:
+        values = self._connected_values()
+        self.set_output("result", not any(values))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# XOR
+# ─────────────────────────────────────────────────────────────────────────────
+
+class XorNode(_MultiInputLogicNode):
+    """Exclusive-OR — True when an odd number of connected inputs are truthy.
+    Output is False when no inputs are connected."""
+    NODE_NAME    = "XOR"
+    PAINT_SYMBOL = "XOR"
+
+    def _compute(self) -> None:
+        values = self._connected_values()
+        result = False
+        for v in values:
+            result ^= v
+        self.set_output("result", result)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# XNOR
+# ─────────────────────────────────────────────────────────────────────────────
+
+class XnorNode(_MultiInputLogicNode):
+    """Exclusive-NOR — True when an even number of connected inputs are truthy
+    (including zero).  Output is True when no inputs are connected."""
+    NODE_NAME    = "XNOR"
+    PAINT_SYMBOL = "XNOR"
+
+    def _compute(self) -> None:
+        values = self._connected_values()
+        result = False
+        for v in values:
+            result ^= v
+        self.set_output("result", not result)

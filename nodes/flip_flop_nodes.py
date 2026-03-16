@@ -34,7 +34,7 @@ class DFlipFlopNode(NodeBase):
     An asynchronous active-low reset (~RST=False) forces Q=False immediately.
     """
     NODE_NAME    = "D Flip-Flop"
-    NODE_GROUP   = "Logic"
+    NODE_GROUP   = "Logic/Gates"
     NODE_VERSION = "1.0.0"
     NODE_TITLE_COLOR = "#2d4a6e"
 
@@ -123,7 +123,7 @@ class TFlipFlopNode(NodeBase):
     divide-by-2 toggle on every tick.
     """
     NODE_NAME    = "T Flip-Flop"
-    NODE_GROUP   = "Logic"
+    NODE_GROUP   = "Logic/Gates"
     NODE_VERSION = "1.0.0"
     NODE_TITLE_COLOR = "#2d4a6e"
 
@@ -214,7 +214,7 @@ class JKFlipFlopNode(NodeBase):
       J=1 K=1  → toggle
     """
     NODE_NAME    = "JK Flip-Flop"
-    NODE_GROUP   = "Logic"
+    NODE_GROUP   = "Logic/Gates"
     NODE_VERSION = "1.0.0"
     NODE_TITLE_COLOR = "#2d4a6e"
 
@@ -316,7 +316,7 @@ class SRFlipFlopNode(NodeBase):
       S=1 R=1  → undefined / no change (forbidden state)
     """
     NODE_NAME    = "SR Flip-Flop"
-    NODE_GROUP   = "Logic"
+    NODE_GROUP   = "Logic/Gates"
     NODE_VERSION = "1.0.0"
     NODE_TITLE_COLOR = "#2d4a6e"
 
