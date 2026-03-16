@@ -19,8 +19,8 @@ from core.types     import PinDescriptor, PinDirection, PinType
 
 class TickNode(NodeBase):
     """Fires every 10 ms — the heartbeat of the graph."""
-    NODE_NAME  = "Tick"
-    NODE_GROUP = "Flow"
+    NODE_NAME  = "On Tick"
+    NODE_GROUP = "Flow/Events"
     PINS = [
         PinDescriptor("tick", PinDirection.OUTPUT, PinType.TICK),
     ]
@@ -46,8 +46,8 @@ class ConfigurableTickNode(NodeBase):
     Set the interval by double-clicking the field inside the node.
     The runtime calls execute() every 10 ms; this node gates to the interval.
     """
-    NODE_NAME  = "Tick (Custom)"
-    NODE_GROUP = "Flow"
+    NODE_NAME  = "On Tick (Custom)"
+    NODE_GROUP = "Flow/Events"
     PINS = [
         PinDescriptor("tick", PinDirection.OUTPUT, PinType.TICK),
     ]
@@ -96,7 +96,7 @@ class ConfigurableTickNode(NodeBase):
 class StartNode(NodeBase):
     """Fires exec_out exactly once when the graph starts."""
     NODE_NAME  = "On Start"
-    NODE_GROUP = "Flow"
+    NODE_GROUP = "Flow/Events"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
     ]
@@ -115,7 +115,7 @@ class StartNode(NodeBase):
 class OnPausedNode(NodeBase):
     """Fires exec_out once when the graph is paused."""
     NODE_NAME  = "On Pause"
-    NODE_GROUP = "Flow"
+    NODE_GROUP = "Flow/Events"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
     ]
@@ -129,7 +129,7 @@ class OnPausedNode(NodeBase):
 class OnResumedNode(NodeBase):
     """Fires exec_out once when the graph is resumed from pause."""
     NODE_NAME  = "On Resume"
-    NODE_GROUP = "Flow"
+    NODE_GROUP = "Flow/Events"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
     ]
@@ -143,7 +143,7 @@ class OnResumedNode(NodeBase):
 class OnStoppedNode(NodeBase):
     """Fires exec_out once when the graph is stopped."""
     NODE_NAME  = "On Stop"
-    NODE_GROUP = "Flow"
+    NODE_GROUP = "Flow/Events"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
     ]
@@ -161,7 +161,7 @@ class IsRunningNode(NodeBase):
     fire so downstream nodes always see the correct state.
     """
     NODE_NAME  = "Is Running"
-    NODE_GROUP = "Flow"
+    NODE_GROUP = "Flow/Status"
     PINS = [
         PinDescriptor("is_running", PinDirection.OUTPUT, PinType.BOOL),
     ]
@@ -192,7 +192,7 @@ class RouterNode(NodeBase):
         [Router.on_false] ──▶ ...
     """
     NODE_NAME  = "Router"
-    NODE_GROUP = "Flow"
+    NODE_GROUP = "Flow/Redirect"
     PINS = [
         PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("condition", PinDirection.INPUT,  PinType.BOOL, default=False),
@@ -210,3 +210,79 @@ class RouterNode(NodeBase):
         painter.setPen(QColor("#80cbc4"))
         painter.setFont(QFont("Courier New", 9))
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "T ◀ ▶ F")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOOP NODE (always loops exact count)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LoopNode(NodeBase):
+    """
+    Fires exec_out exactly N times (N = count), then fires on_done.
+    count is set via editable field or wired INT input.
+    """
+    NODE_NAME  = "Loop"
+    NODE_GROUP = "Flow/Redirect"
+    PINS = [
+        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("count",    PinDirection.INPUT,  PinType.INT, optional=True),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("on_done",  PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {
+        "count": (int, 1),
+    }
+    MIN_WIDTH  = 180.0
+    MIN_HEIGHT = 90.0
+
+    def execute(self, trigger_pin: str) -> None:
+        n = max(0, int(self.get_var_input("count") or 1))
+        for _ in range(n):
+            self.fire_tick("exec_out")
+        self.fire_tick("on_done")
+        self.node_changed.emit()
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        n = max(0, int(self.get_var_input("count") or 1))
+        painter.setPen(QColor("#f95979"))
+        painter.setFont(QFont("Courier New", 12, QFont.Weight.Bold))
+        painter.drawText(
+            QRectF(rect.x(), rect.y(), rect.width(), 30),
+            Qt.AlignmentFlag.AlignCenter,
+            f"↻  ×{n}",
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOOP WHILE (branch on condition: if condition → exec_out, else → on_done)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LoopWhileNode(NodeBase):
+    """
+    When exec_in fires: if condition is True, fire exec_out; else fire on_done.
+    Use for while-style branching (e.g. condition from downstream).
+    """
+    NODE_NAME  = "Loop While"
+    NODE_GROUP = "Flow/Redirect"
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("condition", PinDirection.INPUT,  PinType.BOOL),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("on_done",   PinDirection.OUTPUT, PinType.TICK),
+    ]
+    MIN_WIDTH  = 160.0
+    MIN_HEIGHT = 90.0
+
+    def execute(self, trigger_pin: str) -> None:
+        cond = bool(self.get_input("condition"))
+        if cond:
+            self.fire_tick("exec_out")
+        else:
+            self.fire_tick("on_done")
+        self.node_changed.emit()
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        cond = bool(self.get_input("condition"))
+        painter.setPen(QColor("#f95979") if cond else QColor("#616161"))
+        painter.setFont(QFont("Courier New", 10))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "while?")
