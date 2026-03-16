@@ -26,7 +26,7 @@ from PyQt6.QtCore  import QRect, QSize, QPoint, QRectF
 from PyQt6.QtSvg   import QSvgRenderer
 from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
-    QLabel, QFileDialog, QSizePolicy, QFrame,
+    QLabel, QFileDialog, QSizePolicy, QFrame, QDialog,
 )
 
 from core.device_registry    import DeviceRegistry
@@ -49,6 +49,8 @@ class MainWindow(QWidget):
         self._registry   = registry
         self._runtime    = runtime
         self._graph_path: Optional[Path] = None
+        self._dirty      = False
+        self._loading    = False
 
         # Frameless window
         self.setWindowFlags(
@@ -157,11 +159,21 @@ class MainWindow(QWidget):
         logo.setStyleSheet("background:transparent;")
         layout.addWidget(logo)
 
-        layout.addSpacing(10)
+        layout.addSpacing(4)
 
         # ── File buttons ───────────────────────────────────────────────────
-        self._save_btn = _ToolButton("save.svg", "💾", "Save Graph  (Ctrl+S)")
-        self._load_btn = _ToolButton("load.svg", "📂", "Load Graph  (Ctrl+O)")
+        self._new_btn  = QPushButton("+")
+        self._new_btn.setFixedSize(30, 30)
+        self._new_btn.setToolTip("New Graph  (Ctrl+N)")
+        self._new_btn.setStyleSheet("""
+            QPushButton { background:transparent; color:#c8889a; border:none;
+                          font-size:18pt; font-weight:bold;
+                          padding: 0 0 6px 0; margin:0; }
+            QPushButton:hover { color:#f95979; }
+        """)
+        self._save_btn = _ToolButton("save.svg", "💾", "Save Graph  (Ctrl+S)", ghost=True)
+        self._load_btn = _ToolButton("load.svg", "📂", "Load Graph  (Ctrl+O)", ghost=True)
+        layout.addWidget(self._new_btn)
         layout.addWidget(self._save_btn)
         layout.addWidget(self._load_btn)
 
@@ -178,7 +190,7 @@ class MainWindow(QWidget):
         drag_right = _DragZone(self)
         layout.addWidget(drag_right, stretch=1)
 
-        layout.addSpacing(6)
+        layout.addSpacing(2)
 
         # ── Playback buttons ───────────────────────────────────────────────
         self._run_btn   = _ToolButton("play.svg",  "▶", "Run Graph  (F5)",  accent=True)
@@ -209,17 +221,25 @@ class MainWindow(QWidget):
         return bar
 
     def _connect_signals(self) -> None:
+        self._new_btn.clicked.connect(self._on_new)
         self._save_btn.clicked.connect(self._on_save)
         self._load_btn.clicked.connect(self._on_load)
         self._run_btn.clicked.connect(self._on_run)
         self._pause_btn.clicked.connect(self._on_pause)
         self._stop_btn.clicked.connect(self._on_stop)
 
+        QShortcut(QKeySequence("Ctrl+N"), self).activated.connect(self._on_new)
         QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._on_save)
         QShortcut(QKeySequence("Ctrl+O"), self).activated.connect(self._on_load)
         QShortcut(QKeySequence("F5"),     self).activated.connect(self._on_run)
         QShortcut(QKeySequence("F6"),     self).activated.connect(self._on_stop)
         QShortcut(QKeySequence("F7"),     self).activated.connect(self._on_pause)
+
+        # Dirty tracking — any structural change marks the graph modified
+        self._runtime.node_added.connect(lambda _: self._mark_dirty())
+        self._runtime.node_removed.connect(lambda _: self._mark_dirty())
+        self._runtime.wire_added.connect(lambda _: self._mark_dirty())
+        self._runtime.wire_removed.connect(lambda _: self._mark_dirty())
 
         self._device_panel.add_device_requested.connect(self._on_add_device)
         self._device_panel.remove_device_requested.connect(self._on_remove_device)
@@ -239,13 +259,17 @@ class MainWindow(QWidget):
     # ── Default graph ─────────────────────────────────────────────────────────
 
     def _place_default_nodes(self) -> None:
-        from nodes.flow_nodes import TickNode, StartNode
-        tick  = TickNode()
-        tick.x, tick.y = 60, 120
-        start = StartNode()
-        start.x, start.y = 60, 240
-        self._runtime.add_node(tick)
-        self._runtime.add_node(start)
+        self._loading = True
+        try:
+            from nodes.flow_nodes import TickNode, StartNode
+            tick  = TickNode()
+            tick.x, tick.y = 60, 120
+            start = StartNode()
+            start.x, start.y = 60, 240
+            self._runtime.add_node(tick)
+            self._runtime.add_node(start)
+        finally:
+            self._loading = False
 
     # ── Run / stop ────────────────────────────────────────────────────────────
 
@@ -285,6 +309,63 @@ class MainWindow(QWidget):
         self._pause_btn.setToolTip("Resume Graph  (F7)" if paused else "Pause Graph  (F7)")
         self._status_bar.setText("⏺ Paused" if paused else "▶ Running")
 
+    # ── New / dirty tracking ──────────────────────────────────────────────────
+
+    def _mark_dirty(self) -> None:
+        if self._loading:
+            return
+        if not self._dirty:
+            self._dirty = True
+            self._update_title_label()
+
+    def _mark_clean(self) -> None:
+        self._dirty = False
+        self._update_title_label()
+
+    def _update_title_label(self) -> None:
+        name = self._graph_path.stem if self._graph_path else "Untitled"
+        self._graph_name_label.setText(f"{name} •" if self._dirty else name)
+
+    def _confirm_discard_changes(self) -> bool:
+        """Show a save/discard/cancel dialog when there are unsaved changes.
+
+        Returns True if the caller should proceed, False if the user cancelled.
+        """
+        if not self._dirty:
+            return True
+        result = _ConfirmDialog(
+            self,
+            "Unsaved Changes",
+            "The current graph has unsaved changes.",
+        ).exec()
+        if result == _ConfirmDialog.SAVE:
+            self._on_save()
+            # If the save dialog was cancelled _dirty is still True
+            return not self._dirty
+        if result == _ConfirmDialog.DISCARD:
+            return True
+        return False  # Cancel
+
+    def _on_new(self) -> None:
+        if not self._confirm_discard_changes():
+            return
+        was_running = self._runtime.is_running
+        if was_running:
+            self._runtime.stop()
+        self._loading = True
+        try:
+            self._canvas.load_saved_groups([])
+            for nid in list(self._runtime.nodes.keys()):
+                self._runtime.remove_node(nid)
+        finally:
+            self._loading = False
+        self._graph_path = None
+        self._place_default_nodes()
+        self._mark_clean()
+        self._status_bar.setText("New graph created.")
+        if was_running:
+            self._runtime.start()
+
     # ── Save / load ───────────────────────────────────────────────────────────
 
     def _on_save(self) -> None:
@@ -304,13 +385,15 @@ class MainWindow(QWidget):
             self._graph_path.write_text(
                 json.dumps(graph.to_dict(), indent=2), encoding="utf-8"
             )
-            self._graph_name_label.setText(name)
+            self._mark_clean()
             self._status_bar.setText(f"Saved → {self._graph_path}")
         except Exception as exc:
             log.error("Save failed: %s", exc)
             self._status_bar.setText(f"Save failed: {exc}")
 
     def _on_load(self) -> None:
+        if not self._confirm_discard_changes():
+            return
         path, _ = QFileDialog.getOpenFileName(
             self, "Load Graph", "",
             "SensoryFlow Graph (*.sfgraph);;JSON (*.json)"
@@ -322,7 +405,7 @@ class MainWindow(QWidget):
             graph = SavedGraph.from_dict(data)
             self._load_graph(graph)
             self._graph_path = Path(path)
-            self._graph_name_label.setText(graph.name)
+            self._mark_clean()
             self._status_bar.setText(f"Loaded ← {path}")
         except Exception as exc:
             log.error("Load failed: %s", exc)
@@ -333,37 +416,41 @@ class MainWindow(QWidget):
         if was_running:
             self._runtime.stop()
 
-        # Clear current graph (nodes and groups)
-        self._canvas.load_saved_groups([])
-        for nid in list(self._runtime.nodes.keys()):
-            self._runtime.remove_node(nid)
+        self._loading = True
+        try:
+            # Clear current graph (nodes and groups)
+            self._canvas.load_saved_groups([])
+            for nid in list(self._runtime.nodes.keys()):
+                self._runtime.remove_node(nid)
 
-        # Recreate nodes
-        for sn in graph.nodes:
-            node = self._registry.create_node(sn.type_key, node_id=sn.node_id)
-            if node:
-                node.x = sn.x
-                node.y = sn.y
-                node.set_state(sn.state)
-                self._runtime.add_node(node)
-            else:
-                log.warning("Unknown node type: %s", sn.type_key)
+            # Recreate nodes
+            for sn in graph.nodes:
+                node = self._registry.create_node(sn.type_key, node_id=sn.node_id)
+                if node:
+                    node.x = sn.x
+                    node.y = sn.y
+                    node.set_state(sn.state)
+                    self._runtime.add_node(node)
+                else:
+                    log.warning("Unknown node type: %s", sn.type_key)
 
-        # Recreate wires
-        for wire in graph.wires:
-            self._runtime.add_wire(wire)
+            # Recreate wires
+            for wire in graph.wires:
+                self._runtime.add_wire(wire)
 
-        # Restore groups
-        self._canvas.load_saved_groups(graph.groups)
+            # Restore groups
+            self._canvas.load_saved_groups(graph.groups)
 
-        # Restore device aliases
-        if graph.device_aliases:
-            from core.device_node_base import set_device_alias
-            for device_id, alias in graph.device_aliases.items():
-                set_device_alias(device_id, alias)
-                row = self._device_panel._rows.get(device_id)
-                if row:
-                    row.set_alias(alias)
+            # Restore device aliases
+            if graph.device_aliases:
+                from core.device_node_base import set_device_alias
+                for device_id, alias in graph.device_aliases.items():
+                    set_device_alias(device_id, alias)
+                    row = self._device_panel._rows.get(device_id)
+                    if row:
+                        row.set_alias(alias)
+        finally:
+            self._loading = False
 
         if was_running:
             self._runtime.start()
@@ -445,6 +532,9 @@ class MainWindow(QWidget):
             log.warning('Could not restore devices: %s', exc)
 
     def closeEvent(self, event) -> None:
+        if not self._confirm_discard_changes():
+            event.ignore()
+            return
         self._runtime.stop()
         try:
             save_devices(self._registry)
@@ -456,6 +546,84 @@ class MainWindow(QWidget):
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 _ICON_DIR = Path(__file__).parent.parent / "assets" / "icons" / "ui"
+
+
+class _ConfirmDialog(QDialog):
+    """Styled Save / Discard / Cancel dialog matching the app theme."""
+
+    SAVE    = 0
+    DISCARD = 1
+    CANCEL  = 2
+
+    def __init__(self, parent: QWidget, title: str, message: str) -> None:
+        super().__init__(
+            parent,
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog,
+        )
+        self.setModal(True)
+        self.setFixedWidth(360)
+        self.setStyleSheet("""
+            QDialog {
+                background: #220d14;
+                border: 1px solid #c90084;
+                border-radius: 8px;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 16)
+        layout.setSpacing(12)
+
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet(
+            "color:#f95979; font-size:11pt; font-weight:bold; background:transparent;"
+        )
+        layout.addWidget(title_lbl)
+
+        msg_lbl = QLabel(message)
+        msg_lbl.setWordWrap(True)
+        msg_lbl.setStyleSheet("color:#ffd0de; background:transparent;")
+        layout.addWidget(msg_lbl)
+
+        layout.addSpacing(4)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+        btn_row.addStretch()
+
+        _btn_style = (
+            "QPushButton {{ background:{bg}; color:{fg}; border:{bd};"
+            " border-radius:5px; padding:4px 16px; }}"
+            "QPushButton:hover {{ background:#f95979; color:#fff; border:none; }}"
+        )
+
+        save_btn = QPushButton("Save")
+        save_btn.setFixedHeight(30)
+        save_btn.setStyleSheet(
+            _btn_style.format(bg="#c90084", fg="#fff", bd="none")
+        )
+
+        discard_btn = QPushButton("Discard")
+        discard_btn.setFixedHeight(30)
+        discard_btn.setStyleSheet(
+            _btn_style.format(bg="#45072f", fg="#ffd0de", bd="1px solid #c90084")
+        )
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setFixedHeight(30)
+        cancel_btn.setStyleSheet(
+            _btn_style.format(bg="#2d1020", fg="#c8889a", bd="none")
+        )
+
+        for btn in (save_btn, discard_btn, cancel_btn):
+            btn.setMinimumWidth(80)
+            btn_row.addWidget(btn)
+
+        save_btn.clicked.connect(lambda: self.done(self.SAVE))
+        discard_btn.clicked.connect(lambda: self.done(self.DISCARD))
+        cancel_btn.clicked.connect(lambda: self.done(self.CANCEL))
+
+        layout.addLayout(btn_row)
 
 
 class _ToolButton(QPushButton):
@@ -470,11 +638,13 @@ class _ToolButton(QPushButton):
     """
 
     def __init__(self, svg_name: str, label: str,
-                 tooltip: str = "", accent: bool = False) -> None:
+                 tooltip: str = "", accent: bool = False,
+                 ghost: bool = False) -> None:
         super().__init__()
         self.setFixedSize(34, 34)
         self.setToolTip(tooltip)
         self._accent   = accent
+        self._ghost    = ghost
         self._label    = label
         self._renderer = self._load_svg(svg_name)
         self._apply_style()
@@ -492,6 +662,17 @@ class _ToolButton(QPushButton):
         self.update()
 
     def _apply_style(self) -> None:
+        if self._ghost:
+            self.setStyleSheet("""
+                QPushButton {
+                    background: transparent;
+                    border: none;
+                    border-radius: 6px;
+                }
+                QPushButton:hover { background: rgba(249,89,121,0.12); }
+                QPushButton:disabled { background: transparent; }
+            """)
+            return
         bg = "#c90084" if self._accent else "#45072f"
         self.setStyleSheet(f"""
             QPushButton {{
