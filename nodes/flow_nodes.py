@@ -59,10 +59,20 @@ class ConfigurableTickNode(NodeBase):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._last_fire: float = 0.0
+        self._last_fire:   float        = 0.0
+        self._pause_start: float | None = None
 
     def on_start(self) -> None:
-        self._last_fire = time.monotonic()
+        self._last_fire   = time.monotonic()
+        self._pause_start = None
+
+    def on_pause(self) -> None:
+        self._pause_start = time.monotonic()
+
+    def on_resume(self) -> None:
+        if self._pause_start is not None:
+            self._last_fire += time.monotonic() - self._pause_start
+        self._pause_start = None
 
     def execute(self, trigger_pin: str) -> None:
         interval_ms = float(self.get_field("interval_ms") or 100.0)

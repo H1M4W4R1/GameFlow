@@ -154,12 +154,23 @@ class DelayNode(NodeBase):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._active:     bool  = False
-        self._start_time: float = 0.0
+        self._active:      bool          = False
+        self._start_time:  float         = 0.0
+        self._pause_start: float | None  = None
 
     def on_start(self) -> None:
-        self._active     = False
-        self._start_time = 0.0
+        self._active      = False
+        self._start_time  = 0.0
+        self._pause_start = None
+
+    def on_pause(self) -> None:
+        if self._active:
+            self._pause_start = time.monotonic()
+
+    def on_resume(self) -> None:
+        if self._active and self._pause_start is not None:
+            self._start_time += time.monotonic() - self._pause_start
+        self._pause_start = None
 
     def execute(self, trigger_pin: str) -> None:
         if trigger_pin == "start":
@@ -224,12 +235,23 @@ class TimerNode(NodeBase):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._active:     bool  = False
-        self._next_fire:  float = 0.0
+        self._active:      bool         = False
+        self._next_fire:   float        = 0.0
+        self._pause_start: float | None = None
 
     def on_start(self) -> None:
-        self._active    = False
-        self._next_fire = 0.0
+        self._active      = False
+        self._next_fire   = 0.0
+        self._pause_start = None
+
+    def on_pause(self) -> None:
+        if self._active:
+            self._pause_start = time.monotonic()
+
+    def on_resume(self) -> None:
+        if self._active and self._pause_start is not None:
+            self._next_fire += time.monotonic() - self._pause_start
+        self._pause_start = None
 
     def execute(self, trigger_pin: str) -> None:
         if trigger_pin == "start":
