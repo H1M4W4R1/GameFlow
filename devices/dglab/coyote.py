@@ -558,6 +558,8 @@ class _CoyoteNodeBase(DeviceNodeBase):
     NODE_GROUP = "DGLab/Coyote"
 
 
+
+
 class CoyoteWaveformFromInputsNode(_CoyoteNodeBase):
     """
     Data-only node: samples intensity (0–1) and frequency (10–1000) every 25 ms
@@ -994,6 +996,8 @@ class CoyoteOutputGateNode(_CoyoteNodeBase):
 
 ALL_DEVICE_CLASSES = [Coyote]
 
+from devices.dglab.coyote_waveforms import ALL_WAVEFORM_NODE_CLASSES
+
 ALL_NODE_CLASSES = [
     CoyoteWaveformFromInputsNode,
     CoyoteSetWaveformANode,
@@ -1006,4 +1010,5 @@ ALL_NODE_CLASSES = [
     CoyoteStopNode,
     CoyoteGetBatteryNode,
     CoyoteGetStrengthNode,
+    *ALL_WAVEFORM_NODE_CLASSES,
 ]
