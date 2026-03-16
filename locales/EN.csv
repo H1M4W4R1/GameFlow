@@ -78,7 +78,7 @@ device.dglab.coyote.name,Coyote
 device.dglab.coyote.description,Dual-channel estim pulse host (v3 BLE)
 device.dglab.coyote.url,https://dungeon-lab.com/e-stim-unit3.0.php
 device.h1m4w4r1.manufacturer,H1M4W4R1
-device.h1m4w4r1.pump.name,H1M4W4R1 Pump
+device.h1m4w4r1.pump.name,Remote Pump
 device.h1m4w4r1.pump.description,BLE pump with valve; session and pumping timers
 device.h1m4w4r1.pump.url,https://github.com/H1M4W4R1/RemoteVacuumPump
 core.ble.no_bleak,bleak is not installed. Run: pip install bleak
