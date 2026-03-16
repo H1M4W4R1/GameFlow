@@ -112,14 +112,17 @@ class CounterNode(NodeBase):
 class RandomNode(NodeBase):
     """
     Generates a uniform random float in [min_val, max_val] on each exec tick.
-    Range limits set via editable fields.
+    min_val / max_val can be set via inline editors or overridden by wiring a
+    FLOAT pin directly (same VARIABLE_INPUTS pattern as CounterNode).
     """
-    NODE_NAME  = "Random"
+    NODE_NAME  = "Randomizer"
     NODE_GROUP = "Utility"
     PINS = [
         PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
-        PinDescriptor("value",    PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("min_val",  PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("max_val",  PinDirection.INPUT,  PinType.FLOAT, optional=True),
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",    PinDirection.OUTPUT, PinType.FLOAT),
     ]
     VARIABLE_INPUTS = {
         "min_val": (float, 0.0),
@@ -133,4 +136,44 @@ class RandomNode(NodeBase):
         hi = float(self.get_var_input("max_val") or 1.0)
         self.set_output("value", random.uniform(lo, hi))
         self.fire_tick("exec_out")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RANDOM DATA (asynchronous — updates every graph tick)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class RandomDataNode(NodeBase):
+    """
+    Pure data node that pushes a new random float on every graph tick (~10 ms).
+    No exec flow required — behaves like a continuously changing data source.
+    min_val / max_val can be set via inline editors or overridden by wiring a
+    FLOAT pin directly.
+    """
+    NODE_NAME  = "Random"
+    NODE_GROUP = "Utility"
+    PINS = [
+        PinDescriptor("min_val", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("max_val", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("value",   PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    VARIABLE_INPUTS = {
+        "min_val": (float, 0.0),
+        "max_val": (float, 1.0),
+    }
+    MIN_WIDTH  = 160.0
+    MIN_HEIGHT = 80.0
+
+    def on_start(self) -> None:
+        self._push()
+
+    def on_tick_check(self) -> None:
+        self._push()
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+    def _push(self) -> None:
+        lo = float(self.get_var_input("min_val") or 0.0)
+        hi = float(self.get_var_input("max_val") or 1.0)
+        self.set_output("value", random.uniform(lo, hi))
 
