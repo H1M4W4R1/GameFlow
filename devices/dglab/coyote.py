@@ -746,12 +746,17 @@ class CoyoteSetStrengthANode(_CoyoteNodeBase):
     ]
     VARIABLE_INPUTS = {"value": (int, 0)}
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._last_value: int = 0
+
     def execute(self, trigger_pin: str) -> None:
         dev = self.get_device()
         if not dev:
             self.fire_tick("exec_out")
             return
         v = int(self.get_var_input("value") or 0)
+        self._last_value = v
         self.send_to_device(
             "set_strength_a",
             {"value": v},
@@ -766,6 +771,11 @@ class CoyoteSetStrengthANode(_CoyoteNodeBase):
     def on_pause(self) -> None:
         self.on_stop()
 
+    def on_resume(self) -> None:
+        dev = self.get_device()
+        if dev and self._last_value > 0:
+            self.send_to_device("set_strength_a", {"value": self._last_value})
+
 
 class CoyoteSetStrengthBNode(_CoyoteNodeBase):
     NODE_NAME = "Coyote: Set strength B"
@@ -776,12 +786,17 @@ class CoyoteSetStrengthBNode(_CoyoteNodeBase):
     ]
     VARIABLE_INPUTS = {"value": (int, 0)}
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._last_value: int = 0
+
     def execute(self, trigger_pin: str) -> None:
         dev = self.get_device()
         if not dev:
             self.fire_tick("exec_out")
             return
         v = int(self.get_var_input("value") or 0)
+        self._last_value = v
         self.send_to_device(
             "set_strength_b",
             {"value": v},
@@ -796,6 +811,11 @@ class CoyoteSetStrengthBNode(_CoyoteNodeBase):
     def on_pause(self) -> None:
         self.on_stop()
 
+    def on_resume(self) -> None:
+        dev = self.get_device()
+        if dev and self._last_value > 0:
+            self.send_to_device("set_strength_b", {"value": self._last_value})
+
 
 class CoyoteSetStrengthBothNode(_CoyoteNodeBase):
     NODE_NAME = "Coyote: Set strength A and B"
@@ -807,6 +827,11 @@ class CoyoteSetStrengthBothNode(_CoyoteNodeBase):
     ]
     VARIABLE_INPUTS = {"value_a": (int, 0), "value_b": (int, 0)}
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._last_a: int = 0
+        self._last_b: int = 0
+
     def execute(self, trigger_pin: str) -> None:
         dev = self.get_device()
         if not dev:
@@ -814,11 +839,26 @@ class CoyoteSetStrengthBothNode(_CoyoteNodeBase):
             return
         a = int(self.get_var_input("value_a") or 0)
         b = int(self.get_var_input("value_b") or 0)
+        self._last_a = a
+        self._last_b = b
         self.send_to_device(
             "set_strength_both",
             {"value_a": a, "value_b": b},
             on_success=lambda _: self.fire_tick("exec_out"),
         )
+
+    def on_stop(self) -> None:
+        dev = self.get_device()
+        if dev:
+            self.send_to_device("set_strength_both", {"value_a": 0, "value_b": 0})
+
+    def on_pause(self) -> None:
+        self.on_stop()
+
+    def on_resume(self) -> None:
+        dev = self.get_device()
+        if dev and (self._last_a > 0 or self._last_b > 0):
+            self.send_to_device("set_strength_both", {"value_a": self._last_a, "value_b": self._last_b})
 
 
 class CoyoteSetSoftLimitNode(_CoyoteNodeBase):
