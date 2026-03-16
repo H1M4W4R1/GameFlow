@@ -189,12 +189,9 @@ class TextDisplayNode(NodeBase):
 # TIME DISPLAY  (seconds or milliseconds → HH:MM:SS)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _to_hhmmss(raw: float, unit: str) -> str:
-    """Convert raw value to HH:MM:SS string. unit: 's' = seconds, 'ms' = milliseconds."""
-    if unit.strip().lower() in ("ms", "milliseconds", "millisecond"):
-        total_s = int(max(0.0, raw) / 1000.0)
-    else:
-        total_s = int(max(0.0, raw))
+def _to_hhmmss(raw: float) -> str:
+    """Convert seconds (float) to HH:MM:SS string."""
+    total_s = int(max(0.0, raw))
     h = total_s // 3600
     m = (total_s % 3600) // 60
     s = total_s % 60
@@ -203,19 +200,14 @@ def _to_hhmmss(raw: float, unit: str) -> str:
 
 class TimeDisplayNode(NodeBase):
     """
-    Converts a numeric value (seconds or milliseconds) to HH:MM:SS format
-    and displays it in the node body.
-    Set the 'unit' editable field to 's' (default) or 'ms'.
-    Updates instantly on every data push — no tick required.
+    Converts a seconds (float) value to HH:MM:SS format and displays it in
+    the node body.  Updates instantly on every data push — no tick required.
     """
     NODE_NAME  = "Time Display"
     NODE_GROUP = "Debug"
     PINS = [
         PinDescriptor("value", PinDirection.INPUT, PinType.FLOAT),
     ]
-    EDITABLE_FIELDS = {
-        "unit": (str, "s"),   # 's' or 'ms'
-    }
     MIN_WIDTH  = 200.0
     MIN_HEIGHT = 100.0
 
@@ -244,25 +236,16 @@ class TimeDisplayNode(NodeBase):
         self._raw_value = float(state.get("_raw_value", 0.0))
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        unit       = str(self.get_field("unit") or "s")
-        fmt        = _to_hhmmss(self._raw_value, unit)
-        badge_unit = "ms" if unit.strip().lower() in ("ms", "milliseconds", "millisecond") else "s"
-
         painter.setPen(QColor("#ffb74d"))
         painter.setFont(QFont("Courier New", 18, QFont.Weight.Bold))
         painter.drawText(
             QRectF(rect.x(), rect.y(), rect.width(), 36),
             Qt.AlignmentFlag.AlignCenter,
-            fmt,
+            _to_hhmmss(self._raw_value),
         )
 
         painter.setPen(QColor("#616161"))
         painter.setFont(QFont("Courier New", 7))
-        painter.drawText(
-            QRectF(rect.x(), rect.y() + 28, rect.width() - 4, 12),
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-            badge_unit,
-        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

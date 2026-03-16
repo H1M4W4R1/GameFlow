@@ -96,8 +96,9 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         NumericDisplayNode, TextDisplayNode, TimeDisplayNode, StateIndicatorNode,
     )
     from nodes.time_nodes import (
-        TimeSinceStartNode, EpochMillisecondsNode, CurrentDateTimeNode,
+        TimeSinceStartNode, EpochSecondsNode, CurrentDateTimeNode,
         SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,
+        CountdownNode,
     )
     from nodes.math_nodes import (
         AddNode, SubtractNode, MultiplyNode, DivideNode, ModuloNode,
@@ -131,8 +132,9 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         LogNode,
         NumericDisplayNode, TextDisplayNode, TimeDisplayNode, StateIndicatorNode,
         # Time
-        TimeSinceStartNode, EpochMillisecondsNode, CurrentDateTimeNode,
+        TimeSinceStartNode, EpochSecondsNode, CurrentDateTimeNode,
         SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,
+        CountdownNode,
         # Math / Arithmetic
         AddNode, SubtractNode, MultiplyNode, DivideNode, ModuloNode,
         PowerNode, MinNode, MaxNode,
