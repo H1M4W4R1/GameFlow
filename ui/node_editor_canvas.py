@@ -76,6 +76,11 @@ GRID_MAJOR    = 100
 LABEL_W       = 58.0      # pixel width reserved for the left-side label in rows
 FIELD_INSET   = 8.0       # horizontal inset for field pill from node edge
 
+GROUP_TITLE_H  = 24.0
+GROUP_RESIZE_H =  8.0    # corner resize-handle size
+GROUP_MIN_W    = 150.0
+GROUP_MIN_H    =  80.0
+
 
 def _pin_color(pt: PinType) -> QColor:
     return QColor(PIN_COLORS.get(pt, "#90a4ae"))
@@ -130,6 +135,30 @@ class RenderedField:
     field_type: type
     scene_rect: QRectF
     is_var:     bool = False   # True → call set_var_input; False → set_field
+
+
+# ── Group ─────────────────────────────────────────────────────────────────────
+
+@dataclass
+class NodeGroup:
+    group_id: str   = field(default_factory=lambda: str(uuid.uuid4()))
+    name:     str   = "Group"
+    x:        float = 0.0
+    y:        float = 0.0
+    width:    float = 240.0
+    height:   float = 180.0
+    color:    str   = "#1a4a7a"
+    node_ids: set   = field(default_factory=set)
+
+    def body_rect(self) -> QRectF:
+        return QRectF(self.x, self.y, self.width, self.height)
+
+    def title_rect(self) -> QRectF:
+        return QRectF(self.x, self.y, self.width, GROUP_TITLE_H)
+
+    def inner_rect(self) -> QRectF:
+        return QRectF(self.x, self.y + GROUP_TITLE_H,
+                      self.width, self.height - GROUP_TITLE_H)
 
 
 # ── Layout builder ────────────────────────────────────────────────────────────
@@ -260,6 +289,24 @@ class NodeEditorCanvas(QWidget):
         # Node highlighted by an in-progress device drag
         self._drag_highlight_node: Optional[str] = None
 
+        # ── Groups ────────────────────────────────────────────────────────────
+        self._groups: dict[str, NodeGroup] = {}
+        self._selected_group: Optional[str] = None
+
+        self._dragging_group: Optional[str]    = None
+        self._drag_group_start: QPointF        = QPointF()
+        self._drag_group_pos_start: QPointF    = QPointF()
+        self._drag_group_nodes_start: dict[str, QPointF] = {}
+
+        self._resizing_group: Optional[str]    = None
+        self._resize_corner: str               = ""
+        self._resize_group_start: Optional[QRectF] = None
+        self._resize_mouse_start: QPointF      = QPointF()
+
+        # Group hit areas — rebuilt each paint
+        self._rendered_group_title_bars:   list[tuple[str, QRectF]]        = []
+        self._rendered_group_resize_handles: list[tuple[str, str, QRectF]] = []
+
         # Hover state for tooltips
         self._hovered_pin:  Optional[RenderedPin]  = None
         self._hovered_node: Optional[str]          = None
@@ -274,6 +321,7 @@ class NodeEditorCanvas(QWidget):
         self.setAcceptDrops(True)
 
         self._runtime.node_added.connect(lambda _: self.update())
+        self._runtime.node_removed.connect(self._on_node_removed_from_groups)
         self._runtime.node_removed.connect(lambda _: self.update())
         self._runtime.wire_added.connect(lambda _: self.update())
         self._runtime.wire_removed.connect(lambda _: self.update())
@@ -300,6 +348,7 @@ class NodeEditorCanvas(QWidget):
         p.save()
         p.translate(self._offset)
         p.scale(self._zoom, self._zoom)
+        self._draw_groups(p)
         self._draw_wires(p)
         if self._wire_src:
             self._draw_pending_wire(p)
@@ -328,6 +377,70 @@ class NodeEditorCanvas(QWidget):
             y = oy
             while y < h:
                 p.drawLine(0, int(y), w, int(y)); y += step
+
+    # ── Groups ────────────────────────────────────────────────────────────────
+
+    def _draw_groups(self, p: QPainter) -> None:
+        self._rendered_group_title_bars.clear()
+        self._rendered_group_resize_handles.clear()
+        for grp in self._groups.values():
+            self._draw_group(p, grp)
+
+    def _draw_group(self, p: QPainter, grp: NodeGroup) -> None:
+        selected = grp.group_id == self._selected_group
+        base = QColor(grp.color)
+        rect = grp.body_rect()
+
+        # Shadow
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(QColor(0, 0, 0, 40)))
+        p.drawRoundedRect(rect.adjusted(4, 4, 4, 4), 10, 10)
+
+        # Body fill + border
+        fill_a  = 45 if selected else 25
+        pen_a   = 200 if selected else 110
+        pen_w   = 2.0 if selected else 1.5
+        pen_sty = Qt.PenStyle.SolidLine if selected else Qt.PenStyle.DashLine
+        p.setBrush(QBrush(QColor(base.red(), base.green(), base.blue(), fill_a)))
+        p.setPen(QPen(QColor(base.red(), base.green(), base.blue(), pen_a), pen_w, pen_sty))
+        p.drawRoundedRect(rect, 10, 10)
+
+        # Title bar (rounded top, straight bottom)
+        tr = grp.title_rect()
+        tp = QPainterPath()
+        tp.addRoundedRect(tr, 10, 10)
+        tp.addRect(QRectF(grp.x, grp.y + 6, grp.width, GROUP_TITLE_H - 6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(QColor(base.red(), base.green(), base.blue(), 90)))
+        p.drawPath(tp)
+
+        # Group name
+        p.setPen(QColor("#ffd0de"))
+        p.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        p.drawText(
+            QRectF(grp.x + 10, grp.y, grp.width - 20, GROUP_TITLE_H),
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            grp.name,
+        )
+
+        # Register title bar for hit-testing
+        self._rendered_group_title_bars.append((grp.group_id, QRectF(tr)))
+
+        # Corner resize handles
+        h = GROUP_RESIZE_H
+        hc = QColor(base.red(), base.green(), base.blue(), 180)
+        hf = QColor(base.red(), base.green(), base.blue(), 50)
+        for corner, cx, cy in [
+            ("nw", grp.x,                  grp.y),
+            ("ne", grp.x + grp.width - h,  grp.y),
+            ("sw", grp.x,                  grp.y + grp.height - h),
+            ("se", grp.x + grp.width - h,  grp.y + grp.height - h),
+        ]:
+            hr = QRectF(cx, cy, h, h)
+            p.setPen(QPen(hc, 1.5))
+            p.setBrush(QBrush(hf))
+            p.drawRect(hr)
+            self._rendered_group_resize_handles.append((grp.group_id, corner, hr))
 
     # ── Node ──────────────────────────────────────────────────────────────────
 
@@ -615,6 +728,7 @@ class NodeEditorCanvas(QWidget):
     # ── Wire drawing ──────────────────────────────────────────────────────────
 
     def _draw_wires(self, p: QPainter) -> None:
+        p.setBrush(Qt.BrushStyle.NoBrush)
         self._rendered_wires.clear()
         for wire in self._runtime.wires.values():
             sp = self._find_pin_pos(wire.src_node, wire.src_pin)
@@ -733,6 +847,20 @@ class NodeEditorCanvas(QWidget):
                 return node_id
         return None
 
+    def _hit_group_title(self, sp: QPointF) -> Optional[str]:
+        """Return group_id if sp is inside a group title bar."""
+        for gid, rect in self._rendered_group_title_bars:
+            if rect.contains(sp):
+                return gid
+        return None
+
+    def _hit_group_resize(self, sp: QPointF) -> Optional[tuple]:
+        """Return (group_id, corner) if sp is on a resize handle."""
+        for gid, corner, rect in self._rendered_group_resize_handles:
+            if rect.contains(sp):
+                return gid, corner
+        return None
+
     def _show_device_menu(self, node: NodeBase, instances: list,
                           global_pos: QPoint) -> None:
         """Pop up a QMenu to choose a device for this node."""
@@ -778,6 +906,78 @@ class NodeEditorCanvas(QWidget):
                 return rp
         return None
 
+    # ── Group membership ──────────────────────────────────────────────────────
+
+    def _update_node_group_membership(self, node_id: str) -> None:
+        """Re-assign node to whichever group contains its centre, or none."""
+        node = self._runtime.get_node(node_id)
+        if not node:
+            return
+        cx = node.x + _node_width(node) / 2
+        cy = node.y + _node_total_height(node) / 2
+        center = QPointF(cx, cy)
+        for grp in self._groups.values():
+            grp.node_ids.discard(node_id)
+        for grp in self._groups.values():
+            if grp.inner_rect().contains(center):
+                grp.node_ids.add(node_id)
+                break
+        self.update()
+
+    def _update_group_membership(self, group_id: str) -> None:
+        """After moving/resizing a group, refresh which nodes belong to it."""
+        grp = self._groups.get(group_id)
+        if not grp:
+            return
+        inner = grp.inner_rect()
+        for node in self._runtime.nodes.values():
+            cx = node.x + _node_width(node) / 2
+            cy = node.y + _node_total_height(node) / 2
+            center = QPointF(cx, cy)
+            if inner.contains(center):
+                for g in self._groups.values():
+                    if g.group_id != group_id:
+                        g.node_ids.discard(node.node_id)
+                grp.node_ids.add(node.node_id)
+            else:
+                grp.node_ids.discard(node.node_id)
+        self.update()
+
+    def _on_node_removed_from_groups(self, node_id: str) -> None:
+        for grp in self._groups.values():
+            grp.node_ids.discard(node_id)
+
+    def _add_group(self, scene_pos: QPointF) -> None:
+        grp = NodeGroup(x=scene_pos.x() - 20, y=scene_pos.y() - 20)
+        self._groups[grp.group_id] = grp
+        self._selected_group = grp.group_id
+        self.update()
+        self._open_group_rename_editor(grp.group_id)
+
+    # ── Group serialization ───────────────────────────────────────────────────
+
+    def get_saved_groups(self) -> list:
+        from core.types import SavedGroup
+        return [
+            SavedGroup(
+                group_id = g.group_id, name = g.name,
+                x = g.x, y = g.y, width = g.width, height = g.height,
+                color = g.color, node_ids = list(g.node_ids),
+            )
+            for g in self._groups.values()
+        ]
+
+    def load_saved_groups(self, saved_groups: list) -> None:
+        self._groups.clear()
+        for sg in saved_groups:
+            grp = NodeGroup(
+                group_id = sg.group_id, name = sg.name,
+                x = sg.x, y = sg.y, width = sg.width, height = sg.height,
+                color = sg.color, node_ids = set(sg.node_ids),
+            )
+            self._groups[grp.group_id] = grp
+        self.update()
+
     # ── Mouse ─────────────────────────────────────────────────────────────────
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -791,6 +991,37 @@ class NodeEditorCanvas(QWidget):
             return
 
         if event.button() == Qt.MouseButton.LeftButton:
+            # Group resize handle
+            res = self._hit_group_resize(scene)
+            if res:
+                gid, corner = res
+                grp = self._groups[gid]
+                self._resizing_group      = gid
+                self._resize_corner       = corner
+                self._resize_group_start  = QRectF(grp.x, grp.y, grp.width, grp.height)
+                self._resize_mouse_start  = scene
+                self._selected_group      = gid
+                self._selected_node       = None
+                self._selected_wire       = None
+                self.update(); return
+
+            # Group title bar drag (only when no node is under cursor)
+            gt_gid = self._hit_group_title(scene)
+            if gt_gid and not self._hit_node(scene):
+                grp = self._groups[gt_gid]
+                self._dragging_group       = gt_gid
+                self._drag_group_start     = scene
+                self._drag_group_pos_start = QPointF(grp.x, grp.y)
+                self._drag_group_nodes_start = {
+                    nid: QPointF(n.x, n.y)
+                    for nid in grp.node_ids
+                    if (n := self._runtime.get_node(nid)) is not None
+                }
+                self._selected_group = gt_gid
+                self._selected_node  = None
+                self._selected_wire  = None
+                self.update(); return
+
             hp = self._hit_pin(scene)
             if hp:
                 if hp.direction == PinDirection.OUTPUT:
@@ -823,9 +1054,10 @@ class NodeEditorCanvas(QWidget):
 
             nid = self._hit_node(scene)
             if nid:
-                self._selected_node = nid
+                self._selected_node  = nid
                 self._selected_wire  = None
-                self._dragging_node = nid
+                self._selected_group = None
+                self._dragging_node  = nid
                 self._drag_start_scene = scene
                 node = self._runtime.get_node(nid)
                 if node:
@@ -845,8 +1077,9 @@ class NodeEditorCanvas(QWidget):
                 self._selected_node = None
                 self.update(); return
 
-            self._selected_node = None
+            self._selected_node  = None
             self._selected_wire  = None
+            self._selected_group = None
             self.device_highlighted.emit(None)
             self.update()
 
@@ -869,6 +1102,42 @@ class NodeEditorCanvas(QWidget):
                 QToolTip.hideText()
                 if new_hovered_pin or new_hovered_node:
                     self._tooltip_timer.start(500)
+        if self._resizing_group:
+            scene = self._v2s(event.position())
+            grp   = self._groups.get(self._resizing_group)
+            if grp and self._resize_group_start:
+                dx = scene.x() - self._resize_mouse_start.x()
+                dy = scene.y() - self._resize_mouse_start.y()
+                sr = self._resize_group_start
+                if "e" in self._resize_corner:
+                    grp.width  = max(GROUP_MIN_W, sr.width()  + dx)
+                if "s" in self._resize_corner:
+                    grp.height = max(GROUP_MIN_H, sr.height() + dy)
+                if "w" in self._resize_corner:
+                    nw = sr.width() - dx
+                    if nw >= GROUP_MIN_W:
+                        grp.x = sr.x() + dx; grp.width = nw
+                if "n" in self._resize_corner:
+                    nh = sr.height() - dy
+                    if nh >= GROUP_MIN_H:
+                        grp.y = sr.y() + dy; grp.height = nh
+            self.update(); return
+
+        if self._dragging_group:
+            scene = self._v2s(event.position())
+            grp   = self._groups.get(self._dragging_group)
+            if grp:
+                dx = scene.x() - self._drag_group_start.x()
+                dy = scene.y() - self._drag_group_start.y()
+                grp.x = self._drag_group_pos_start.x() + dx
+                grp.y = self._drag_group_pos_start.y() + dy
+                for nid, sp in self._drag_group_nodes_start.items():
+                    n = self._runtime.get_node(nid)
+                    if n:
+                        n.x = sp.x() + dx
+                        n.y = sp.y() + dy
+            self.update(); return
+
         if self._panning:
             self._offset = self._pan_offset_start + (event.position() - self._pan_start)
             self.update(); return
@@ -887,7 +1156,18 @@ class NodeEditorCanvas(QWidget):
             self._panning = False
             self.setCursor(Qt.CursorShape.ArrowCursor)
         if event.button() == Qt.MouseButton.LeftButton:
-            self._dragging_node = None
+            if self._dragging_node:
+                nid = self._dragging_node
+                self._dragging_node = None
+                self._update_node_group_membership(nid)
+            if self._dragging_group:
+                gid = self._dragging_group
+                self._dragging_group = None
+                self._update_group_membership(gid)
+            if self._resizing_group:
+                gid = self._resizing_group
+                self._resizing_group = None
+                self._update_group_membership(gid)
             if self._wire_src:
                 hp = self._hit_pin(self._v2s(event.position()))
                 if hp and hp.direction == PinDirection.INPUT:
@@ -1005,6 +1285,12 @@ class NodeEditorCanvas(QWidget):
         if rf:
             self._open_editor(rf, event.position())
             return
+        # Double-click on group title → rename group (only when no node is above)
+        if not self._hit_node(scene):
+            gt_gid = self._hit_group_title(scene)
+            if gt_gid:
+                self._open_group_rename_editor(gt_gid)
+                return
         # Double-click on title bar → rename node
         title_nid = self._hit_title_bar(scene)
         if title_nid:
@@ -1125,6 +1411,50 @@ class NodeEditorCanvas(QWidget):
         editor.installEventFilter(self)
         self._active_editor = editor
 
+    def _open_group_rename_editor(self, group_id: str) -> None:
+        """Show an inline QLineEdit over the group title bar to rename a group."""
+        grp = self._groups.get(group_id)
+        if not grp:
+            return
+        self._close_editor()
+        title_scene = grp.title_rect()
+        tl = self._s2v(title_scene.topLeft())
+        br = self._s2v(title_scene.bottomRight())
+
+        editor = QLineEdit(self)
+        editor.setObjectName("TitleEditor")
+        editor.setStyleSheet("""
+            QLineEdit#TitleEditor {
+                background: #2d1020; color: #ffd0de;
+                border: 1px solid #f95979; border-radius: 4px;
+                padding: 0 8px; font-family: 'Segoe UI'; font-size: 9pt;
+                font-weight: bold;
+            }
+        """)
+        editor.setText(grp.name)
+        editor.selectAll()
+        editor.setGeometry(int(tl.x()), int(tl.y()),
+                           int(br.x() - tl.x()), int(br.y() - tl.y()))
+        editor.show()
+        editor.setFocus()
+
+        _committed = [False]
+
+        def _commit() -> None:
+            if _committed[0]:
+                return
+            _committed[0] = True
+            text = editor.text().strip()
+            grp.name = text if text else "Group"
+            self._close_editor()
+            self.update()
+
+        editor.returnPressed.connect(_commit)
+        editor.editingFinished.connect(_commit)
+        editor._cancel = self._close_editor  # type: ignore[attr-defined]
+        editor.installEventFilter(self)
+        self._active_editor = editor
+
     def eventFilter(self, obj, event) -> bool:
         from PyQt6.QtCore import QEvent
         if (obj is self._active_editor
@@ -1141,11 +1471,17 @@ class NodeEditorCanvas(QWidget):
         ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
 
         if event.key() == Qt.Key.Key_F2:
+            if self._selected_group:
+                self._open_group_rename_editor(self._selected_group)
+                return
             if self._selected_node:
                 self._open_node_rename_editor(self._selected_node)
             return
 
         if event.key() == Qt.Key.Key_Delete:
+            if self._selected_group:
+                del self._groups[self._selected_group]
+                self._selected_group = None; self.update(); return
             if self._selected_wire:
                 self._runtime.remove_wire(self._selected_wire)
                 self._selected_wire = None; self.update(); return
@@ -1170,9 +1506,10 @@ class NodeEditorCanvas(QWidget):
             return
 
         if event.key() == Qt.Key.Key_Escape:
-            self._wire_src      = None
-            self._selected_node = None
+            self._wire_src       = None
+            self._selected_node  = None
             self._selected_wire  = None
+            self._selected_group = None
             self.device_highlighted.emit(None)
             self.update()
 
@@ -1267,6 +1604,12 @@ class NodeEditorCanvas(QWidget):
     def _show_context_menu(self, global_pos, scene_pos: QPointF) -> None:
         menu = QMenu(self)
         menu.setStyleSheet(_MENU_STYLE)
+
+        add_grp = QAction("Add Group", menu)
+        add_grp.triggered.connect(lambda: self._add_group(scene_pos))
+        menu.addAction(add_grp)
+        menu.addSeparator()
+
         structure = self._node_menu_fn()
 
         # Build nested menus from "/" delimited group paths

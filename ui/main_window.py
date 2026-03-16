@@ -299,6 +299,7 @@ class MainWindow(QWidget):
 
         name  = self._graph_path.stem
         graph = self._runtime.to_saved_graph(name)
+        graph.groups = self._canvas.get_saved_groups()
         try:
             self._graph_path.write_text(
                 json.dumps(graph.to_dict(), indent=2), encoding="utf-8"
@@ -332,7 +333,8 @@ class MainWindow(QWidget):
         if was_running:
             self._runtime.stop()
 
-        # Clear current graph
+        # Clear current graph (nodes and groups)
+        self._canvas.load_saved_groups([])
         for nid in list(self._runtime.nodes.keys()):
             self._runtime.remove_node(nid)
 
@@ -350,6 +352,9 @@ class MainWindow(QWidget):
         # Recreate wires
         for wire in graph.wires:
             self._runtime.add_wire(wire)
+
+        # Restore groups
+        self._canvas.load_saved_groups(graph.groups)
 
         # Restore device aliases
         if graph.device_aliases:

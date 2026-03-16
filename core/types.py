@@ -220,11 +220,40 @@ class SavedNode:
 
 
 @dataclass
+class SavedGroup:
+    group_id: str
+    name:     str
+    x:        float
+    y:        float
+    width:    float
+    height:   float
+    color:    str
+    node_ids: list
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "group_id": self.group_id, "name": self.name,
+            "x": self.x, "y": self.y, "width": self.width,
+            "height": self.height, "color": self.color,
+            "node_ids": self.node_ids,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "SavedGroup":
+        return cls(
+            group_id = d["group_id"], name = d["name"],
+            x = d["x"], y = d["y"], width = d["width"], height = d["height"],
+            color = d["color"], node_ids = d.get("node_ids", []),
+        )
+
+
+@dataclass
 class SavedGraph:
     name:           str
     nodes:          list[SavedNode]      = field(default_factory=list)
     wires:          list[WireDescriptor] = field(default_factory=list)
     device_aliases: dict[str, str]       = field(default_factory=dict)
+    groups:         list[SavedGroup]     = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -232,6 +261,7 @@ class SavedGraph:
             "nodes":          [n.to_dict() for n in self.nodes],
             "wires":          [w.to_dict() for w in self.wires],
             "device_aliases": self.device_aliases,
+            "groups":         [g.to_dict() for g in self.groups],
         }
 
     @classmethod
@@ -241,4 +271,5 @@ class SavedGraph:
             nodes          = [SavedNode.from_dict(n) for n in d.get("nodes", [])],
             wires          = [WireDescriptor.from_dict(w) for w in d.get("wires", [])],
             device_aliases = d.get("device_aliases", {}),
+            groups         = [SavedGroup.from_dict(g) for g in d.get("groups", [])],
         )
