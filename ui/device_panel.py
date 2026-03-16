@@ -609,6 +609,41 @@ class AddDeviceDialog(QDialog):
         return self._result
 
 
+class _ReflowContainer(QWidget):
+    """Container that reflows its QGridLayout when the width changes."""
+
+    _TILE_W   = 120
+    _SPACING  = 8
+    _MARGINS  = 16  # 8px left + 8px right
+
+    def __init__(self, tile_items: list[tuple[str, "_DeviceTile"]], parent=None) -> None:
+        super().__init__(parent)
+        self._tile_items  = tile_items
+        self._current_cols = 0
+
+        self._grid = QGridLayout(self)
+        self._grid.setContentsMargins(8, 8, 8, 8)
+        self._grid.setSpacing(self._SPACING)
+        self._grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+
+        self._place_tiles(4)  # reasonable initial layout
+
+    def _place_tiles(self, cols: int) -> None:
+        if cols == self._current_cols:
+            return
+        self._current_cols = cols
+        for _, tile in self._tile_items:
+            self._grid.removeWidget(tile)
+        for idx, (_, tile) in enumerate(self._tile_items):
+            self._grid.addWidget(tile, idx // cols, idx % cols)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        avail = self.width() - self._MARGINS
+        cols  = max(1, avail // (self._TILE_W + self._SPACING))
+        self._place_tiles(cols)
+
+
 class _ManufacturerTab(QWidget):
     """Scrollable grid of device tiles for one manufacturer."""
     tile_selected = pyqtSignal(str)
@@ -622,24 +657,15 @@ class _ManufacturerTab(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet("background:transparent;")
 
-        container = QWidget()
-        container.setStyleSheet("background:transparent;")
-        grid = QGridLayout(container)
-        grid.setContentsMargins(8, 8, 8, 8)
-        grid.setSpacing(8)
-        grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-
-        # Responsive columns: 120px tile + 8px gap; min 1 column
-        # The grid column count is determined when the dialog is shown
-        # We store tiles and rely on resizeEvent via _ManufacturerTab for reflow,
-        # but for simplicity use a fixed column count of 4 (fits well at 520px min).
-        COLS = 4
-        for idx, (key, cls) in enumerate(items):
+        tile_items: list[tuple[str, _DeviceTile]] = []
+        for key, cls in items:
             t = _DeviceTile(key, cls)
             t.selected.connect(self.tile_selected)
             self._tiles[key] = t
-            grid.addWidget(t, idx // COLS, idx % COLS)
+            tile_items.append((key, t))
 
+        container = _ReflowContainer(tile_items)
+        container.setStyleSheet("background:transparent;")
         scroll.setWidget(container)
 
         lay = QVBoxLayout(self)
