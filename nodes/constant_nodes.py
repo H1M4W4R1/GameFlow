@@ -211,6 +211,80 @@ class BoolConstantNode(_ConstantBase):
 # Color Constant (outputs Color type; edit as #RRGGBB — ColorPicker in UI optional)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Mathematical Constants  (π, e, φ)
+# ─────────────────────────────────────────────────────────────────────────────
+
+import math as _math
+
+class _MathConstantBase(_ConstantBase):
+    """Read-only node that always emits a fixed mathematical constant."""
+    CONSTANT_VALUE: float = 0.0
+    CONSTANT_SYMBOL: str  = "?"
+    CONSTANT_COLOR: str   = "#4fc3f7"
+
+    PINS = [
+        PinDescriptor("output", PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    EDITABLE_FIELDS: dict = {}
+    MIN_WIDTH  = 130.0
+    MIN_HEIGHT = 80.0
+
+    def on_start(self) -> None:
+        self._push()
+
+    def execute(self, trigger_pin: str) -> None:
+        self._push()
+
+    def _push(self) -> None:
+        self.set_output("output", self.CONSTANT_VALUE)
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor(self.CONSTANT_COLOR))
+        painter.setFont(QFont("Courier New", 14, QFont.Weight.Bold))
+        painter.drawText(
+            QRectF(rect.x(), rect.y(), rect.width(), 32),
+            Qt.AlignmentFlag.AlignCenter,
+            f"{self.CONSTANT_SYMBOL} = {self.CONSTANT_VALUE:.6g}",
+        )
+
+
+class PiConstantNode(_MathConstantBase):
+    """Emits π ≈ 3.14159…"""
+    NODE_NAME      = "Pi (π)"
+    NODE_GROUP     = "Constants"
+    CONSTANT_VALUE  = _math.pi
+    CONSTANT_SYMBOL = "π"
+    CONSTANT_COLOR  = "#4fc3f7"
+
+
+class EulerConstantNode(_MathConstantBase):
+    """Emits Euler's number e ≈ 2.71828…"""
+    NODE_NAME      = "Euler (e)"
+    NODE_GROUP     = "Constants"
+    CONSTANT_VALUE  = _math.e
+    CONSTANT_SYMBOL = "e"
+    CONSTANT_COLOR  = "#ffb74d"
+
+
+class GoldenRatioConstantNode(_MathConstantBase):
+    """Emits the golden ratio φ ≈ 1.61803…"""
+    NODE_NAME      = "Golden Ratio (φ)"
+    NODE_GROUP     = "Constants"
+    CONSTANT_VALUE  = (1 + _math.sqrt(5)) / 2
+    CONSTANT_SYMBOL = "φ"
+    CONSTANT_COLOR  = "#f06292"
+
+
+class TauConstantNode(_MathConstantBase):
+    """Emits τ = 2π ≈ 6.28318…"""
+    NODE_NAME      = "Tau (τ = 2π)"
+    NODE_GROUP     = "Constants"
+    CONSTANT_VALUE  = _math.tau
+    CONSTANT_SYMBOL = "τ"
+    CONSTANT_COLOR  = "#80cbc4"
+
+
 class ColorConstantNode(_ConstantBase):
     """
     Emits a constant Color (r,g,b,a) 0-1.
