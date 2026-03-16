@@ -51,6 +51,14 @@ def get_instances(type_key: str) -> list[DeviceBase]:
     return _DEVICE_INSTANCES.get(type_key, [])
 
 
+def get_type_key_for_device(device_id: str) -> Optional[str]:
+    """Return the DEVICE_TYPE_KEY for the registry that contains device_id."""
+    for type_key, instances in _DEVICE_INSTANCES.items():
+        if any(d.device_id == device_id for d in instances):
+            return type_key
+    return None
+
+
 # ── Device alias store (device_id → display name) ────────────────────────────
 _DEVICE_ALIASES: dict[str, str] = {}
 
@@ -170,11 +178,10 @@ class DeviceNodeBase(NodeBase):
     # ── Visual ────────────────────────────────────────────────────────────────
 
     def paint_device_status(self, painter: QPainter, rect: QRectF) -> None:
-        """Status dot (top-right of title bar) + device selector label."""
+        """Status dot in top-right of title bar."""
         status = self.device_status()
         color  = QColor(_STATUS_COLOR[status])
 
-        # Status dot
         dot_r = 5.0
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(color))
@@ -182,29 +189,6 @@ class DeviceNodeBase(NodeBase):
             QRectF(rect.right() - dot_r * 2 - 4,
                    rect.top()  + (rect.height() - dot_r * 2) / 2,
                    dot_r * 2, dot_r * 2)
-        )
-
-        # If multiple instances connected, show selected device name
-        if not self.DEVICE_TYPE_KEY:
-            return
-        instances = get_instances(self.DEVICE_TYPE_KEY)
-        if len(instances) <= 1:
-            return
-
-        dev = self.get_device()
-        alias = get_device_alias(dev) if dev else "—"
-        # Truncate to fit
-        if len(alias) > 14:
-            alias = alias[:11] + "…"
-
-        painter.setPen(QColor("#c8889a"))
-        painter.setFont(QFont("Segoe UI", 7))
-        # Draw right-aligned left of the dot
-        painter.drawText(
-            QRectF(rect.left() + 4, rect.top(),
-                   rect.width() - dot_r * 2 - 12, rect.height()),
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
-            alias,
         )
 
 

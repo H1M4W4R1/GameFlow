@@ -2,3 +2,4 @@
 /.venv/
 /{core,devices,nodes,ui,assets}/
 /tests/
+/.claude/

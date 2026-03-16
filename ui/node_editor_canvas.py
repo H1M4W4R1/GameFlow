@@ -64,16 +64,17 @@ COL_TITLE_TEXT      = QColor("#ffd0de")
 COL_PIN_TEXT        = QColor("#c8889a")
 COL_WIRE_SHADOW     = QColor("#00000080")
 
-PIN_RADIUS   = 6.0
-TITLE_H      = 28.0
-ROW_H        = 22.0      # height of every row (pin, var-input, field)
-ROW_PAD      = 2.0       # vertical gap between rows
-ROW_MARGIN   = 6.0       # top/bottom padding inside body
-NODE_RADIUS  = 8.0
-GRID_MINOR   = 20
-GRID_MAJOR   = 100
-LABEL_W      = 58.0      # pixel width reserved for the left-side label in rows
-FIELD_INSET  = 8.0       # horizontal inset for field pill from node edge
+PIN_RADIUS    = 6.0
+TITLE_H       = 28.0
+DEVICE_SEL_H  = 24.0     # height of the device-selector pill row
+ROW_H         = 22.0      # height of every row (pin, var-input, field)
+ROW_PAD       = 2.0       # vertical gap between rows
+ROW_MARGIN    = 6.0       # top/bottom padding inside body
+NODE_RADIUS   = 8.0
+GRID_MINOR    = 20
+GRID_MAJOR    = 100
+LABEL_W       = 58.0      # pixel width reserved for the left-side label in rows
+FIELD_INSET   = 8.0       # horizontal inset for field pill from node edge
 
 
 def _pin_color(pt: PinType) -> QColor:
@@ -189,10 +190,19 @@ def _build_rows(node: NodeBase, body_top: float) -> list[_Row]:
     return rows
 
 
+def _device_sel_extra(node: NodeBase) -> float:
+    """Return DEVICE_SEL_H when 2+ devices of this node's type are connected."""
+    from core.device_node_base import DeviceNodeBase, get_instances
+    if not isinstance(node, DeviceNodeBase) or not node.DEVICE_TYPE_KEY:
+        return 0.0
+    return DEVICE_SEL_H if len(get_instances(node.DEVICE_TYPE_KEY)) >= 2 else 0.0
+
+
 def _node_total_height(node: NodeBase) -> float:
-    rows = _build_rows(node, TITLE_H)
+    extra = _device_sel_extra(node)
+    rows  = _build_rows(node, TITLE_H + extra)
     if not rows:
-        return TITLE_H + ROW_MARGIN * 2
+        return TITLE_H + extra + ROW_MARGIN * 2
     last = rows[-1]
     return last.y + last.h + ROW_MARGIN
 
@@ -207,7 +217,7 @@ class NodeEditorCanvas(QWidget):
     wire_created      = pyqtSignal(object)
     node_selected     = pyqtSignal(str)
     status_message    = pyqtSignal(str)
-    device_highlighted = pyqtSignal(object)   # Optional[str] — DEVICE_TYPE_KEY or None
+    device_highlighted = pyqtSignal(object)   # Optional[str] — device_id or None
 
     def __init__(
         self,
@@ -243,6 +253,11 @@ class NodeEditorCanvas(QWidget):
 
         self._tab_index = 0
 
+        # Device selector hit areas (node_id, scene_rect) — rebuilt each paint
+        self._rendered_device_selectors: list[tuple[str, QRectF]] = []
+        # Node highlighted by an in-progress device drag
+        self._drag_highlight_node: Optional[str] = None
+
         # Hover state for tooltips
         self._hovered_pin:  Optional[RenderedPin]  = None
         self._hovered_node: Optional[str]          = None
@@ -254,6 +269,7 @@ class NodeEditorCanvas(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
+        self.setAcceptDrops(True)
 
         self._runtime.node_added.connect(lambda _: self.update())
         self._runtime.node_removed.connect(lambda _: self.update())
@@ -287,6 +303,7 @@ class NodeEditorCanvas(QWidget):
             self._draw_pending_wire(p)
         self._rendered_pins.clear()
         self._rendered_fields.clear()
+        self._rendered_device_selectors.clear()
         for node in self._runtime.nodes.values():
             self._draw_node(p, node)
         p.restore()
@@ -312,12 +329,14 @@ class NodeEditorCanvas(QWidget):
     # ── Node ──────────────────────────────────────────────────────────────────
 
     def _draw_node(self, p: QPainter, node: NodeBase) -> None:
-        selected = node.node_id == self._selected_node
-        width    = _node_width(node)
-        body_top = node.y + TITLE_H
-        rows     = _build_rows(node, body_top)
-        total_h  = _node_total_height(node)
-        rect     = QRectF(node.x, node.y, width, total_h)
+        selected  = node.node_id == self._selected_node
+        drag_hl   = node.node_id == self._drag_highlight_node
+        width     = _node_width(node)
+        extra     = _device_sel_extra(node)
+        body_top  = node.y + TITLE_H + extra
+        rows      = _build_rows(node, body_top)
+        total_h   = _node_total_height(node)
+        rect      = QRectF(node.x, node.y, width, total_h)
 
         # Shadow
         p.setPen(Qt.PenStyle.NoPen)
@@ -325,8 +344,16 @@ class NodeEditorCanvas(QWidget):
         p.drawRoundedRect(rect.adjusted(4, 4, 4, 4), NODE_RADIUS, NODE_RADIUS)
 
         # Body
-        p.setPen(QPen(COL_NODE_SEL_BORDER if selected else COL_NODE_BORDER,
-                      2 if selected else 1))
+        if drag_hl:
+            border_col = QColor("#00e5ff")
+            border_w   = 2
+        elif selected:
+            border_col = COL_NODE_SEL_BORDER
+            border_w   = 2
+        else:
+            border_col = COL_NODE_BORDER
+            border_w   = 1
+        p.setPen(QPen(border_col, border_w))
         p.setBrush(QBrush(QColor("#220d1430" if selected else "#220d14")))
         p.drawRoundedRect(rect, NODE_RADIUS, NODE_RADIUS)
 
@@ -356,10 +383,13 @@ class NodeEditorCanvas(QWidget):
             node.NODE_NAME,
         )
 
-        # Device status dot
+        # Device status dot + optional selector row
         from core.device_node_base import DeviceNodeBase
         if isinstance(node, DeviceNodeBase):
             node.paint_device_status(p, title_rect)
+            if extra:
+                sel_rect = QRectF(node.x, node.y + TITLE_H, width, DEVICE_SEL_H)
+                self._draw_device_selector(p, node, sel_rect)
 
         # Draw each row
         for row in rows:
@@ -527,6 +557,57 @@ class NodeEditorCanvas(QWidget):
             RenderedField(node.node_id, row.field_name, row.field_type, pill_rect, is_var=False)
         )
 
+    def _draw_device_selector(self, p: QPainter, node: NodeBase, rect: QRectF) -> None:
+        """Paint the device-selector pill row below the title bar."""
+        from core.device_node_base import DeviceNodeBase, get_device_alias
+        if not isinstance(node, DeviceNodeBase):
+            return
+
+        # Background band
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(QColor("#1e0810")))
+        p.drawRect(rect)
+
+        # Top separator line
+        p.setPen(QPen(QColor("#45072f"), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawLine(rect.topLeft(), rect.topRight())
+
+        # Status dot
+        _status_colors = {"CONNECTED": "#4caf50", "UNKNOWN": "#ffb300",
+                          "DISCONNECTED": "#616161"}
+        dot_r  = 4.0
+        cy     = rect.center().y()
+        dot_cx = rect.left() + 10.0
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(QColor(_status_colors.get(node.device_status().name, "#616161"))))
+        p.drawEllipse(QPointF(dot_cx, cy), dot_r, dot_r)
+
+        # Alias text
+        dev   = node.get_device()
+        alias = get_device_alias(dev) if dev else "—"
+        if len(alias) > 15:
+            alias = alias[:12] + "…"
+        p.setPen(QColor("#ffd0de"))
+        p.setFont(QFont("Segoe UI", 8))
+        p.drawText(
+            QRectF(rect.left() + 20.0, rect.top(), rect.width() - 34.0, rect.height()),
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            alias,
+        )
+
+        # Chevron ▾
+        p.setPen(QColor("#c8889a"))
+        p.setFont(QFont("Segoe UI", 9))
+        p.drawText(
+            QRectF(rect.right() - 16.0, rect.top(), 14.0, rect.height()),
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignCenter,
+            "▾",
+        )
+
+        # Register for hit testing
+        self._rendered_device_selectors.append((node.node_id, QRectF(rect)))
+
     # ── Wire drawing ──────────────────────────────────────────────────────────
 
     def _draw_wires(self, p: QPainter) -> None:
@@ -634,6 +715,34 @@ class NodeEditorCanvas(QWidget):
                 return node.node_id
         return None
 
+    def _hit_device_selector(self, sp: QPointF) -> Optional[str]:
+        """Return node_id if sp is inside a device-selector pill row."""
+        for node_id, rect in self._rendered_device_selectors:
+            if rect.contains(sp):
+                return node_id
+        return None
+
+    def _show_device_menu(self, node: NodeBase, instances: list,
+                          global_pos: QPoint) -> None:
+        """Pop up a QMenu to choose a device for this node."""
+        from core.device_node_base import DeviceNodeBase, get_device_alias
+        if not isinstance(node, DeviceNodeBase):
+            return
+        current_dev = node.get_device()
+        current_id  = current_dev.device_id if current_dev else ""
+        menu = QMenu(self)
+        menu.setStyleSheet(_MENU_STYLE)
+        for dev in instances:
+            alias = get_device_alias(dev)
+            a = QAction(alias, menu)
+            a.setCheckable(True)
+            a.setChecked(dev.device_id == current_id)
+            a.triggered.connect(
+                lambda _checked, did=dev.device_id, n=node: (n.select_device(did), self.update())
+            )
+            menu.addAction(a)
+        menu.exec(global_pos)
+
     def _hit_wire(self, scene_pos: QPointF, threshold: float = 6.0) -> Optional[str]:
         """Return wire_id of the wire closest to scene_pos within threshold px."""
         best_id   : Optional[str] = None
@@ -680,6 +789,27 @@ class NodeEditorCanvas(QWidget):
                     self._try_connect(self._wire_src, hp)
                     self._wire_src = None; self.update(); return
 
+            # Device-selector pill click — show device picker menu
+            ds_nid = self._hit_device_selector(scene)
+            if ds_nid:
+                node = self._runtime.get_node(ds_nid)
+                if node is not None:
+                    from core.device_node_base import DeviceNodeBase, get_instances
+                    if isinstance(node, DeviceNodeBase) and node.DEVICE_TYPE_KEY:
+                        instances = get_instances(node.DEVICE_TYPE_KEY)
+                        if instances:
+                            self._show_device_menu(node, instances,
+                                                   event.globalPosition().toPoint())
+                self._selected_node = ds_nid
+                self._selected_wire = None
+                node_obj = self._runtime.get_node(ds_nid)
+                from core.device_node_base import DeviceNodeBase
+                _dev = node_obj.get_device() if isinstance(node_obj, DeviceNodeBase) else None
+                self.device_highlighted.emit(_dev.device_id if _dev else None)
+                self.node_selected.emit(ds_nid)
+                self.update()
+                return
+
             nid = self._hit_node(scene)
             if nid:
                 self._selected_node = nid
@@ -690,10 +820,11 @@ class NodeEditorCanvas(QWidget):
                 if node:
                     self._drag_node_start = QPointF(node.x, node.y)
                 self.node_selected.emit(nid)
-                # Highlight linked device in panel
+                # Highlight the specific device this node is using
                 node_obj = self._runtime.get_node(nid)
-                dtk = getattr(node_obj, 'DEVICE_TYPE_KEY', None) if node_obj else None
-                self.device_highlighted.emit(dtk)
+                from core.device_node_base import DeviceNodeBase
+                _dev = node_obj.get_device() if isinstance(node_obj, DeviceNodeBase) else None
+                self.device_highlighted.emit(_dev.device_id if _dev else None)
                 self.update(); return
 
             # Try wire hit
@@ -751,6 +882,61 @@ class NodeEditorCanvas(QWidget):
                 if hp and hp.direction == PinDirection.INPUT:
                     self._try_connect(self._wire_src, hp)
                 self._wire_src = None; self.update()
+
+    # ── Drag-and-drop (device panel → node) ──────────────────────────────────
+
+    def dragEnterEvent(self, event) -> None:
+        if event.mimeData().hasText() and event.mimeData().text().startswith("device:"):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event) -> None:
+        text = event.mimeData().text() if event.mimeData().hasText() else ""
+        if not text.startswith("device:"):
+            event.ignore()
+            return
+        device_id = text[len("device:"):]
+        scene = self._v2s(event.position())
+
+        from core.device_node_base import DeviceNodeBase, get_type_key_for_device
+        type_key = get_type_key_for_device(device_id)
+
+        new_target: Optional[str] = None
+        if type_key:
+            for node in reversed(list(self._runtime.nodes.values())):
+                w = _node_width(node)
+                h = _node_total_height(node)
+                if QRectF(node.x, node.y, w, h).contains(scene):
+                    if isinstance(node, DeviceNodeBase) and node.DEVICE_TYPE_KEY == type_key:
+                        new_target = node.node_id
+                    break
+
+        if new_target != self._drag_highlight_node:
+            self._drag_highlight_node = new_target
+            self.update()
+        event.acceptProposedAction()
+
+    def dragLeaveEvent(self, event) -> None:
+        self._drag_highlight_node = None
+        self.update()
+
+    def dropEvent(self, event) -> None:
+        text = event.mimeData().text() if event.mimeData().hasText() else ""
+        if not text.startswith("device:"):
+            event.ignore()
+            self._drag_highlight_node = None
+            return
+        device_id = text[len("device:"):]
+        if self._drag_highlight_node:
+            node = self._runtime.get_node(self._drag_highlight_node)
+            if node:
+                from core.device_node_base import DeviceNodeBase
+                if isinstance(node, DeviceNodeBase):
+                    node.select_device(device_id)
+        self._drag_highlight_node = None
+        self.update()
+        event.acceptProposedAction()
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         factor    = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15

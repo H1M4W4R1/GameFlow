@@ -22,10 +22,10 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QSize, pyqtSignal, QRectF
+from PyQt6.QtCore import Qt, QSize, QPoint, QMimeData, pyqtSignal, QRectF
 from PyQt6.QtGui  import (
     QColor, QPainter, QBrush, QPen, QFont, QPixmap,
-    QIcon, QImage,
+    QIcon, QImage, QDrag,
 )
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtWidgets import (
@@ -217,8 +217,25 @@ class DeviceRow(QFrame):
                 QFrame#DeviceRow:hover { border:1px solid #c90084; background:#2d1020; }
             """)
 
-    def mousePressEvent(self, _) -> None:
-        self.clicked.emit(self.device_id)
+    def mousePressEvent(self, event) -> None:
+        self._drag_start   = event.position().toPoint()
+        self._did_drag     = False
+
+    def mouseMoveEvent(self, event) -> None:
+        if not (event.buttons() & Qt.MouseButton.LeftButton):
+            return
+        if (event.position().toPoint() - self._drag_start).manhattanLength() < 8:
+            return
+        self._did_drag = True
+        mime = QMimeData()
+        mime.setText(f"device:{self.device_id}")
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        drag.exec(Qt.DropAction.CopyAction)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if not self._did_drag:
+            self.clicked.emit(self.device_id)
 
 
 # ── Device panel ──────────────────────────────────────────────────────────────
@@ -370,15 +387,10 @@ class DevicePanel(QWidget):
         if row:
             row.set_battery(level)
 
-    def highlight_device(self, device_type_key: Optional[str]) -> None:
-        """Highlight the device row matching device_type_key; clear all others."""
+    def highlight_device(self, device_id: Optional[str]) -> None:
+        """Highlight the specific device row; clear all others."""
         for did, row in self._rows.items():
-            dev = self._registry.get_device(did)
-            if dev is None:
-                row.set_highlighted(False)
-                continue
-            key = f'{dev.__class__.__module__}.{dev.__class__.__name__}'
-            row.set_highlighted(device_type_key is not None and key == device_type_key)
+            row.set_highlighted(device_id is not None and did == device_id)
 
     def _on_row_clicked(self, device_id: str) -> None:
         dev = self._registry.get_device(device_id)
