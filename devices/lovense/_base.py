@@ -307,9 +307,9 @@ class _LovenseBLEBase(DeviceBase):
             parts = [f"Vibrate{i+1}:{l}" for i, l in enumerate(self._vib_levels)]
             # Send as a batch; devices respond once per command
             for part in parts:
-                await self._send_command_async(part)
+                await self._send_command_async(part, 0.01)
             return "OK"
-        return await self._send_command_async(cmd)
+        return await self._send_command_async(cmd, 0.01)
 
     async def _send_command_async(self, cmd: str, timeout: float = 1.0) -> str:
         """
