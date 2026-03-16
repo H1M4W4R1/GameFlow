@@ -983,7 +983,7 @@ class CoyoteOutputGateNode(_CoyoteNodeBase):
         Timer → CoyoteOutputGate(enabled=true)  → enable output for N seconds
         Timer → CoyoteOutputGate(enabled=false) → disable output for N seconds
     """
-    NODE_NAME = "Coyote: Output Gate"
+    NODE_NAME = "Coyote: Enable/Disable"
     MIN_WIDTH = 200.0
     PINS = [
         PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK,
