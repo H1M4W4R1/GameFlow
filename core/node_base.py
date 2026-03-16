@@ -70,7 +70,7 @@ class NodeBase(QObject):
 
     # ── Override in subclasses ────────────────────────────────────────────────
     NODE_NAME:    str       = "Unnamed Node"
-    NODE_GROUP:   str       = "Misc"
+    NODE_GROUP:   str       = "Invalid"
     NODE_VERSION: str       = "1.0.0"
     PINS:         list[PinDescriptor] = []
 

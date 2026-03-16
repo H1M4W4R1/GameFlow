@@ -147,6 +147,8 @@ class DeviceRegistry(QObject):
             if cls.__name__.startswith("_"):
                 continue   # internal / abstract base class
             group = cls.NODE_GROUP
+            if group.startswith("Invalid"):
+                continue   # broken / unresolvable node class
             structure.setdefault(group, []).append((cls.NODE_NAME, key))
         return structure
 
