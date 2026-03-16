@@ -236,8 +236,11 @@ class DeviceRow(QFrame):
         drag.exec(Qt.DropAction.CopyAction)
 
     def mouseReleaseEvent(self, event) -> None:
-        if not self._did_drag:
-            # Delay single-click so a double-click can cancel it
+        if not self._did_drag and self._rename_editor is None:
+            # Delay single-click so a double-click can cancel it.
+            # Guard: skip if rename editor is active — the double-click sequence
+            # fires a second mouseReleaseEvent that would otherwise restart the
+            # timer and open the detail dialog on top of the inline editor.
             from PyQt6.QtWidgets import QApplication
             from PyQt6.QtCore import QTimer
             if not hasattr(self, "_click_timer"):
