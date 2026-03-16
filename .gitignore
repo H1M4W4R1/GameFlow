@@ -3,3 +3,4 @@
 /{core,devices,nodes,ui,assets}/
 /tests/
 /.claude/
+/CLAUDE.md
