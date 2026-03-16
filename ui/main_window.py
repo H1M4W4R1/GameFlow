@@ -623,11 +623,11 @@ class _ResizeHandle(QWidget):
         sz   = self.HANDLE_SIZE
         col  = QColor("#c90084")
         col2 = QColor("#45072f")
-        # Three diagonal grip lines (bottom-right corner, lines run SW→NE)
+        # Three diagonal grip lines (bottom-right corner, lines run NE→SW)
         for i, (x1, y1, x2, y2) in enumerate([
-            (2,   sz-4,  4,   sz-2),
-            (2,   sz-9,  9,   sz-2),
-            (2,   sz-14, 14,  sz-2),
+            (sz-2, sz-4,  sz-4,  sz-2),
+            (sz-2, sz-9,  sz-9,  sz-2),
+            (sz-2, sz-14, sz-14, sz-2),
         ]):
             p.setPen(QPen(col2, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
             p.drawLine(x1+1, y1+1, x2+1, y2+1)
