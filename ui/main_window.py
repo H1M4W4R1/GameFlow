@@ -234,6 +234,8 @@ class MainWindow(QWidget):
         QShortcut(QKeySequence("F5"),     self).activated.connect(self._on_run)
         QShortcut(QKeySequence("F6"),     self).activated.connect(self._on_stop)
         QShortcut(QKeySequence("F7"),     self).activated.connect(self._on_pause)
+        QShortcut(QKeySequence("Ctrl+Z"), self).activated.connect(self._on_undo)
+        QShortcut(QKeySequence("Ctrl+Y"), self).activated.connect(self._on_redo)
 
         # Dirty tracking — any structural change marks the graph modified
         self._runtime.node_added.connect(lambda _: self._mark_dirty())
@@ -297,6 +299,14 @@ class MainWindow(QWidget):
 
     def _on_close_window(self) -> None:
         self.close()
+
+    def _on_undo(self) -> None:
+        self._canvas._history.undo()
+        self._canvas.update()
+
+    def _on_redo(self) -> None:
+        self._canvas._history.redo()
+        self._canvas.update()
 
     def _on_pause(self) -> None:
         self._runtime.toggle_pause()
@@ -363,6 +373,7 @@ class MainWindow(QWidget):
         finally:
             self._loading = False
         self._graph_path = None
+        self._canvas.clear_history()
         self._place_default_nodes()
         self._mark_clean()
         self._status_bar.setText("New graph created.")
@@ -455,6 +466,7 @@ class MainWindow(QWidget):
         finally:
             self._loading = False
 
+        self._canvas.clear_history()
         if was_running:
             self._runtime.start()
 

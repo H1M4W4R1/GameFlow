@@ -44,6 +44,15 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QLineEdit, QMenu, QWidget, QToolTip, QColorDialog
 
+from core.command_history import (
+    CommandHistory,
+    DeviceCycleCmd, DeviceSelectCmd,
+    FieldEditCmd,
+    GroupCreateCmd, GroupDeleteCmd, GroupMoveCmd, GroupResizeCmd, GroupRenameCmd,
+    NodeAddCmd, NodeDeleteCmd, NodeMoveCmd, NodeRenameCmd,
+    PasteCmd,
+    WireAddCmd, WireDeleteCmd,
+)
 from core.graph_runtime import GraphRuntime
 from core.node_base import NodeBase
 from core.types import (
@@ -287,6 +296,10 @@ class NodeEditorCanvas(QWidget):
         self._clipboard       : Optional[dict] = None   # {"nodes": [...], "wires": [...]}
 
         self._tab_index = 0
+
+        # Undo / redo history
+        self._history: CommandHistory = CommandHistory()
+        self._last_pasted_group_id: Optional[str] = None   # set by add_pasted_group
 
         # Device selector hit areas (node_id, scene_rect) — rebuilt each paint
         self._rendered_device_selectors: list[tuple[str, QRectF]] = []
@@ -896,10 +909,19 @@ class NodeEditorCanvas(QWidget):
             a.setCheckable(True)
             a.setChecked(dev.device_id == current_id)
             a.triggered.connect(
-                lambda _checked, did=dev.device_id, n=node: (n.select_device(did), self.update())
+                lambda _checked, did=dev.device_id, n=node, oid=current_id:
+                    self._on_device_select(n, oid, did)
             )
             menu.addAction(a)
         menu.exec(global_pos)
+
+    def _on_device_select(self, node, old_device_id: str, new_device_id: str) -> None:
+        from core.device_node_base import DeviceNodeBase
+        if isinstance(node, DeviceNodeBase):
+            node.select_device(new_device_id)
+            if old_device_id != new_device_id:
+                self._history.push(DeviceSelectCmd(node, old_device_id, new_device_id))
+        self.update()
 
     def _hit_wire(self, scene_pos: QPointF, threshold: float = 6.0) -> Optional[str]:
         """Return wire_id of the wire closest to scene_pos within threshold px."""
@@ -971,6 +993,7 @@ class NodeEditorCanvas(QWidget):
         self._groups[grp.group_id] = grp
         self._selected_group = grp.group_id
         self.update()
+        self._history.push(GroupCreateCmd(self._groups, grp))
         self._open_group_rename_editor(grp.group_id)
 
     # ── Group serialization ───────────────────────────────────────────────────
@@ -1009,6 +1032,7 @@ class NodeEditorCanvas(QWidget):
             node_ids = set(id_map.values()),
         )
         self._groups[grp.group_id] = grp
+        self._last_pasted_group_id = grp.group_id   # tracked for PasteCmd
         self.update()
 
     # ── Mouse ─────────────────────────────────────────────────────────────────
@@ -1249,18 +1273,54 @@ class NodeEditorCanvas(QWidget):
                 nid = self._dragging_node
                 self._dragging_node = None
                 if self._drag_nodes_start:
+                    moves: dict = {}
+                    for sid, sp in self._drag_nodes_start.items():
+                        n = self._runtime.get_node(sid)
+                        if n and (n.x != sp.x() or n.y != sp.y()):
+                            moves[sid] = (sp.x(), sp.y(), n.x, n.y)
+                    if moves:
+                        self._history.push(NodeMoveCmd(self._runtime, moves))
                     for sid in list(self._drag_nodes_start.keys()):
                         self._update_node_group_membership(sid)
                     self._drag_nodes_start = {}
                 else:
+                    n = self._runtime.get_node(nid)
+                    if n:
+                        ds = self._drag_node_start
+                        if n.x != ds.x() or n.y != ds.y():
+                            self._history.push(NodeMoveCmd(
+                                self._runtime,
+                                {nid: (ds.x(), ds.y(), n.x, n.y)},
+                            ))
                     self._update_node_group_membership(nid)
             if self._dragging_group:
                 gid = self._dragging_group
                 self._dragging_group = None
+                grp = self._groups.get(gid)
+                if grp:
+                    gb = self._drag_group_pos_start
+                    ga = (grp.x, grp.y)
+                    if ga != (gb.x(), gb.y()):
+                        node_moves: dict = {}
+                        for nid2, sp2 in self._drag_group_nodes_start.items():
+                            n2 = self._runtime.get_node(nid2)
+                            if n2:
+                                node_moves[nid2] = (sp2.x(), sp2.y(), n2.x, n2.y)
+                        self._history.push(GroupMoveCmd(
+                            self._runtime, self._groups, gid,
+                            (gb.x(), gb.y()), ga, node_moves,
+                        ))
                 self._update_group_membership(gid)
             if self._resizing_group:
                 gid = self._resizing_group
                 self._resizing_group = None
+                grp = self._groups.get(gid)
+                if grp and self._resize_group_start:
+                    sr = self._resize_group_start
+                    before = (sr.x(), sr.y(), sr.width(), sr.height())
+                    after  = (grp.x, grp.y, grp.width, grp.height)
+                    if before != after:
+                        self._history.push(GroupResizeCmd(self._groups, gid, before, after))
                 self._update_group_membership(gid)
             if self._wire_src:
                 hp = self._hit_pin(self._v2s(event.position()))
@@ -1397,7 +1457,10 @@ class NodeEditorCanvas(QWidget):
             if node is not None:
                 from core.device_node_base import DeviceNodeBase
                 if isinstance(node, DeviceNodeBase):
+                    old_dev = node.get_device()
+                    old_did = old_dev.device_id if old_dev else None
                     node.cycle_device()
+                    self._history.push(DeviceCycleCmd(node, old_did))
                     self.update()
                     return
         super().mouseDoubleClickEvent(event)
@@ -1409,12 +1472,16 @@ class NodeEditorCanvas(QWidget):
             return
         # ColorPicker: for editable field named "color" (str), open QColorDialog
         if not rf.is_var and rf.field_name == "color":
-            current = node.get_field("color") or "#ffffff"
-            initial = _parse_hex_to_qcolor(str(current))
+            old_color = node.get_field("color") or "#ffffff"
+            initial = _parse_hex_to_qcolor(str(old_color))
             color = QColorDialog.getColor(initial, self, "Pick color")
             if color.isValid():
                 hex_val = f"#{color.red():02x}{color.green():02x}{color.blue():02x}"
                 node.set_field("color", hex_val)
+                if old_color != hex_val:
+                    self._history.push(FieldEditCmd(
+                        self._runtime, rf.node_id, "color", False, old_color, hex_val
+                    ))
                 self.update()
                 return
         tl = self._s2v(rf.scene_rect.topLeft())
@@ -1429,20 +1496,32 @@ class NodeEditorCanvas(QWidget):
                 padding: 0 4px; font-family: 'Courier New'; font-size: 9pt;
             }
         """)
-        current = (node.get_var_input(rf.field_name) if rf.is_var
+        old_val = (node.get_var_input(rf.field_name) if rf.is_var
                    else node.get_field(rf.field_name))
-        editor.setText(str(current) if current is not None else "")
+        editor.setText(str(old_val) if old_val is not None else "")
         editor.selectAll()
         editor.setGeometry(int(tl.x()), int(tl.y()),
                            int(br.x() - tl.x()), int(br.y() - tl.y()))
         editor.show()
         editor.setFocus()
 
+        _field_committed = [False]
+
         def _commit() -> None:
+            if _field_committed[0]:
+                return
+            _field_committed[0] = True
+            raw = editor.text()
             if rf.is_var:
-                node.set_var_input(rf.field_name, editor.text())
+                node.set_var_input(rf.field_name, raw)
             else:
-                node.set_field(rf.field_name, editor.text())
+                node.set_field(rf.field_name, raw)
+            new_val = (node.get_var_input(rf.field_name) if rf.is_var
+                       else node.get_field(rf.field_name))
+            if str(old_val) != str(new_val):
+                self._history.push(FieldEditCmd(
+                    self._runtime, rf.node_id, rf.field_name, rf.is_var, old_val, new_val
+                ))
             self._close_editor()
             self.update()
 
@@ -1480,6 +1559,7 @@ class NodeEditorCanvas(QWidget):
                 font-weight: bold;
             }
         """)
+        old_name = node.custom_name
         editor.setText(node.custom_name or node.NODE_NAME)
         editor.selectAll()
         editor.setGeometry(int(tl.x()), int(tl.y()),
@@ -1494,7 +1574,10 @@ class NodeEditorCanvas(QWidget):
                 return
             _committed[0] = True
             text = editor.text().strip()
-            node.custom_name = text if text and text != node.NODE_NAME else None
+            new_name = text if text and text != node.NODE_NAME else None
+            node.custom_name = new_name
+            if old_name != new_name:
+                self._history.push(NodeRenameCmd(self._runtime, node_id, old_name, new_name))
             node.node_changed.emit()
             self._close_editor()
             self.update()
@@ -1525,6 +1608,7 @@ class NodeEditorCanvas(QWidget):
                 font-weight: bold;
             }
         """)
+        old_grp_name = grp.name
         editor.setText(grp.name)
         editor.selectAll()
         editor.setGeometry(int(tl.x()), int(tl.y()),
@@ -1539,7 +1623,12 @@ class NodeEditorCanvas(QWidget):
                 return
             _committed[0] = True
             text = editor.text().strip()
-            grp.name = text if text else "Group"
+            new_grp_name = text if text else "Group"
+            grp.name = new_grp_name
+            if old_grp_name != new_grp_name:
+                self._history.push(GroupRenameCmd(
+                    self._groups, group_id, old_grp_name, new_grp_name
+                ))
             self._close_editor()
             self.update()
 
@@ -1561,8 +1650,21 @@ class NodeEditorCanvas(QWidget):
 
     # ── Keyboard ──────────────────────────────────────────────────────────────
 
+    def clear_history(self) -> None:
+        """Reset undo/redo stacks (call after new graph or load)."""
+        self._history.clear()
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
+
+        if ctrl and event.key() == Qt.Key.Key_Z:
+            self._history.undo()
+            self.update()
+            return
+        if ctrl and event.key() == Qt.Key.Key_Y:
+            self._history.redo()
+            self.update()
+            return
 
         if event.key() == Qt.Key.Key_F2:
             if self._selected_group:
@@ -1574,23 +1676,17 @@ class NodeEditorCanvas(QWidget):
 
         if event.key() == Qt.Key.Key_Delete:
             if self._selected_group:
-                grp = self._groups.pop(self._selected_group, None)
-                if grp:
-                    for nid in list(grp.node_ids):
-                        self._runtime.remove_node(nid)
-                self._selected_group = None; self.update(); return
+                self._delete_selected_group()
+                return
             if self._selected_wire:
+                wire = self._runtime.wires.get(self._selected_wire)
                 self._runtime.remove_wire(self._selected_wire)
+                if wire:
+                    self._history.push(WireDeleteCmd(self._runtime, wire))
                 self._selected_wire = None; self.update(); return
-            if self._selected_nodes:
-                for nid in list(self._selected_nodes):
-                    self._runtime.remove_node(nid)
-                self._selected_nodes = set()
-                self._selected_node  = None
-                self.update(); return
-            if self._selected_node:
-                self._runtime.remove_node(self._selected_node)
-                self._selected_node = None; self.update(); return
+            if self._selected_nodes or self._selected_node:
+                self._delete_selected_nodes()
+                return
 
         if ctrl and event.key() == Qt.Key.Key_A:
             self._selected_nodes = set(self._runtime.nodes.keys())
@@ -1625,6 +1721,59 @@ class NodeEditorCanvas(QWidget):
             self.update()
 
         super().keyPressEvent(event)
+
+    # ── Delete helpers ────────────────────────────────────────────────────────
+
+    def _delete_selected_group(self) -> None:
+        grp = self._groups.get(self._selected_group)
+        if grp:
+            # Collect data before deletion
+            group_nodes: list = []
+            collected_ids: set = set()
+            group_wires: list = []
+            for nid in list(grp.node_ids):
+                node = self._runtime.get_node(nid)
+                if node:
+                    group_nodes.append(node)
+            for nid in list(grp.node_ids):
+                for w in self._runtime.wires.values():
+                    if (w.src_node == nid or w.dst_node == nid) and w.wire_id not in collected_ids:
+                        collected_ids.add(w.wire_id)
+                        group_wires.append(w)
+            # Perform deletion
+            self._groups.pop(self._selected_group, None)
+            for nid in list(grp.node_ids):
+                self._runtime.remove_node(nid)
+            self._history.push(GroupDeleteCmd(
+                self._runtime, self._groups, grp, group_nodes, group_wires
+            ))
+        self._selected_group = None
+        self.update()
+
+    def _delete_selected_nodes(self, description: str = "Delete") -> None:
+        nids = list(self._selected_nodes) if self._selected_nodes else (
+            [self._selected_node] if self._selected_node else []
+        )
+        if not nids:
+            return
+        if len(nids) > 1:
+            self._history.begin_macro(description)
+        for nid in nids:
+            node = self._runtime.get_node(nid)
+            if node:
+                wires = [w for w in self._runtime.wires.values()
+                         if w.src_node == nid or w.dst_node == nid]
+                group_membership = {gid for gid, g in self._groups.items()
+                                    if nid in g.node_ids}
+                self._runtime.remove_node(nid)
+                self._history.push(NodeDeleteCmd(
+                    self._runtime, node, wires, self._groups, group_membership
+                ))
+        if len(nids) > 1:
+            self._history.end_macro()
+        self._selected_nodes = set()
+        self._selected_node  = None
+        self.update()
 
     def _copy_selected(self) -> None:
         # Group copy: when a group is selected with no individual node selection
@@ -1701,16 +1850,7 @@ class NodeEditorCanvas(QWidget):
 
     def _cut_selected(self) -> None:
         self._copy_selected()
-        if self._selected_nodes:
-            for nid in list(self._selected_nodes):
-                self._runtime.remove_node(nid)
-            self._selected_nodes = set()
-            self._selected_node  = None
-            self.update()
-        elif self._selected_node:
-            self._runtime.remove_node(self._selected_node)
-            self._selected_node = None
-            self.update()
+        self._delete_selected_nodes(description="Cut")
 
     def _paste_clipboard(self) -> None:
         if not self._clipboard:
@@ -1732,7 +1872,32 @@ class NodeEditorCanvas(QWidget):
         if "group" in self._clipboard:
             payload_dict["group"] = self._clipboard["group"]
         payload = _json.dumps(payload_dict)
+
+        # Capture what gets created — signals are synchronous on the main thread
+        _created_node_ids: list[str] = []
+        _created_wire_ids: list[str] = []
+
+        def _on_node(nid: str) -> None:
+            _created_node_ids.append(nid)
+
+        def _on_wire(wire) -> None:
+            _created_wire_ids.append(wire.wire_id)
+
+        self._runtime.node_added.connect(_on_node)
+        self._runtime.wire_added.connect(_on_wire)
+        self._last_pasted_group_id = None
         self.status_message.emit(f"__paste_nodes__{payload}")
+        self._runtime.node_added.disconnect(_on_node)
+        self._runtime.wire_added.disconnect(_on_wire)
+
+        if _created_node_ids or _created_wire_ids:
+            nodes = [n for nid in _created_node_ids
+                     if (n := self._runtime.get_node(nid)) is not None]
+            wires = [w for wid in _created_wire_ids
+                     if (w := self._runtime.wires.get(wid)) is not None]
+            group = (self._groups.get(self._last_pasted_group_id)
+                     if self._last_pasted_group_id else None)
+            self._history.push(PasteCmd(self._runtime, self._groups, nodes, wires, group))
 
     def _duplicate_selected(self) -> None:
         self._copy_selected()
@@ -1774,6 +1939,7 @@ class NodeEditorCanvas(QWidget):
             dst_node = dst.node_id, dst_pin = dst.pin_name,
         )
         if self._runtime.add_wire(wire):
+            self._history.push(WireAddCmd(self._runtime, wire))
             self.wire_created.emit(wire)
         else:
             self.status_message.emit("Could not create wire")
@@ -1825,7 +1991,17 @@ class NodeEditorCanvas(QWidget):
     def _on_add_action(self) -> None:
         a: QAction = self.sender()
         key, sp    = a.data()
+        # Capture what gets created — node_added is synchronous on the main thread
+        _created: list[str] = []
+        def _on_added(nid: str) -> None:
+            _created.append(nid)
+        self._runtime.node_added.connect(_on_added)
         self.status_message.emit(f"__add_node__{key}__{sp.x()}__{sp.y()}")
+        self._runtime.node_added.disconnect(_on_added)
+        if _created:
+            node = self._runtime.get_node(_created[0])
+            if node:
+                self._history.push(NodeAddCmd(self._runtime, node))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
