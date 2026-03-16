@@ -225,7 +225,7 @@ class ColorConstantNode(_ConstantBase):
         "color": (str, "#ffffff"),
     }
     MIN_WIDTH  = 160.0
-    MIN_HEIGHT = 80.0
+    MIN_HEIGHT = 100.0
 
     def on_start(self) -> None:
         self._push()
