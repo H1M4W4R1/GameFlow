@@ -71,7 +71,7 @@ class H1M4W4R1Pump(DeviceBase):
     MANUFACTURER       = "H1M4W4R1"
     DEVICE_DESCRIPTION = "BLE pump with valve; session and pumping timers"
     CONNECTION_KINDS   = [PortKind.BLE]
-    ICON_PATH         = "assets/icons/pump.svg"
+    ICON_PATH         = "assets/icons/h1m4w4r1/pump.svg"
     # Used by BLE scan dialog to discover this device
     BLE_SERVICE_UUID   = SERVICE_UUID
 
@@ -245,7 +245,7 @@ def _pump_node_key(suffix: str) -> str:
 
 class _PumpNodeBase(DeviceNodeBase):
     DEVICE_TYPE_KEY = DEVICE_TYPE_KEY
-    ICON_PATH       = "assets/icons/pump.svg"
+    ICON_PATH       = "assets/icons/h1m4w4r1/pump.svg"
     NODE_GROUP      = "H1M4W4R1/Pump"
 
 
