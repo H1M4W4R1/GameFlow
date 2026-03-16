@@ -34,6 +34,7 @@ class LovenseEdge(_LovenseBLEBase):
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate Internal", "Vibrate Perineum"]
     ICON_PATH          = "assets/icons/lovense/edge.svg"
+    DEVICE_URL         = "https://www.lovense.com/adjustable-prostate-massager"
 
 
 class EdgeVibrateInternal(DeviceNodeBase):
@@ -125,6 +126,7 @@ class LovenseDiamo(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/diamo.svg"
+    DEVICE_URL         = "https://www.lovense.com/bluetooth-vibrating-cock-ring"
 
 
 class DiamoVibrate(DeviceNodeBase):
@@ -162,8 +164,10 @@ class LovenseMax(_LovenseBLEBase):
     DEVICE_IDENTIFIER  = "B"
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
-    SUPPORTS_AIR       = True
+    SUPPORTS_AIR           = True
+    SUPPORTS_ACCELEROMETER = True
     ICON_PATH          = "assets/icons/lovense/max.svg"
+    DEVICE_URL         = "https://www.lovense.com/male-masturbators"
 
 
 class MaxVibrate(DeviceNodeBase):
@@ -260,6 +264,88 @@ class MaxAirDeflate(DeviceNodeBase):
 _MaxStopNode = _make_stop_node(LovenseMax)
 
 
+class MaxAccelerometerEnable(DeviceNodeBase):
+    """Start streaming accelerometer data from the Max."""
+    NODE_NAME       = "Max: Accelerometer Enable"
+    NODE_GROUP      = "Devices/Lovense/Max"
+    DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
+    ICON_PATH       = LovenseMax.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.send_command("accelerometer", {"action": "start"},
+                             on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+class MaxAccelerometerDisable(DeviceNodeBase):
+    """Stop streaming accelerometer data from the Max."""
+    NODE_NAME       = "Max: Accelerometer Disable"
+    NODE_GROUP      = "Devices/Lovense/Max"
+    DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
+    ICON_PATH       = LovenseMax.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.send_command("accelerometer", {"action": "stop"},
+                             on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+class MaxAccelerometerEvent(DeviceNodeBase):
+    """
+    Fires on_event whenever an accelerometer frame arrives from the Max.
+    Outputs decoded Vector3 (x, y, z) as raw signed int16 sensor values.
+    Requires accelerometer streaming to be started via MaxAccelerometerEnable.
+    """
+    NODE_NAME       = "Max: Accelerometer"
+    NODE_GROUP      = "Devices/Lovense/Max"
+    DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
+    ICON_PATH       = LovenseMax.ICON_PATH
+    PINS = [
+        PinDescriptor("on_event", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("x",        PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("y",        PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("z",        PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+
+    def on_start(self) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.data_received.connect(self._on_data)
+
+    def on_stop(self) -> None:
+        dev = self.get_device()
+        if dev:
+            try:
+                dev.data_received.disconnect(self._on_data)
+            except Exception:
+                pass
+
+    def _on_data(self, payload: dict) -> None:
+        if payload.get("type") != "accelerometer":
+            return
+        self.set_output("x", payload["x"])
+        self.set_output("y", payload["y"])
+        self.set_output("z", payload["z"])
+        self.fire_tick("on_event")
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Nora — rabbit vibrator: vibrator + rotation
 # ─────────────────────────────────────────────────────────────────────────────
@@ -272,6 +358,7 @@ class LovenseNora(_LovenseBLEBase):
     VIBRATOR_NAMES     = ["Vibrate"]
     SUPPORTS_ROTATE    = True
     ICON_PATH          = "assets/icons/lovense/nora.svg"
+    DEVICE_URL         = "https://www.lovense.com/rabbit-vibrator"
 
 
 class NoraVibrate(DeviceNodeBase):
@@ -356,6 +443,7 @@ ALL_NODE_CLASSES = [
     DiamoVibrate, _DiamoStopNode,
     # Max
     MaxVibrate, MaxAirLevel, MaxAirInflate, MaxAirDeflate, _MaxStopNode,
+    MaxAccelerometerEnable, MaxAccelerometerDisable, MaxAccelerometerEvent,
     # Nora
     NoraVibrate, NoraRotate, NoraRotateChange, _NoraStopNode,
 ]

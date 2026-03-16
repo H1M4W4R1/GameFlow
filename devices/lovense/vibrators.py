@@ -33,6 +33,7 @@ class LovenseLush(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/lush.svg"
+    DEVICE_URL         = "https://www.lovense.com/lush-4-best-bluetooth-remote-controlled-g-spot-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -45,6 +46,7 @@ class LovenseHush(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/hush.svg"
+    DEVICE_URL         = "https://www.lovense.com/vibrating-butt-plug?code=hush2xs"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -56,7 +58,9 @@ class LovenseDomi(_LovenseBLEBase):
     DEVICE_IDENTIFIER  = "W"
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
+    SUPPORTS_ALIGHT    = True
     ICON_PATH          = "assets/icons/lovense/domi.svg"
+    DEVICE_URL         = "https://www.lovense.com/super-powerful-wand-massager"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -69,6 +73,7 @@ class LovenseAmbi(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/ambi.svg"
+    DEVICE_URL         = "https://www.lovense.com/mini-bullet-vibrator-for-clitoral-simulation"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -81,6 +86,7 @@ class LovenseFerri(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/ferri.svg"
+    DEVICE_URL         = "https://www.lovense.com/magnetic-panty-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -93,6 +99,7 @@ class LovenseOsci(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Oscillate"]
     ICON_PATH          = "assets/icons/lovense/osci.svg"
+    DEVICE_URL         = "https://www.lovense.com/osci-3-gspot-clitoral-dual-stimulation-rabbit-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -105,6 +112,7 @@ class LovenseGush(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/gush.svg"
+    DEVICE_URL         = "https://www.lovense.com/gush-2-best-remote-controlled-vibrating-male-penis-massager"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -117,6 +125,7 @@ class LovenseGemini(_LovenseBLEBase):
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate Left", "Vibrate Right"]
     ICON_PATH          = "assets/icons/lovense/gemini.svg"
+    DEVICE_URL         = "https://www.lovense.com/app-controlled-vibrating-nipple-clamps-clit-clamps"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0), _vib_key(self, 1)]
@@ -223,3 +232,50 @@ for _dev_cls in _VIBRATOR_DEVICES:
     for _i, _label in enumerate(_dev_cls.VIBRATOR_NAMES):
         ALL_NODE_CLASSES.append(_make_vibrate_node(_dev_cls, _i, _label))
     ALL_NODE_CLASSES.append(_make_stop_node(_dev_cls))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Domi — ambient ring light nodes
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DomiAmbientLightOn(DeviceNodeBase):
+    """Enable the ambient ring light on the Domi."""
+    NODE_NAME       = "Domi: Ambient Light On"
+    NODE_GROUP      = "Devices/Lovense/Domi"
+    DEVICE_TYPE_KEY = f"{LovenseDomi.__module__}.LovenseDomi"
+    ICON_PATH       = LovenseDomi.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.send_command("alight", {"action": "on"},
+                             on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+class DomiAmbientLightOff(DeviceNodeBase):
+    """Disable the ambient ring light on the Domi."""
+    NODE_NAME       = "Domi: Ambient Light Off"
+    NODE_GROUP      = "Devices/Lovense/Domi"
+    DEVICE_TYPE_KEY = f"{LovenseDomi.__module__}.LovenseDomi"
+    ICON_PATH       = LovenseDomi.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.send_command("alight", {"action": "off"},
+                             on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+ALL_NODE_CLASSES += [DomiAmbientLightOn, DomiAmbientLightOff]

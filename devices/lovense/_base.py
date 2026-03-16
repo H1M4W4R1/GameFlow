@@ -140,6 +140,8 @@ class _LovenseBLEBase(DeviceBase):
     VIBRATOR_NAMES:     list[str] = ["Vibrate"]
     SUPPORTS_ROTATE:    bool      = False
     SUPPORTS_AIR:       bool      = False  # Max-style inflate/deflate
+    SUPPORTS_ACCELEROMETER: bool  = False  # Max: StartMove/StopMove
+    SUPPORTS_ALIGHT:    bool      = False  # Domi: ALight:On/Off ambient ring
 
     # Battery poll interval (seconds); 0 to disable
     BATTERY_POLL_S: float = 30.0
@@ -295,6 +297,27 @@ class _LovenseBLEBase(DeviceBase):
         if name == "raw":
             return await self._send_command_async(params.get("cmd", ""))
 
+        if name == "accelerometer":
+            action = params.get("action", "start")
+            cmd = "StartMove:1" if action == "start" else "StopMove:1"
+            return await self._send_command_async(cmd)
+
+        if name == "light":
+            # Indicator LED — all Lovense devices
+            action = params.get("action", "on")
+            if action == "get":
+                return await self._send_command_async("GetLight")
+            cmd = "Light:on" if action == "on" else "Light:off"
+            return await self._send_command_async(cmd)
+
+        if name == "alight":
+            # Ambient ring light — Domi only
+            action = params.get("action", "on")
+            if action == "get":
+                return await self._send_command_async("GetAlight")
+            cmd = "ALight:On" if action == "on" else "ALight:Off"
+            return await self._send_command_async(cmd)
+
         raise ValueError(f"[{self.DEVICE_NAME}] Unknown command: {name!r}")
 
     async def _send_vibrate(self) -> str:
@@ -375,6 +398,24 @@ class _LovenseBLEBase(DeviceBase):
             if 0 <= level <= 100:
                 self._update_battery(level)
             return
+
+        # Accelerometer frame: "G" + 12 hex chars → 3 × signed int16 (little-endian)
+        # Format: StartMove:1 response stream e.g. "GEF008312ED00"
+        if (clean.startswith("G") and len(clean) == 13
+                and self.SUPPORTS_ACCELEROMETER):
+            try:
+                import struct
+                raw = bytes.fromhex(clean[1:])
+                x, y, z = struct.unpack_from("<hhh", raw)
+                self.data_received.emit({
+                    "type": "accelerometer",
+                    "x": float(x),
+                    "y": float(y),
+                    "z": float(z),
+                })
+                return
+            except (ValueError, struct.error):
+                pass
 
         # DeviceType response: "<type>:<fw>:<mac>"  e.g. "W:10:AA:BB:CC:DD:EE:FF"
         parts = clean.split(":")

@@ -248,6 +248,7 @@ class Coyote(DeviceBase):
     BLE_SERVICE_UUID = SERVICE_CMD_UUID
     # BLE advertisement name prefixes (per README: "47L121000" for pulse host)
     BLE_NAME_PREFIXES = ("47L",)
+    DEVICE_URL = "https://dungeon-lab.com/e-stim-unit3.0.php"
 
     def __init__(self, descriptor: ConnectionDescriptor, **kwargs) -> None:
         super().__init__(descriptor, **kwargs)

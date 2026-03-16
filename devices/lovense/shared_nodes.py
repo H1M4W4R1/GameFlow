@@ -11,6 +11,60 @@ from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType
 
 
+def make_red_light_on_node(device_cls) -> type:
+    """Create a RedLight On node for any Lovense device class."""
+    device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"
+
+    class _RedLightOnNode(DeviceNodeBase):
+        NODE_NAME       = f"{device_cls.DEVICE_NAME}: Red Light On"
+        NODE_GROUP      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
+        DEVICE_TYPE_KEY = device_type_key
+        ICON_PATH       = device_cls.ICON_PATH
+        PINS = [
+            PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+            PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        ]
+
+        def execute(self, trigger_pin: str) -> None:
+            dev = self.get_device()
+            if dev:
+                dev.send_command("light", {"action": "on"},
+                                 on_success=lambda _: self.fire_tick("exec_out"))
+            else:
+                self.fire_tick("exec_out")
+
+    _RedLightOnNode.__name__     = f"RedLightOn_{device_cls.__name__}"
+    _RedLightOnNode.__qualname__ = _RedLightOnNode.__name__
+    return _RedLightOnNode
+
+
+def make_red_light_off_node(device_cls) -> type:
+    """Create a RedLight Off node for any Lovense device class."""
+    device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"
+
+    class _RedLightOffNode(DeviceNodeBase):
+        NODE_NAME       = f"{device_cls.DEVICE_NAME}: Red Light Off"
+        NODE_GROUP      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
+        DEVICE_TYPE_KEY = device_type_key
+        ICON_PATH       = device_cls.ICON_PATH
+        PINS = [
+            PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+            PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        ]
+
+        def execute(self, trigger_pin: str) -> None:
+            dev = self.get_device()
+            if dev:
+                dev.send_command("light", {"action": "off"},
+                                 on_success=lambda _: self.fire_tick("exec_out"))
+            else:
+                self.fire_tick("exec_out")
+
+    _RedLightOffNode.__name__     = f"RedLightOff_{device_cls.__name__}"
+    _RedLightOffNode.__qualname__ = _RedLightOffNode.__name__
+    return _RedLightOffNode
+
+
 def make_battery_node(device_cls) -> type:
     """Create a GetBattery node for any Lovense device class."""
     device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"

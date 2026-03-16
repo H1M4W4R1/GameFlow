@@ -478,7 +478,8 @@ class DevicePanel(QWidget):
         current_alias = get_device_alias(dev)
         dlg = DeviceDetailDialog(device_id, dev.DEVICE_NAME,
                                   dev.descriptor.address, dev.status, dev.battery_level,
-                                  dev.ICON_PATH, current_alias, self)
+                                  dev.ICON_PATH, current_alias,
+                                  getattr(dev, "DEVICE_URL", ""), self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             if dlg.should_remove():
                 self.remove_device_requested.emit(device_id)
@@ -615,6 +616,12 @@ class AddDeviceDialog(QDialog):
 
         # Buttons
         btn_row = QHBoxLayout()
+        self._website_btn = QPushButton("Website ↗")
+        self._website_btn.setObjectName("cancel")
+        self._website_btn.setEnabled(False)
+        self._website_btn.setToolTip("Open device webpage")
+        self._website_btn.clicked.connect(self._on_website)
+        btn_row.addWidget(self._website_btn)
         btn_row.addStretch()
         cancel = QPushButton("Cancel")
         cancel.setObjectName("cancel")
@@ -651,6 +658,18 @@ class AddDeviceDialog(QDialog):
             self._next_btn.setText("Connect →")
 
         self._next_btn.setEnabled(True)
+        url = getattr(cls, "DEVICE_URL", "")
+        self._website_btn.setEnabled(bool(url))
+
+    def _on_website(self) -> None:
+        if not self._selected_key:
+            return
+        cls = self._device_classes[self._selected_key]
+        url = getattr(cls, "DEVICE_URL", "")
+        if url:
+            from PyQt6.QtGui import QDesktopServices
+            from PyQt6.QtCore import QUrl
+            QDesktopServices.openUrl(QUrl(url))
 
     def _on_next(self) -> None:
         if not self._selected_key:
@@ -760,13 +779,14 @@ class DeviceDetailDialog(QDialog):
     def __init__(self, device_id: str, name: str, address: str,
                  status: DeviceStatus, battery: int,
                  icon_path: Optional[str], current_alias: str = "",
-                 parent=None) -> None:
+                 device_url: str = "", parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle(f"Device: {name}")
         self.setStyleSheet(_DLG_STYLE)
         self.setMinimumWidth(320)
         self._remove      = False
         self._new_alias   = ""
+        self._device_url  = device_url
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 16, 16, 16)
@@ -816,9 +836,21 @@ class DeviceDetailDialog(QDialog):
         close_btn.clicked.connect(self.reject)
         btn_row.addWidget(remove_btn)
         btn_row.addStretch()
+        if device_url:
+            website_btn = QPushButton("Website ↗")
+            website_btn.setObjectName("cancel")
+            website_btn.setToolTip(f"Open device webpage")
+            website_btn.clicked.connect(self._on_website)
+            btn_row.addWidget(website_btn)
         btn_row.addWidget(save_btn)
         btn_row.addWidget(close_btn)
         lay.addLayout(btn_row)
+
+    def _on_website(self) -> None:
+        if self._device_url:
+            from PyQt6.QtGui import QDesktopServices
+            from PyQt6.QtCore import QUrl
+            QDesktopServices.openUrl(QUrl(self._device_url))
 
     def _on_remove(self) -> None:
         self._remove = True

@@ -74,6 +74,7 @@ class H1M4W4R1Pump(DeviceBase):
     ICON_PATH         = "assets/icons/h1m4w4r1/pump.svg"
     # Used by BLE scan dialog to discover this device
     BLE_SERVICE_UUID   = SERVICE_UUID
+    DEVICE_URL         = "https://github.com/H1M4W4R1/RemoteVacuumPump"
 
     def __init__(self, descriptor: ConnectionDescriptor, **kwargs) -> None:
         super().__init__(descriptor, **kwargs)
