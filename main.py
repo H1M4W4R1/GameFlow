@@ -57,8 +57,8 @@ def main() -> None:
     devices_path = PROJECT_ROOT / "devices"
     nodes_path   = PROJECT_ROOT / "nodes"
 
-    # Seed builtin nodes so they're always available
-    _seed_builtin_nodes(registry)
+    # Seed nodes so they're always available
+    _seed_nodes(registry)
 
     # Discover third-party / user additions
     try:
@@ -79,128 +79,58 @@ def main() -> None:
     sys.exit(app.exec())
 
 
-def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
-    """Register all built-in node classes from their respective modules."""
-    from nodes.flow_nodes import (
-        TickNode, ConfigurableTickNode, StartNode,
-        OnPausedNode, OnResumedNode, OnStoppedNode, IsRunningNode,
-        EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
-        LessNode, LessEqualNode,
-        SelectNode,
-    )
-    from nodes.utility_nodes import (
-        CounterNode, RandomNode, LoopNode, LoopWhileNode,
-    )
-    from nodes.debug_nodes import (
-        LogNode,
-        NumericDisplayNode, TextDisplayNode, TimeDisplayNode, StateIndicatorNode,
-    )
-    from nodes.time_nodes import (
-        TimeSinceStartNode, EpochSecondsNode, CurrentDateTimeNode,
-        SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,
-        CountdownNode,
-    )
-    from nodes.math_nodes import (
-        AddNode, SubtractNode, MultiplyNode, DivideNode, ModuloNode,
-        PowerNode, MinNode, MaxNode,
-        AbsNode, NegateNode, SinNode, CosNode, TanNode,
-        SqrtNode, FloorNode, CeilNode, RoundNode,
-        ClampNode, LerpNode, MapRangeNode,
-        Vector2DConstructorNode, Vector3DConstructorNode, Vector4DConstructorNode,
-        Vector2DSplitNode, Vector3DSplitNode, Vector4DSplitNode,
-        DotProductNode, CrossProductNode,
-        ColorAddNode, ColorBlendNode,
-        DateTimeDifferenceNode, DateTimeAddSecondsNode,
-        IntToFloatNode, FloatToIntNode, BoolToFloatNode,
-        AnyToStringNode, StringToFloatNode,
-    )
-    from nodes.constant_nodes import (
-        FloatConstantNode, IntConstantNode, StringConstantNode, BoolConstantNode,
-        ColorConstantNode,
-    )
-    all_classes = [
-        # Flow
-        TickNode, ConfigurableTickNode, StartNode,
-        OnPausedNode, OnResumedNode, OnStoppedNode, IsRunningNode,
-        # Conditional
-        EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
-        LessNode, LessEqualNode,
-        SelectNode,
-        # Utility
-        CounterNode, RandomNode, LoopNode, LoopWhileNode,
-        # Debug
-        LogNode,
-        NumericDisplayNode, TextDisplayNode, TimeDisplayNode, StateIndicatorNode,
-        # Time
-        TimeSinceStartNode, EpochSecondsNode, CurrentDateTimeNode,
-        SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,
-        CountdownNode,
-        # Math / Arithmetic
-        AddNode, SubtractNode, MultiplyNode, DivideNode, ModuloNode,
-        PowerNode, MinNode, MaxNode,
-        AbsNode, NegateNode, SinNode, CosNode, TanNode,
-        SqrtNode, FloorNode, CeilNode, RoundNode,
-        ClampNode, LerpNode, MapRangeNode,
-        # Math / Vector
-        Vector2DConstructorNode, Vector3DConstructorNode, Vector4DConstructorNode,
-        Vector2DSplitNode, Vector3DSplitNode, Vector4DSplitNode,
-        DotProductNode, CrossProductNode,
-        # Math / Color
-        ColorAddNode, ColorBlendNode,
-        # Math / DateTime
-        DateTimeDifferenceNode, DateTimeAddSecondsNode,
-        # Conversion
-        IntToFloatNode, FloatToIntNode, BoolToFloatNode,
-        AnyToStringNode, StringToFloatNode,
-        # Constants
-        FloatConstantNode, IntConstantNode, StringConstantNode, BoolConstantNode,
-        ColorConstantNode,
-    ]
-    for cls in all_classes:
-        key = f"{cls.__module__}.{cls.__name__}"
-        registry._node_classes[key] = cls
+def _seed_nodes(registry: DeviceRegistry) -> None:
+    """
+    Walk /nodes/ and /devices/ and register all concrete NodeBase and DeviceBase
+    subclasses. Any .py file dropped into /nodes/ is picked up automatically.
+    """
+    import importlib
+    import pkgutil
 
-    # ── Lovense devices + nodes ───────────────────────────────────────────────
-    try:
-        from devices.lovense import ALL_DEVICE_CLASSES as _lov_dev, ALL_NODE_CLASSES as _lov_nod
-        for cls in _lov_dev:
-            key = f"{cls.__module__}.{cls.__name__}"
-            registry._device_classes[key] = cls
-        for cls in _lov_nod:
-            key = f"{cls.__module__}.{cls.__name__}"
-            registry._node_classes[key] = cls
-        log.info("Registered %d Lovense device(s), %d node(s)",
-                 len(_lov_dev), len(_lov_nod))
-    except ImportError as e:
-        log.warning("Lovense devices unavailable (bleak not installed?): %s", e)
+    from core.node_base   import NodeBase
+    from core.device_base import DeviceBase
 
-    # ── H1M4W4R1 pump device + nodes ───────────────────────────────────────────
-    try:
-        from devices.h1m4w4r1 import ALL_DEVICE_CLASSES as _pump_dev, ALL_NODE_CLASSES as _pump_nod
-        for cls in _pump_dev:
-            key = f"{cls.__module__}.{cls.__name__}"
-            registry._device_classes[key] = cls
-        for cls in _pump_nod:
-            key = f"{cls.__module__}.{cls.__name__}"
-            registry._node_classes[key] = cls
-        log.info("Registered %d H1M4W4R1 pump device(s), %d node(s)",
-                 len(_pump_dev), len(_pump_nod))
-    except ImportError as e:
-        log.warning("H1M4W4R1 pump unavailable: %s", e)
+    def _walk_and_register(root: Path, base: type, store: dict) -> int:
+        if not root.exists():
+            return 0
+        parent = str(root.parent)
+        if parent not in sys.path:
+            sys.path.insert(0, parent)
+        count = 0
+        for info in pkgutil.walk_packages([str(root)], prefix=f"{root.name}."):
+            try:
+                mod = importlib.import_module(info.name)
+            except Exception as exc:
+                log.warning("Skipping %s: %s", info.name, exc)
+                continue
+            for attr_name in dir(mod):
+                obj = getattr(mod, attr_name)
+                # Unwrap lists of classes (e.g. ALL_NODE_CLASSES from factory modules)
+                candidates = obj if isinstance(obj, list) else [obj]
+                for candidate in candidates:
+                    if (
+                        isinstance(candidate, type)
+                        and issubclass(candidate, base)
+                        and candidate is not base
+                        and not getattr(candidate, "__abstractmethods__", None)
+                        and not candidate.__name__.startswith("_")
+                    ):
+                        key = f"{candidate.__module__}.{candidate.__name__}"
+                        if key not in store:
+                            store[key] = candidate
+                            count += 1
+        return count
 
-    # ── DGLab (Coyote) device + nodes ───────────────────────────────────────────
-    try:
-        from devices.dglab import ALL_DEVICE_CLASSES as _dglab_dev, ALL_NODE_CLASSES as _dglab_nod
-        for cls in _dglab_dev:
-            key = f"{cls.__module__}.{cls.__name__}"
-            registry._device_classes[key] = cls
-        for cls in _dglab_nod:
-            key = f"{cls.__module__}.{cls.__name__}"
-            registry._node_classes[key] = cls
-        log.info("Registered %d DGLab device(s), %d node(s)",
-                 len(_dglab_dev), len(_dglab_nod))
-    except ImportError as e:
-        log.warning("DGLab (Coyote) unavailable (bleak not installed?): %s", e)
+    n = _walk_and_register(PROJECT_ROOT / "nodes",   NodeBase,   registry._node_classes)
+    log.info("Seeded %d node(s) from /nodes/", n)
+
+    # Device classes live under /devices/
+    d = _walk_and_register(PROJECT_ROOT / "devices", DeviceBase, registry._device_classes)
+    log.info("Seeded %d device class(es) from /devices/", d)
+
+    # Device-specific nodes (DeviceNodeBase subclasses) also live under /devices/
+    dn = _walk_and_register(PROJECT_ROOT / "devices", NodeBase, registry._node_classes)
+    log.info("Seeded %d device node(s) from /devices/", dn)
 
 
 if __name__ == "__main__":
