@@ -266,7 +266,7 @@ class RouterNode(NodeBase):
         [Router.on_false] ──▶ ...
     """
     NODE_NAME  = "Router"
-    NODE_GROUP = "Logic"
+    NODE_GROUP = "Flow"
     PINS = [
         PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("condition", PinDirection.INPUT,  PinType.BOOL, default=False),

@@ -37,6 +37,7 @@ class GraphRuntime(QObject):
     wire_added      = pyqtSignal(object)     # WireDescriptor
     wire_removed    = pyqtSignal(str)        # wire_id
     runtime_error   = pyqtSignal(str)        # error message
+    runtime_warning = pyqtSignal(str)        # non-fatal warning (e.g. tick cycle)
     running_changed = pyqtSignal(bool)
     paused_changed  = pyqtSignal(bool)
 
@@ -58,6 +59,8 @@ class GraphRuntime(QObject):
         self._pause_event: threading.Event         = threading.Event()
         self._tick_thread: Optional[threading.Thread] = None
         self._lock:        threading.Lock          = threading.Lock()
+        # Per-thread re-entrance tracking for tick propagation (cycle guard)
+        self._tick_local:  threading.local         = threading.local()
 
     # ── Node management ──────────────────────────────────────────────────────
 
@@ -95,7 +98,13 @@ class GraphRuntime(QObject):
         with self._lock:
             self._wires[wire.wire_id] = wire
             self._rebuild_routes_locked()
+            cycles = self._find_tick_cycles_locked()
         self.wire_added.emit(wire)
+        if cycles:
+            names = self._cycle_node_names(cycles[0])
+            self.runtime_warning.emit(
+                f"Tick cycle detected: {names} — execution will stop at re-entry"
+            )
         return True
 
     def remove_wire(self, wire_id: str) -> None:
@@ -274,17 +283,36 @@ class GraphRuntime(QObject):
                     log.error("Data propagation error: %s", exc)
 
     def _fire_tick(self, src_node_id: str, src_pin: str) -> None:
-        """Called by a node's fire_tick — propagate tick to connected tick inputs."""
-        key = (src_node_id, src_pin)
-        destinations = self._tick_routes.get(key, [])
-        for dst_node_id, dst_pin in destinations:
-            node = self._nodes.get(dst_node_id)
-            if node:
-                try:
-                    node.receive_tick(dst_pin)
-                except Exception as exc:
-                    log.error("Tick propagation error: %s", exc)
-                    self.runtime_error.emit(str(exc))
+        """Called by a node's fire_tick — propagate tick to connected tick inputs.
+
+        A per-thread call stack guards against infinite loops caused by tick
+        cycles in the graph.  If the same (node, pin) is seen a second time
+        on the same call stack, propagation stops and an error is emitted.
+        """
+        # --- cycle / infinite-loop guard ---
+        if not hasattr(self._tick_local, "stack"):
+            self._tick_local.stack = set()
+        call_key = (src_node_id, src_pin)
+        if call_key in self._tick_local.stack:
+            log.error("Infinite tick loop: %s:%s already firing", src_node_id, src_pin)
+            self.runtime_error.emit(
+                f"Infinite loop stopped: tick cycle at node {src_node_id[:8]}:{src_pin}"
+            )
+            return
+        self._tick_local.stack.add(call_key)
+        try:
+            key = (src_node_id, src_pin)
+            destinations = self._tick_routes.get(key, [])
+            for dst_node_id, dst_pin in destinations:
+                node = self._nodes.get(dst_node_id)
+                if node:
+                    try:
+                        node.receive_tick(dst_pin)
+                    except Exception as exc:
+                        log.error("Tick propagation error: %s", exc)
+                        self.runtime_error.emit(str(exc))
+        finally:
+            self._tick_local.stack.discard(call_key)
 
     def _validate_wire(self, wire: WireDescriptor) -> bool:
         src_node = self._nodes.get(wire.src_node)
@@ -303,6 +331,64 @@ class GraphRuntime(QObject):
     def _remove_wire_locked(self, wire_id: str) -> None:
         self._wires.pop(wire_id, None)
         self._rebuild_routes_locked()
+
+    def _find_tick_cycles_locked(self) -> list[list[str]]:
+        """Return a list of tick cycles (each cycle is a list of node_ids).
+        Must be called with self._lock already held (uses self._tick_routes).
+        Uses iterative DFS to avoid Python recursion limits.
+        """
+        # Build node-level adjacency from tick routes
+        adj: dict[str, list[str]] = {}
+        for (src_node, _src_pin), dests in self._tick_routes.items():
+            for dst_node, _dst_pin in dests:
+                adj.setdefault(src_node, [])
+                if dst_node not in adj[src_node]:
+                    adj[src_node].append(dst_node)
+
+        WHITE, GRAY, BLACK = 0, 1, 2
+        color: dict[str, int] = {nid: WHITE for nid in self._nodes}
+        parent: dict[str, Optional[str]] = {nid: None for nid in self._nodes}
+        cycles: list[list[str]] = []
+
+        for start in list(self._nodes.keys()):
+            if color.get(start, WHITE) != WHITE:
+                continue
+            # Iterative DFS using explicit stack of (node, iterator)
+            stack: list[tuple[str, Any]] = [(start, iter(adj.get(start, [])))]
+            color[start] = GRAY
+            while stack:
+                node, children = stack[-1]
+                try:
+                    child = next(children)
+                    if color.get(child, WHITE) == GRAY:
+                        # Back edge — reconstruct cycle path
+                        cycle = [child]
+                        cur = node
+                        while cur != child:
+                            cycle.append(cur)
+                            cur = parent.get(cur) or cur
+                            if cur in cycle:  # safety guard
+                                break
+                        cycle.reverse()
+                        cycles.append(cycle)
+                    elif color.get(child, WHITE) == WHITE:
+                        color[child] = GRAY
+                        parent[child] = node
+                        stack.append((child, iter(adj.get(child, []))))
+                except StopIteration:
+                    color[node] = BLACK
+                    stack.pop()
+
+        return cycles
+
+    def _cycle_node_names(self, cycle: list[str]) -> str:
+        """Convert a list of node_ids to a readable name string."""
+        parts = []
+        for nid in cycle:
+            node = self._nodes.get(nid)
+            name = node.NODE_NAME if node else nid[:8]
+            parts.append(name)
+        return " → ".join(parts) + " → ..."
 
     def _rebuild_routes_locked(self) -> None:
         """Rebuild the (node, pin) → [(node, pin)] routing tables."""

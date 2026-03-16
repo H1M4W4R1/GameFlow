@@ -1760,11 +1760,8 @@ class NodeEditorCanvas(QWidget):
     # ── Wire creation ─────────────────────────────────────────────────────────
 
     def _try_connect(self, src: RenderedPin, dst: RenderedPin) -> None:
-        # Allow self-loops only for TICK pins (exec feedback loops)
+        # Self-loops are allowed for both data and tick pins (feedback connections)
         is_self_loop = src.node_id == dst.node_id
-        if is_self_loop and src.pin_type != PinType.TICK:
-            self.status_message.emit("Self-loops are only allowed for TICK pins")
-            return
         if is_self_loop and dst.direction != PinDirection.INPUT:
             return
         if dst.pin_type not in PIN_COMPATIBILITY.get(src.pin_type, set()):

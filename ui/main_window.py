@@ -250,6 +250,9 @@ class MainWindow(QWidget):
         self._runtime.runtime_error.connect(
             lambda msg: self._status_bar.setText(f"⚠ {msg}")
         )
+        self._runtime.runtime_warning.connect(
+            lambda msg: self._status_bar.setText(f"⚠ {msg}")
+        )
         self._runtime.running_changed.connect(self._on_running_changed)
         self._runtime.paused_changed.connect(self._on_paused_changed)
         self._registry.log_message.connect(
