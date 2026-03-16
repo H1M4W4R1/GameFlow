@@ -308,6 +308,10 @@ class NodeEditorCanvas(QWidget):
         # Node highlighted by an in-progress device drag
         self._drag_highlight_node: Optional[str] = None
 
+        # Active control-panel interaction (Slider, Button, Toggle, etc.)
+        self._ctrl_node_id: Optional[str]   = None
+        self._ctrl_rect:    Optional[QRectF] = None
+
         # ── Groups ────────────────────────────────────────────────────────────
         self._groups: dict[str, NodeGroup] = {}
         self._selected_group: Optional[str] = None
@@ -872,6 +876,20 @@ class NodeEditorCanvas(QWidget):
                 return node_id
         return None
 
+    def _hit_ctrl(self, sp: QPointF) -> Optional[tuple]:
+        """Return (node_id, ctrl_rect) if sp falls inside a node's CUSTOM row."""
+        for node in self._runtime.nodes.values():
+            extra    = _device_sel_extra(node)
+            body_top = node.y + TITLE_H + extra
+            rows     = _build_rows(node, body_top)
+            width    = _node_width(node)
+            for row in rows:
+                if row.kind == _RowKind.CUSTOM:
+                    rect = QRectF(node.x + 4, row.y, width - 8, row.h)
+                    if rect.contains(sp):
+                        return (node.node_id, rect)
+        return None
+
     def _hit_title_bar(self, sp: QPointF) -> Optional[str]:
         """Return node_id if sp is inside a node title bar."""
         for node_id, rect in self._rendered_title_bars:
@@ -1088,6 +1106,22 @@ class NodeEditorCanvas(QWidget):
                     self._try_connect(self._wire_src, hp)
                     self._wire_src = None; self.update(); return
 
+            # Control-panel node interaction (Slider, Button, Toggle, etc.)
+            if not self._wire_src:
+                ctrl_hit = self._hit_ctrl(scene)
+                if ctrl_hit:
+                    nid, rect = ctrl_hit
+                    node = self._runtime.get_node(nid)
+                    if node and node.on_ctrl_press(scene, rect):
+                        self._ctrl_node_id   = nid
+                        self._ctrl_rect      = rect
+                        self._selected_node  = nid
+                        self._selected_nodes = {nid}
+                        self._selected_wire  = None
+                        self.node_selected.emit(nid)
+                        self.update()
+                        return
+
             # Device-selector pill click — show device picker menu
             ds_nid = self._hit_device_selector(scene)
             if ds_nid:
@@ -1239,6 +1273,13 @@ class NodeEditorCanvas(QWidget):
             self._selected_node  = next(iter(new_sel)) if len(new_sel) == 1 else None
             self.update(); return
 
+        if self._ctrl_node_id:
+            scene = self._v2s(event.position())
+            node  = self._runtime.get_node(self._ctrl_node_id)
+            if node and self._ctrl_rect:
+                node.on_ctrl_drag(scene, self._ctrl_rect)
+            self.update(); return
+
         if self._panning:
             self._offset = self._pan_offset_start + (event.position() - self._pan_start)
             self.update(); return
@@ -1266,6 +1307,13 @@ class NodeEditorCanvas(QWidget):
             self._panning = False
             self.setCursor(Qt.CursorShape.ArrowCursor)
         if event.button() == Qt.MouseButton.LeftButton:
+            if self._ctrl_node_id:
+                node = self._runtime.get_node(self._ctrl_node_id)
+                if node:
+                    node.on_ctrl_release()
+                self._ctrl_node_id = None
+                self._ctrl_rect    = None
+                self.update()
             if self._rubber_band_active:
                 self._rubber_band_active = False
                 self.update()
@@ -1434,6 +1482,18 @@ class NodeEditorCanvas(QWidget):
         if event.button() != Qt.MouseButton.LeftButton:
             return
         scene = self._v2s(event.position())
+        # Control-panel node label editor (duck-type: get_ctrl_label / set_ctrl_label)
+        ctrl_hit = self._hit_ctrl(scene)
+        if ctrl_hit:
+            nid, rect = ctrl_hit
+            node = self._runtime.get_node(nid)
+            if (node is not None
+                    and hasattr(node, "get_ctrl_label")
+                    and hasattr(node, "set_ctrl_label")):
+                lbl_rect = (node.ctrl_label_rect(rect)  # type: ignore[union-attr]
+                            if hasattr(node, "ctrl_label_rect") else rect)
+                self._open_ctrl_label_editor(node, lbl_rect)
+                return
         # Field / var-input editor (takes priority)
         rf = self._hit_field(scene)
         if rf:
@@ -1579,6 +1639,45 @@ class NodeEditorCanvas(QWidget):
             if old_name != new_name:
                 self._history.push(NodeRenameCmd(self._runtime, node_id, old_name, new_name))
             node.node_changed.emit()
+            self._close_editor()
+            self.update()
+
+        editor.returnPressed.connect(_commit)
+        editor.editingFinished.connect(_commit)
+        editor._cancel = self._close_editor  # type: ignore[attr-defined]
+        editor.installEventFilter(self)
+        self._active_editor = editor
+
+    def _open_ctrl_label_editor(self, node: "NodeBase", scene_rect: QRectF) -> None:
+        """Inline QLineEdit over a control-panel widget's label area."""
+        self._close_editor()
+        tl = self._s2v(scene_rect.topLeft())
+        br = self._s2v(scene_rect.bottomRight())
+
+        editor = QLineEdit(self)
+        editor.setObjectName("CtrlLabelEditor")
+        editor.setStyleSheet("""
+            QLineEdit#CtrlLabelEditor {
+                background: #1e0a30; color: #ffd0de;
+                border: 1px solid #ea80fc; border-radius: 6px;
+                padding: 0 6px; font-family: 'Segoe UI'; font-size: 9pt;
+                font-weight: bold;
+            }
+        """)
+        editor.setText(node.get_ctrl_label())  # type: ignore[union-attr]
+        editor.selectAll()
+        editor.setGeometry(int(tl.x()), int(tl.y()),
+                           int(br.x() - tl.x()), int(br.y() - tl.y()))
+        editor.show()
+        editor.setFocus()
+
+        _committed = [False]
+
+        def _commit() -> None:
+            if _committed[0]:
+                return
+            _committed[0] = True
+            node.set_ctrl_label(editor.text())  # type: ignore[union-attr]
             self._close_editor()
             self.update()
 

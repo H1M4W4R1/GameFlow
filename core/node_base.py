@@ -368,6 +368,21 @@ class NodeBase(QObject):
                                  str(self._data.get("count", 0)))
         """
 
+    # ── Control panel interaction ─────────────────────────────────────────
+
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+        """Called when LMB is pressed inside the CUSTOM row area.
+        *scene_pos* is the click in scene coordinates.
+        *ctrl_rect* is the CUSTOM row rectangle in scene coordinates.
+        Return True to consume the event (prevents node drag)."""
+        return False
+
+    def on_ctrl_drag(self, scene_pos: QPointF, ctrl_rect: QRectF) -> None:
+        """Called on each mouse-move while a ctrl interaction is active."""
+
+    def on_ctrl_release(self) -> None:
+        """Called on LMB release after on_ctrl_press returned True."""
+
     # ── Internal helpers ─────────────────────────────────────────────────────
 
     def _attach_runtime(
