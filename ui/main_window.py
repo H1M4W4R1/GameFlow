@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 from core.device_registry    import DeviceRegistry
 from core.graph_runtime      import GraphRuntime
 from core.device_persistence import save_devices, load_devices
-from core.types           import SavedGraph, ConnectionDescriptor
+from core.types           import SavedGraph, ConnectionDescriptor, WireDescriptor
 from ui.device_panel      import DevicePanel
 from ui.node_editor_canvas import NodeEditorCanvas
 
@@ -395,6 +395,32 @@ class MainWindow(QWidget):
                 node.x = x
                 node.y = y
                 self._runtime.add_node(node)
+        elif msg.startswith("__paste_nodes__"):
+            import json as _json, uuid as _uuid
+            data = _json.loads(msg[len("__paste_nodes__"):])
+            paste_x = data["paste_x"]
+            paste_y = data["paste_y"]
+            id_map: dict[str, str] = {}
+            for entry in data["nodes"]:
+                node = self._registry.create_node(entry["type_key"])
+                if node:
+                    node.set_state(entry["state"])
+                    node.x = paste_x + entry["dx"]
+                    node.y = paste_y + entry["dy"]
+                    self._runtime.add_node(node)
+                    id_map[entry["old_id"]] = node.node_id
+            for wd in data.get("wires", []):
+                new_src = id_map.get(wd["src_node"])
+                new_dst = id_map.get(wd["dst_node"])
+                if new_src and new_dst:
+                    wire = WireDescriptor(
+                        wire_id  = str(_uuid.uuid4()),
+                        src_node = new_src, src_pin = wd["src_pin"],
+                        dst_node = new_dst, dst_pin = wd["dst_pin"],
+                    )
+                    self._runtime.add_wire(wire)
+            if "group" in data and id_map:
+                self._canvas.add_pasted_group(data["group"], id_map, paste_x, paste_y)
         else:
             self._status_bar.setText(msg)
 

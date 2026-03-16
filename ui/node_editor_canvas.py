@@ -269,6 +269,12 @@ class NodeEditorCanvas(QWidget):
         self._drag_start_scene : QPointF          = QPointF()
         self._drag_node_start  : QPointF          = QPointF()
         self._selected_node    : Optional[str]    = None
+        self._selected_nodes   : set              = set()   # multi-select set
+        self._drag_nodes_start : dict             = {}      # {node_id: QPointF} for multi-drag
+
+        self._rubber_band_active: bool    = False
+        self._rubber_band_origin: QPointF = QPointF()   # view-space start
+        self._rubber_band_cur   : QPointF = QPointF()   # view-space current
 
         self._wire_src   : Optional[RenderedPin]  = None
         self._wire_mouse : QPointF                = QPointF()
@@ -278,7 +284,7 @@ class NodeEditorCanvas(QWidget):
         self._rendered_wires  : list[tuple[str, QPainterPath]] = []  # (wire_id, path)
         self._selected_wire   : Optional[str]       = None
         self._active_editor   : Optional[QLineEdit] = None
-        self._clipboard       : Optional[list[dict]] = None   # copied node states
+        self._clipboard       : Optional[dict] = None   # {"nodes": [...], "wires": [...]}
 
         self._tab_index = 0
 
@@ -349,16 +355,18 @@ class NodeEditorCanvas(QWidget):
         p.translate(self._offset)
         p.scale(self._zoom, self._zoom)
         self._draw_groups(p)
-        self._draw_wires(p)
-        if self._wire_src:
-            self._draw_pending_wire(p)
         self._rendered_pins.clear()
         self._rendered_fields.clear()
         self._rendered_device_selectors.clear()
         self._rendered_title_bars.clear()
         for node in self._runtime.nodes.values():
             self._draw_node(p, node)
+        self._draw_wires(p)
+        if self._wire_src:
+            self._draw_pending_wire(p)
         p.restore()
+        if self._rubber_band_active:
+            self._draw_rubber_band(p)
 
     # ── Grid ──────────────────────────────────────────────────────────────────
 
@@ -377,6 +385,17 @@ class NodeEditorCanvas(QWidget):
             y = oy
             while y < h:
                 p.drawLine(0, int(y), w, int(y)); y += step
+
+    def _draw_rubber_band(self, p: QPainter) -> None:
+        """Draw the rubber-band selection rectangle in view (widget) coordinates."""
+        ox, oy = self._rubber_band_origin.x(), self._rubber_band_origin.y()
+        cx, cy = self._rubber_band_cur.x(),    self._rubber_band_cur.y()
+        rect = QRectF(min(ox, cx), min(oy, cy), abs(cx - ox), abs(cy - oy))
+        if rect.width() < 2 and rect.height() < 2:
+            return
+        p.setPen(QPen(QColor("#f95979"), 1, Qt.PenStyle.DashLine))
+        p.setBrush(QBrush(QColor(249, 89, 121, 30)))
+        p.drawRect(rect)
 
     # ── Groups ────────────────────────────────────────────────────────────────
 
@@ -445,7 +464,7 @@ class NodeEditorCanvas(QWidget):
     # ── Node ──────────────────────────────────────────────────────────────────
 
     def _draw_node(self, p: QPainter, node: NodeBase) -> None:
-        selected  = node.node_id == self._selected_node
+        selected  = node.node_id == self._selected_node or node.node_id in self._selected_nodes
         drag_hl   = node.node_id == self._drag_highlight_node
         width     = _node_width(node)
         extra     = _device_sel_extra(node)
@@ -978,6 +997,20 @@ class NodeEditorCanvas(QWidget):
             self._groups[grp.group_id] = grp
         self.update()
 
+    def add_pasted_group(self, gd: dict, id_map: dict, paste_x: float, paste_y: float) -> None:
+        """Create a group from pasted clipboard data, remapping old node IDs to new ones."""
+        grp = NodeGroup(
+            name     = gd["name"],
+            color    = gd["color"],
+            x        = paste_x + gd["dx"],
+            y        = paste_y + gd["dy"],
+            width    = gd["width"],
+            height   = gd["height"],
+            node_ids = set(id_map.values()),
+        )
+        self._groups[grp.group_id] = grp
+        self.update()
+
     # ── Mouse ─────────────────────────────────────────────────────────────────
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -1054,6 +1087,22 @@ class NodeEditorCanvas(QWidget):
 
             nid = self._hit_node(scene)
             if nid:
+                shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+                if shift:
+                    # Shift+click: toggle this node in/out of multi-select
+                    if nid in self._selected_nodes:
+                        self._selected_nodes.discard(nid)
+                    else:
+                        self._selected_nodes.add(nid)
+                    self._selected_node  = nid if nid in self._selected_nodes else None
+                    self._selected_wire  = None
+                    self._selected_group = None
+                    self.update(); return
+
+                # Normal click — keep existing multi-selection if this node is in it,
+                # otherwise collapse to single selection
+                if nid not in self._selected_nodes:
+                    self._selected_nodes = {nid}
                 self._selected_node  = nid
                 self._selected_wire  = None
                 self._selected_group = None
@@ -1062,6 +1111,12 @@ class NodeEditorCanvas(QWidget):
                 node = self._runtime.get_node(nid)
                 if node:
                     self._drag_node_start = QPointF(node.x, node.y)
+                # Store starting positions of ALL selected nodes for multi-drag
+                self._drag_nodes_start = {}
+                for sid in self._selected_nodes:
+                    sn = self._runtime.get_node(sid)
+                    if sn:
+                        self._drag_nodes_start[sid] = QPointF(sn.x, sn.y)
                 self.node_selected.emit(nid)
                 # Highlight the specific device this node is using
                 node_obj = self._runtime.get_node(nid)
@@ -1078,9 +1133,14 @@ class NodeEditorCanvas(QWidget):
                 self.update(); return
 
             self._selected_node  = None
+            self._selected_nodes = set()
             self._selected_wire  = None
             self._selected_group = None
             self.device_highlighted.emit(None)
+            # Start rubber-band selection
+            self._rubber_band_active = True
+            self._rubber_band_origin = event.position()
+            self._rubber_band_cur    = event.position()
             self.update()
 
         if event.button() == Qt.MouseButton.RightButton:
@@ -1138,15 +1198,41 @@ class NodeEditorCanvas(QWidget):
                         n.y = sp.y() + dy
             self.update(); return
 
+        if self._rubber_band_active:
+            self._rubber_band_cur = event.position()
+            origin_s = self._v2s(self._rubber_band_origin)
+            cur_s    = self._v2s(self._rubber_band_cur)
+            sel_rect = QRectF(
+                min(origin_s.x(), cur_s.x()), min(origin_s.y(), cur_s.y()),
+                abs(cur_s.x() - origin_s.x()), abs(cur_s.y() - origin_s.y()),
+            )
+            new_sel: set = set()
+            for node in self._runtime.nodes.values():
+                nr = QRectF(node.x, node.y, _node_width(node), _node_total_height(node))
+                if sel_rect.intersects(nr):
+                    new_sel.add(node.node_id)
+            self._selected_nodes = new_sel
+            self._selected_node  = next(iter(new_sel)) if len(new_sel) == 1 else None
+            self.update(); return
+
         if self._panning:
             self._offset = self._pan_offset_start + (event.position() - self._pan_start)
             self.update(); return
         if self._dragging_node:
             scene = self._v2s(event.position())
-            node  = self._runtime.get_node(self._dragging_node)
-            if node:
-                node.x = self._drag_node_start.x() + scene.x() - self._drag_start_scene.x()
-                node.y = self._drag_node_start.y() + scene.y() - self._drag_start_scene.y()
+            dx = scene.x() - self._drag_start_scene.x()
+            dy = scene.y() - self._drag_start_scene.y()
+            if len(self._drag_nodes_start) > 1:
+                for sid, sp in self._drag_nodes_start.items():
+                    sn = self._runtime.get_node(sid)
+                    if sn:
+                        sn.x = sp.x() + dx
+                        sn.y = sp.y() + dy
+            else:
+                node = self._runtime.get_node(self._dragging_node)
+                if node:
+                    node.x = self._drag_node_start.x() + dx
+                    node.y = self._drag_node_start.y() + dy
             self.update(); return
         if self._wire_src:
             self._wire_mouse = self._v2s(event.position()); self.update()
@@ -1156,10 +1242,18 @@ class NodeEditorCanvas(QWidget):
             self._panning = False
             self.setCursor(Qt.CursorShape.ArrowCursor)
         if event.button() == Qt.MouseButton.LeftButton:
+            if self._rubber_band_active:
+                self._rubber_band_active = False
+                self.update()
             if self._dragging_node:
                 nid = self._dragging_node
                 self._dragging_node = None
-                self._update_node_group_membership(nid)
+                if self._drag_nodes_start:
+                    for sid in list(self._drag_nodes_start.keys()):
+                        self._update_node_group_membership(sid)
+                    self._drag_nodes_start = {}
+                else:
+                    self._update_node_group_membership(nid)
             if self._dragging_group:
                 gid = self._dragging_group
                 self._dragging_group = None
@@ -1480,14 +1574,30 @@ class NodeEditorCanvas(QWidget):
 
         if event.key() == Qt.Key.Key_Delete:
             if self._selected_group:
-                del self._groups[self._selected_group]
+                grp = self._groups.pop(self._selected_group, None)
+                if grp:
+                    for nid in list(grp.node_ids):
+                        self._runtime.remove_node(nid)
                 self._selected_group = None; self.update(); return
             if self._selected_wire:
                 self._runtime.remove_wire(self._selected_wire)
                 self._selected_wire = None; self.update(); return
+            if self._selected_nodes:
+                for nid in list(self._selected_nodes):
+                    self._runtime.remove_node(nid)
+                self._selected_nodes = set()
+                self._selected_node  = None
+                self.update(); return
             if self._selected_node:
                 self._runtime.remove_node(self._selected_node)
                 self._selected_node = None; self.update(); return
+
+        if ctrl and event.key() == Qt.Key.Key_A:
+            self._selected_nodes = set(self._runtime.nodes.keys())
+            self._selected_node  = None
+            self._selected_wire  = None
+            self._selected_group = None
+            self.update(); return
 
         if ctrl and event.key() == Qt.Key.Key_C:
             self._copy_selected(); return
@@ -1508,6 +1618,7 @@ class NodeEditorCanvas(QWidget):
         if event.key() == Qt.Key.Key_Escape:
             self._wire_src       = None
             self._selected_node  = None
+            self._selected_nodes = set()
             self._selected_wire  = None
             self._selected_group = None
             self.device_highlighted.emit(None)
@@ -1516,20 +1627,87 @@ class NodeEditorCanvas(QWidget):
         super().keyPressEvent(event)
 
     def _copy_selected(self) -> None:
-        if not self._selected_node:
+        # Group copy: when a group is selected with no individual node selection
+        if self._selected_group and not self._selected_nodes and not self._selected_node:
+            grp = self._groups.get(self._selected_group)
+            if grp and grp.node_ids:
+                nodes = [n for nid in grp.node_ids
+                         if (n := self._runtime.get_node(nid)) is not None]
+                if nodes:
+                    target_ids = {n.node_id for n in nodes}
+                    ref_x = min(n.x for n in nodes)
+                    ref_y = min(n.y for n in nodes)
+                    node_entries = [
+                        {
+                            "type_key": f"{n.__class__.__module__}.{n.__class__.__name__}",
+                            "state":    n.get_state(),
+                            "dx": n.x - ref_x + 30.0,
+                            "dy": n.y - ref_y + 30.0,
+                            "old_id": n.node_id,
+                        }
+                        for n in nodes
+                    ]
+                    wire_entries = [
+                        {
+                            "src_node": w.src_node, "src_pin": w.src_pin,
+                            "dst_node": w.dst_node, "dst_pin": w.dst_pin,
+                        }
+                        for w in self._runtime.wires.values()
+                        if w.src_node in target_ids and w.dst_node in target_ids
+                    ]
+                    group_entry = {
+                        "name":   grp.name,
+                        "color":  grp.color,
+                        "dx":     grp.x - ref_x + 30.0,
+                        "dy":     grp.y - ref_y + 30.0,
+                        "width":  grp.width,
+                        "height": grp.height,
+                    }
+                    self._clipboard = {"nodes": node_entries, "wires": wire_entries,
+                                       "group": group_entry}
             return
-        node = self._runtime.get_node(self._selected_node)
-        if node:
-            import json
-            self._clipboard = [{
-                "type_key": f"{node.__class__.__module__}.{node.__class__.__name__}",
-                "state":    node.get_state(),
-                "dx": 30.0, "dy": 30.0,
-            }]
+
+        targets = list(self._selected_nodes) if self._selected_nodes else (
+            [self._selected_node] if self._selected_node else []
+        )
+        if not targets:
+            return
+        nodes = [n for nid in targets if (n := self._runtime.get_node(nid)) is not None]
+        if not nodes:
+            return
+        target_ids = {n.node_id for n in nodes}
+        ref_x = min(n.x for n in nodes)
+        ref_y = min(n.y for n in nodes)
+        node_entries = [
+            {
+                "type_key": f"{n.__class__.__module__}.{n.__class__.__name__}",
+                "state":    n.get_state(),
+                "dx": n.x - ref_x + 30.0,
+                "dy": n.y - ref_y + 30.0,
+                "old_id": n.node_id,
+            }
+            for n in nodes
+        ]
+        # Capture wires whose both endpoints are within the copied set
+        wire_entries = [
+            {
+                "src_node": w.src_node, "src_pin": w.src_pin,
+                "dst_node": w.dst_node, "dst_pin": w.dst_pin,
+            }
+            for w in self._runtime.wires.values()
+            if w.src_node in target_ids and w.dst_node in target_ids
+        ]
+        self._clipboard = {"nodes": node_entries, "wires": wire_entries}
 
     def _cut_selected(self) -> None:
         self._copy_selected()
-        if self._selected_node:
+        if self._selected_nodes:
+            for nid in list(self._selected_nodes):
+                self._runtime.remove_node(nid)
+            self._selected_nodes = set()
+            self._selected_node  = None
+            self.update()
+        elif self._selected_node:
             self._runtime.remove_node(self._selected_node)
             self._selected_node = None
             self.update()
@@ -1543,14 +1721,18 @@ class NodeEditorCanvas(QWidget):
         if 0 <= mx <= self.width() and 0 <= my <= self.height():
             paste_scene = self._v2s(QPointF(mx, my))
         else:
-            centre = self._v2s(QPointF(self.width() / 2, self.height() / 2))
-            paste_scene = centre
-        for entry in self._clipboard:
-            self.status_message.emit(
-                f"__add_node__{entry['type_key']}__"
-                f"{paste_scene.x() + entry['dx']}__"
-                f"{paste_scene.y() + entry['dy']}"
-            )
+            paste_scene = self._v2s(QPointF(self.width() / 2, self.height() / 2))
+        import json as _json
+        payload_dict = {
+            "paste_x": paste_scene.x(),
+            "paste_y": paste_scene.y(),
+            "nodes":   self._clipboard["nodes"],
+            "wires":   self._clipboard["wires"],
+        }
+        if "group" in self._clipboard:
+            payload_dict["group"] = self._clipboard["group"]
+        payload = _json.dumps(payload_dict)
+        self.status_message.emit(f"__paste_nodes__{payload}")
 
     def _duplicate_selected(self) -> None:
         self._copy_selected()
