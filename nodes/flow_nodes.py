@@ -95,7 +95,7 @@ class ConfigurableTickNode(NodeBase):
 
 class StartNode(NodeBase):
     """Fires exec_out exactly once when the graph starts."""
-    NODE_NAME  = "On Started"
+    NODE_NAME  = "On Start"
     NODE_GROUP = "Flow"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
@@ -114,7 +114,7 @@ class StartNode(NodeBase):
 
 class OnPausedNode(NodeBase):
     """Fires exec_out once when the graph is paused."""
-    NODE_NAME  = "On Paused"
+    NODE_NAME  = "On Pause"
     NODE_GROUP = "Flow"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
@@ -128,7 +128,7 @@ class OnPausedNode(NodeBase):
 
 class OnResumedNode(NodeBase):
     """Fires exec_out once when the graph is resumed from pause."""
-    NODE_NAME  = "On Resumed"
+    NODE_NAME  = "On Resume"
     NODE_GROUP = "Flow"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
@@ -142,7 +142,7 @@ class OnResumedNode(NodeBase):
 
 class OnStoppedNode(NodeBase):
     """Fires exec_out once when the graph is stopped."""
-    NODE_NAME  = "On Stopped"
+    NODE_NAME  = "On Stop"
     NODE_GROUP = "Flow"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
