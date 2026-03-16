@@ -182,14 +182,14 @@ class SliderNode(NodeBase):
 # ── Button ─────────────────────────────────────────────────────────────────────
 
 class ButtonNode(NodeBase):
-    """Monostable push button: outputs 1.0 while held, 0.0 when released."""
+    """Monostable push button: fires a Tick when pressed."""
 
     NODE_NAME        = "Button"
     NODE_GROUP       = "Controls"
     NODE_TITLE_COLOR = "#3a1a5f"
 
     PINS = [
-        PinDescriptor("output", PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("output", PinDirection.OUTPUT, PinType.TICK),
     ]
 
     MIN_WIDTH  = 180.0
@@ -208,7 +208,6 @@ class ButtonNode(NodeBase):
 
     def on_start(self) -> None:
         self._pressed = False
-        self.set_output("output", 0.0)
 
     def execute(self, trigger_pin: str) -> None:
         pass
@@ -218,19 +217,18 @@ class ButtonNode(NodeBase):
         self.node_changed.emit()
 
     def on_output_wire_connected(self, pin_name: str) -> None:
-        self.set_output("output", 1.0 if self._pressed else 0.0)
+        pass
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
     def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
         self._pressed = True
-        self.set_output("output", 1.0)
+        self.fire_tick("output")
         self.node_changed.emit()
         return True
 
     def on_ctrl_release(self) -> None:
         self._pressed = False
-        self.set_output("output", 0.0)
         self.node_changed.emit()
 
     # ── label-editing protocol (duck-typed by the canvas on double-click) ──────
@@ -310,14 +308,14 @@ class ButtonNode(NodeBase):
 # ── Toggle ─────────────────────────────────────────────────────────────────────
 
 class ToggleNode(NodeBase):
-    """Bistable toggle: click to flip between 0.0 (OFF) and 1.0 (ON)."""
+    """Bistable toggle: click to flip between False (OFF) and True (ON)."""
 
     NODE_NAME        = "Toggle"
     NODE_GROUP       = "Controls"
     NODE_TITLE_COLOR = "#0d3320"
 
     PINS = [
-        PinDescriptor("output", PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("output", PinDirection.OUTPUT, PinType.BOOL),
     ]
 
     MIN_WIDTH  = 180.0
@@ -330,19 +328,19 @@ class ToggleNode(NodeBase):
     # ── lifecycle ──────────────────────────────────────────────────────────────
 
     def on_start(self) -> None:
-        self.set_output("output", 1.0 if self._state else 0.0)
+        self.set_output("output", self._state)
 
     def execute(self, trigger_pin: str) -> None:
         pass
 
     def on_output_wire_connected(self, pin_name: str) -> None:
-        self.set_output("output", 1.0 if self._state else 0.0)
+        self.set_output("output", self._state)
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
     def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
         self._state = not self._state
-        self.set_output("output", 1.0 if self._state else 0.0)
+        self.set_output("output", self._state)
         self.node_changed.emit()
         return True
 

@@ -178,7 +178,10 @@ class NodeBase(QObject):
         typ, _ = self.EDITABLE_FIELDS[name]
         try:
             if typ is bool:
-                coerced: Any = raw_value.strip().lower() in ("1", "true", "yes", "on")
+                if isinstance(raw_value, bool): # Prevents fuck-up with history
+                    coerced: Any = raw_value
+                else:
+                    coerced = str(raw_value).strip().lower() in ("1", "true", "yes", "on")
             else:
                 coerced = typ(raw_value)
         except (ValueError, TypeError):
