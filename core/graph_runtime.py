@@ -154,6 +154,8 @@ class GraphRuntime(QObject):
                 node.on_start()
             except Exception as exc:
                 log.error("on_start error in %s: %s", node, exc)
+        # Set IsRunningNode outputs to True before firing StartNode.
+        self._set_is_running_nodes(True)
         # Fire Start node outputs after all nodes are initialized, so downstream
         # nodes (e.g. Timer, Delay) are not reset after receiving the start tick.
         from nodes.flow_nodes import StartNode
@@ -177,6 +179,14 @@ class GraphRuntime(QObject):
         self._running = False
         if self._tick_thread:
             self._tick_thread.join(timeout=1.0)
+        self._set_is_running_nodes(False)
+        from nodes.flow_nodes import OnStoppedNode
+        for node in self._nodes.values():
+            if isinstance(node, OnStoppedNode):
+                try:
+                    self._fire_tick(node.node_id, "exec_out")
+                except Exception as exc:
+                    log.error("OnStoppedNode fire error in %s: %s", node, exc)
         for node in self._nodes.values():
             try:
                 node.on_stop()
@@ -190,6 +200,14 @@ class GraphRuntime(QObject):
         if self._running and not self._paused:
             self._paused = True
             self._pause_event.set()
+            self._set_is_running_nodes(False)
+            from nodes.flow_nodes import OnPausedNode
+            for node in self._nodes.values():
+                if isinstance(node, OnPausedNode):
+                    try:
+                        self._fire_tick(node.node_id, "exec_out")
+                    except Exception as exc:
+                        log.error("OnPausedNode fire error in %s: %s", node, exc)
             for node in self._nodes.values():
                 try:
                     node.on_pause()
@@ -203,6 +221,14 @@ class GraphRuntime(QObject):
         if self._running and self._paused:
             self._paused = False
             self._pause_event.clear()
+            self._set_is_running_nodes(True)
+            from nodes.flow_nodes import OnResumedNode
+            for node in self._nodes.values():
+                if isinstance(node, OnResumedNode):
+                    try:
+                        self._fire_tick(node.node_id, "exec_out")
+                    except Exception as exc:
+                        log.error("OnResumedNode fire error in %s: %s", node, exc)
             for node in self._nodes.values():
                 try:
                     node.on_resume()
@@ -247,6 +273,16 @@ class GraphRuntime(QObject):
         )
 
     # ── Internal ─────────────────────────────────────────────────────────────
+
+    def _set_is_running_nodes(self, value: bool) -> None:
+        """Push *value* to all IsRunningNode outputs before event nodes fire."""
+        from nodes.flow_nodes import IsRunningNode
+        for node in self._nodes.values():
+            if isinstance(node, IsRunningNode):
+                try:
+                    node.set_output("is_running", value)
+                except Exception as exc:
+                    log.error("IsRunningNode update error in %s: %s", node, exc)
 
     def _tick_loop(self) -> None:
         """Background thread: fires Tick nodes every 10 ms. Honours pause."""

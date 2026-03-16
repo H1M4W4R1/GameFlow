@@ -32,11 +32,21 @@ class TimeSinceStartNode(NodeBase):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._start: float = 0.0
+        self._start:       float        = 0.0
+        self._pause_start: float | None = None
 
     def on_start(self) -> None:
-        self._start = time.monotonic()
+        self._start       = time.monotonic()
+        self._pause_start = None
         self.set_output("seconds", 0.0)
+
+    def on_pause(self) -> None:
+        self._pause_start = time.monotonic()
+
+    def on_resume(self) -> None:
+        if self._pause_start is not None:
+            self._start += time.monotonic() - self._pause_start
+        self._pause_start = None
 
     def on_tick_check(self) -> None:
         self.set_output("seconds", time.monotonic() - self._start)
@@ -319,12 +329,25 @@ class DeltaTimeNode(NodeBase):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._last_time: float | None = None  # None = first tick, output time since start
-        self._start_time: float = 0.0
+        self._last_time:   float | None = None  # None = first tick, output time since start
+        self._start_time:  float        = 0.0
+        self._pause_start: float | None = None
 
     def on_start(self) -> None:
-        self._start_time = time.monotonic()
-        self._last_time  = None
+        self._start_time  = time.monotonic()
+        self._last_time   = None
+        self._pause_start = None
+
+    def on_pause(self) -> None:
+        self._pause_start = time.monotonic()
+
+    def on_resume(self) -> None:
+        if self._pause_start is not None:
+            paused = time.monotonic() - self._pause_start
+            self._start_time += paused
+            if self._last_time is not None:
+                self._last_time += paused
+        self._pause_start = None
 
     def execute(self, trigger_pin: str) -> None:
         now = time.monotonic()

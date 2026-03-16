@@ -90,12 +90,12 @@ class ConfigurableTickNode(NodeBase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# START
+# EVENT NODES  (fired by the runtime on lifecycle transitions)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class StartNode(NodeBase):
     """Fires exec_out exactly once when the graph starts."""
-    NODE_NAME  = "Start"
+    NODE_NAME  = "On Started"
     NODE_GROUP = "Flow"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
@@ -107,6 +107,70 @@ class StartNode(NodeBase):
         # Do not fire here — runtime fires exec_out after all nodes' on_start()
         # so downstream nodes (Timer, Delay, etc.) are already initialized.
         pass
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
+class OnPausedNode(NodeBase):
+    """Fires exec_out once when the graph is paused."""
+    NODE_NAME  = "On Paused"
+    NODE_GROUP = "Flow"
+    PINS = [
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 60.0
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
+class OnResumedNode(NodeBase):
+    """Fires exec_out once when the graph is resumed from pause."""
+    NODE_NAME  = "On Resumed"
+    NODE_GROUP = "Flow"
+    PINS = [
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 60.0
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
+class OnStoppedNode(NodeBase):
+    """Fires exec_out once when the graph is stopped."""
+    NODE_NAME  = "On Stopped"
+    NODE_GROUP = "Flow"
+    PINS = [
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 60.0
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
+class IsRunningNode(NodeBase):
+    """
+    Pure data node — outputs True while the graph is running and not paused,
+    False when stopped or paused.  Updated by the runtime before event nodes
+    fire so downstream nodes always see the correct state.
+    """
+    NODE_NAME  = "Is Running"
+    NODE_GROUP = "Flow"
+    PINS = [
+        PinDescriptor("is_running", PinDirection.OUTPUT, PinType.BOOL),
+    ]
+    MIN_WIDTH  = 140.0
+    MIN_HEIGHT = 60.0
+
+    def on_output_wire_connected(self, pin_name: str) -> None:
+        # Push current value immediately when a wire is connected.
+        self.set_output("is_running", self._data.get("is_running", False))
 
     def execute(self, trigger_pin: str) -> None:
         pass

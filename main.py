@@ -83,6 +83,7 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
     """Register all built-in node classes from their respective modules."""
     from nodes.flow_nodes import (
         TickNode, ConfigurableTickNode, StartNode,
+        OnPausedNode, OnResumedNode, OnStoppedNode, IsRunningNode,
         EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
         LessNode, LessEqualNode,
         SelectNode,
@@ -119,6 +120,7 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
     all_classes = [
         # Flow
         TickNode, ConfigurableTickNode, StartNode,
+        OnPausedNode, OnResumedNode, OnStoppedNode, IsRunningNode,
         # Conditional
         EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
         LessNode, LessEqualNode,
