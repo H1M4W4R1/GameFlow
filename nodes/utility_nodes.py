@@ -36,6 +36,7 @@ class CounterNode(NodeBase):
         PinDescriptor("count_up",   PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("count_down", PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("reset",      PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("hold",       PinDirection.INPUT,  PinType.BOOL),
         # These pins are hidden when not wired; use VARIABLE_INPUTS editor to set defaults
         PinDescriptor("step",       PinDirection.INPUT,  PinType.INT, optional=True),
         PinDescriptor("min_val",    PinDirection.INPUT,  PinType.INT, optional=True),
@@ -52,7 +53,7 @@ class CounterNode(NodeBase):
         "max_val": (int, 100),
     }
     MIN_WIDTH  = 200.0
-    MIN_HEIGHT = 120.0
+    MIN_HEIGHT = 100.0
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -66,6 +67,11 @@ class CounterNode(NodeBase):
         step:    int = int(self.get_var_input("step")    or 1)
         min_val: int = int(self.get_var_input("min_val") or 0)
         max_val: int = int(self.get_var_input("max_val") or 100)
+
+        # Handle hold input
+        held = bool(self.get_input("hold"))
+        if held and trigger_pin != "reset":
+            return
 
         if trigger_pin == "count_up":
             self._count = min(self._count + step, max_val)
