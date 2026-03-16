@@ -2113,6 +2113,20 @@ class NodeEditorCanvas(QWidget):
                 scale_menu.addAction(act)
             ctrl_actions.append(scale_menu)
 
+        if hasattr(node, "get_channel_count") and hasattr(node, "set_channel_count"):
+            ch_menu = QMenu("Channel count", menu)
+            ch_menu.setStyleSheet(_MENU_STYLE)
+            current_ch = node.get_channel_count()
+            for n_ch in range(2, 9):
+                act = QAction(str(n_ch), ch_menu)
+                act.setCheckable(True)
+                act.setChecked(current_ch == n_ch)
+                act.triggered.connect(
+                    lambda _checked, count=n_ch: self._set_channel_count(node_id, count)
+                )
+                ch_menu.addAction(act)
+            ctrl_actions.append(ch_menu)
+
         if ctrl_actions:
             menu.addSeparator()
             for item in ctrl_actions:
@@ -2155,6 +2169,36 @@ class NodeEditorCanvas(QWidget):
             self._runtime.remove_wire(wire.wire_id)
             self._history.push(WireDeleteCmd(self._runtime, wire))
         self._history.end_macro()
+        self.update()
+
+    def _set_channel_count(self, node_id: str, count: int) -> None:
+        """
+        Change the channel count of a MUX/DEMUX node.
+        Wires connected to pins being removed are deleted first (with undo support).
+        """
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_channel_count"):
+            return
+        old_count = node.get_channel_count()
+        if count == old_count:
+            return
+        # Determine which pin names will disappear
+        is_mux = any(p.name.startswith("in_") for p in node.PINS
+                     if p.direction.name == "INPUT")
+        prefix = "in_" if is_mux else "out_"
+        removed_pins = {f"{prefix}{i}" for i in range(count, old_count)}
+        dead_wires = [
+            w for w in self._runtime.wires.values()
+            if (w.src_node == node_id and w.src_pin in removed_pins) or
+               (w.dst_node == node_id and w.dst_pin in removed_pins)
+        ]
+        if dead_wires or True:   # always wrap in a macro for clean undo
+            self._history.begin_macro(f"Set channel count → {count}")
+            for wire in dead_wires:
+                self._runtime.remove_wire(wire.wire_id)
+                self._history.push(WireDeleteCmd(self._runtime, wire))
+            node.set_channel_count(count)
+            self._history.end_macro()
         self.update()
 
     def _delete_node(self, node_id: str) -> None:
