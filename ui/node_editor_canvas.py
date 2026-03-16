@@ -255,6 +255,8 @@ class NodeEditorCanvas(QWidget):
 
         # Device selector hit areas (node_id, scene_rect) — rebuilt each paint
         self._rendered_device_selectors: list[tuple[str, QRectF]] = []
+        # Title bar hit areas (node_id, scene_rect) — rebuilt each paint
+        self._rendered_title_bars: list[tuple[str, QRectF]] = []
         # Node highlighted by an in-progress device drag
         self._drag_highlight_node: Optional[str] = None
 
@@ -304,6 +306,7 @@ class NodeEditorCanvas(QWidget):
         self._rendered_pins.clear()
         self._rendered_fields.clear()
         self._rendered_device_selectors.clear()
+        self._rendered_title_bars.clear()
         for node in self._runtime.nodes.values():
             self._draw_node(p, node)
         p.restore()
@@ -380,8 +383,9 @@ class NodeEditorCanvas(QWidget):
         p.drawText(
             QRectF(node.x + PIN_RADIUS + 6, node.y, width - PIN_RADIUS * 2 - 12, TITLE_H),
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-            node.NODE_NAME,
+            node.custom_name or node.NODE_NAME,
         )
+        self._rendered_title_bars.append((node.node_id, QRectF(title_rect)))
 
         # Device status dot + optional selector row
         from core.device_node_base import DeviceNodeBase
@@ -722,6 +726,13 @@ class NodeEditorCanvas(QWidget):
                 return node_id
         return None
 
+    def _hit_title_bar(self, sp: QPointF) -> Optional[str]:
+        """Return node_id if sp is inside a node title bar."""
+        for node_id, rect in self._rendered_title_bars:
+            if rect.contains(sp):
+                return node_id
+        return None
+
     def _show_device_menu(self, node: NodeBase, instances: list,
                           global_pos: QPoint) -> None:
         """Pop up a QMenu to choose a device for this node."""
@@ -994,7 +1005,12 @@ class NodeEditorCanvas(QWidget):
         if rf:
             self._open_editor(rf, event.position())
             return
-        # Double-click on a DeviceNodeBase title bar → cycle device
+        # Double-click on title bar → rename node
+        title_nid = self._hit_title_bar(scene)
+        if title_nid:
+            self._open_node_rename_editor(title_nid)
+            return
+        # Double-click on a DeviceNodeBase body (non-title) → cycle device
         nid = self._hit_node(scene)
         if nid:
             node = self._runtime.get_node(nid)
@@ -1058,9 +1074,56 @@ class NodeEditorCanvas(QWidget):
 
     def _close_editor(self) -> None:
         if self._active_editor:
-            self._active_editor.hide()
-            self._active_editor.deleteLater()
-            self._active_editor = None
+            ed = self._active_editor
+            self._active_editor = None   # clear first to block re-entrant calls
+            ed.hide()
+            ed.deleteLater()
+
+    def _open_node_rename_editor(self, node_id: str) -> None:
+        """Show an inline QLineEdit over the title bar to rename a node."""
+        node = self._runtime.get_node(node_id)
+        if not node:
+            return
+        self._close_editor()
+        width = _node_width(node)
+        title_scene = QRectF(node.x, node.y, width, TITLE_H)
+        tl = self._s2v(title_scene.topLeft())
+        br = self._s2v(title_scene.bottomRight())
+
+        editor = QLineEdit(self)
+        editor.setObjectName("TitleEditor")
+        editor.setStyleSheet("""
+            QLineEdit#TitleEditor {
+                background: #2d1020; color: #ffd0de;
+                border: 1px solid #f95979; border-radius: 4px;
+                padding: 0 8px; font-family: 'Segoe UI'; font-size: 9pt;
+                font-weight: bold;
+            }
+        """)
+        editor.setText(node.custom_name or node.NODE_NAME)
+        editor.selectAll()
+        editor.setGeometry(int(tl.x()), int(tl.y()),
+                           int(br.x() - tl.x()), int(br.y() - tl.y()))
+        editor.show()
+        editor.setFocus()
+
+        _committed = [False]
+
+        def _commit() -> None:
+            if _committed[0]:
+                return
+            _committed[0] = True
+            text = editor.text().strip()
+            node.custom_name = text if text and text != node.NODE_NAME else None
+            node.node_changed.emit()
+            self._close_editor()
+            self.update()
+
+        editor.returnPressed.connect(_commit)
+        editor.editingFinished.connect(_commit)
+        editor._cancel = self._close_editor  # type: ignore[attr-defined]
+        editor.installEventFilter(self)
+        self._active_editor = editor
 
     def eventFilter(self, obj, event) -> bool:
         from PyQt6.QtCore import QEvent
@@ -1076,6 +1139,11 @@ class NodeEditorCanvas(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
+
+        if event.key() == Qt.Key.Key_F2:
+            if self._selected_node:
+                self._open_node_rename_editor(self._selected_node)
+            return
 
         if event.key() == Qt.Key.Key_Delete:
             if self._selected_wire:

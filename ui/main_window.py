@@ -351,6 +351,15 @@ class MainWindow(QWidget):
         for wire in graph.wires:
             self._runtime.add_wire(wire)
 
+        # Restore device aliases
+        if graph.device_aliases:
+            from core.device_node_base import set_device_alias
+            for device_id, alias in graph.device_aliases.items():
+                set_device_alias(device_id, alias)
+                row = self._device_panel._rows.get(device_id)
+                if row:
+                    row.set_alias(alias)
+
         if was_running:
             self._runtime.start()
 

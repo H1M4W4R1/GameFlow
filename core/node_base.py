@@ -140,6 +140,9 @@ class NodeBase(QObject):
             name: default for name, (typ, default) in self.VARIABLE_INPUTS.items()
         }
 
+        # User-assigned custom title (None = use NODE_NAME)
+        self.custom_name: Optional[str] = None
+
         # Runtime reference (set by GraphRuntime after construction)
         self._runtime: Optional["GraphRuntime"] = None
 
@@ -317,6 +320,9 @@ class NodeBase(QObject):
         # Persist variable input local defaults
         if self._var_inputs:
             state["__var_inputs__"] = dict(self._var_inputs)
+        # Persist custom title if set
+        if self.custom_name is not None:
+            state["__custom_name__"] = self.custom_name
         return state
 
     def set_state(self, state: dict[str, Any]) -> None:
@@ -329,6 +335,9 @@ class NodeBase(QObject):
         for key, val in var_inputs.items():
             if key in self.VARIABLE_INPUTS:
                 self._var_inputs[key] = val
+        cn = state.pop("__custom_name__", None)
+        if cn is not None:
+            self.custom_name = str(cn)
         for key, val in state.items():
             self._data[key] = val
 

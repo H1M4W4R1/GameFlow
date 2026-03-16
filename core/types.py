@@ -221,21 +221,24 @@ class SavedNode:
 
 @dataclass
 class SavedGraph:
-    name:    str
-    nodes:   list[SavedNode]          = field(default_factory=list)
-    wires:   list[WireDescriptor]     = field(default_factory=list)
+    name:           str
+    nodes:          list[SavedNode]      = field(default_factory=list)
+    wires:          list[WireDescriptor] = field(default_factory=list)
+    device_aliases: dict[str, str]       = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "name":  self.name,
-            "nodes": [n.to_dict() for n in self.nodes],
-            "wires": [w.to_dict() for w in self.wires],
+            "name":           self.name,
+            "nodes":          [n.to_dict() for n in self.nodes],
+            "wires":          [w.to_dict() for w in self.wires],
+            "device_aliases": self.device_aliases,
         }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "SavedGraph":
         return cls(
-            name  = d.get("name", "Untitled"),
-            nodes = [SavedNode.from_dict(n) for n in d.get("nodes", [])],
-            wires = [WireDescriptor.from_dict(w) for w in d.get("wires", [])],
+            name           = d.get("name", "Untitled"),
+            nodes          = [SavedNode.from_dict(n) for n in d.get("nodes", [])],
+            wires          = [WireDescriptor.from_dict(w) for w in d.get("wires", [])],
+            device_aliases = d.get("device_aliases", {}),
         )

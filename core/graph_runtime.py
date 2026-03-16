@@ -201,6 +201,7 @@ class GraphRuntime(QObject):
     # ── Save / Load ──────────────────────────────────────────────────────────
 
     def to_saved_graph(self, name: str = "Untitled") -> SavedGraph:
+        from core.device_node_base import _DEVICE_ALIASES
         nodes = [
             SavedNode(
                 node_id  = n.node_id,
@@ -211,7 +212,12 @@ class GraphRuntime(QObject):
             )
             for n in self._nodes.values()
         ]
-        return SavedGraph(name=name, nodes=nodes, wires=list(self._wires.values()))
+        return SavedGraph(
+            name           = name,
+            nodes          = nodes,
+            wires          = list(self._wires.values()),
+            device_aliases = dict(_DEVICE_ALIASES),
+        )
 
     # ── Internal ─────────────────────────────────────────────────────────────
 

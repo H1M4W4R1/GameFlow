@@ -149,12 +149,14 @@ class BatteryWidget(QWidget):
 # ── Device row ────────────────────────────────────────────────────────────────
 
 class DeviceRow(QFrame):
-    clicked = pyqtSignal(str)
+    clicked          = pyqtSignal(str)
+    rename_requested = pyqtSignal(str, str)   # device_id, new_alias
 
     def __init__(self, device_id: str, device_name: str, address: str,
                  icon_path: Optional[str] = None) -> None:
         super().__init__()
-        self.device_id = device_id
+        self.device_id    = device_id
+        self._rename_editor: Optional[QLineEdit] = None
         self.setObjectName("DeviceRow")
         self.setStyleSheet("""
             QFrame#DeviceRow            { background:#220d14; border:1px solid #45072f;
@@ -218,8 +220,8 @@ class DeviceRow(QFrame):
             """)
 
     def mousePressEvent(self, event) -> None:
-        self._drag_start   = event.position().toPoint()
-        self._did_drag     = False
+        self._drag_start = event.position().toPoint()
+        self._did_drag   = False
 
     def mouseMoveEvent(self, event) -> None:
         if not (event.buttons() & Qt.MouseButton.LeftButton):
@@ -235,7 +237,76 @@ class DeviceRow(QFrame):
 
     def mouseReleaseEvent(self, event) -> None:
         if not self._did_drag:
-            self.clicked.emit(self.device_id)
+            # Delay single-click so a double-click can cancel it
+            from PyQt6.QtWidgets import QApplication
+            from PyQt6.QtCore import QTimer
+            if not hasattr(self, "_click_timer"):
+                self._click_timer = QTimer(self)
+                self._click_timer.setSingleShot(True)
+                self._click_timer.timeout.connect(lambda: self.clicked.emit(self.device_id))
+            self._click_timer.start(QApplication.doubleClickInterval())
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            if hasattr(self, "_click_timer"):
+                self._click_timer.stop()
+            self._start_inline_rename()
+
+    def _start_inline_rename(self) -> None:
+        """Replace the name label with an inline QLineEdit for renaming."""
+        if self._rename_editor is not None:
+            return
+        current = self._name_lbl.text()
+        self._name_lbl.setVisible(False)
+
+        editor = QLineEdit(current, self)
+        editor.setStyleSheet(
+            "background:#2d1020; color:#ffd0de; border:1px solid #f95979;"
+            "border-radius:3px; padding:0 3px; font-size:9pt; font-weight:bold;"
+        )
+        # Match the geometry of the name label
+        geom = self._name_lbl.geometry()
+        editor.setGeometry(geom)
+        editor.show()
+        editor.setFocus()
+        editor.selectAll()
+        self._rename_editor = editor
+
+        _committed = [False]
+
+        def _commit() -> None:
+            if _committed[0]:
+                return
+            _committed[0] = True
+            text = editor.text().strip()
+            if text:
+                self._name_lbl.setText(text)
+                self.rename_requested.emit(self.device_id, text)
+            self._name_lbl.setVisible(True)
+            editor.deleteLater()
+            self._rename_editor = None
+
+        def _cancel() -> None:
+            if _committed[0]:
+                return
+            _committed[0] = True
+            self._name_lbl.setVisible(True)
+            editor.deleteLater()
+            self._rename_editor = None
+
+        editor.returnPressed.connect(_commit)
+        editor.editingFinished.connect(_commit)
+        editor.installEventFilter(self)
+        self._rename_cancel = _cancel
+
+    def eventFilter(self, obj, event) -> bool:
+        from PyQt6.QtCore import QEvent
+        if self._rename_editor is not None and obj is self._rename_editor:
+            if (event.type() == QEvent.Type.KeyPress
+                    and event.key() == Qt.Key.Key_Escape):
+                self._rename_cancel()
+                return True
+        return super().eventFilter(obj, event)
 
 
 # ── Device panel ──────────────────────────────────────────────────────────────
@@ -363,6 +434,7 @@ class DevicePanel(QWidget):
         row = DeviceRow(device_id, alias,
                         dev.descriptor.address, dev.ICON_PATH)
         row.clicked.connect(self._on_row_clicked)
+        row.rename_requested.connect(self._on_rename_requested)
         dev.battery_changed.connect(
             lambda lvl, did=device_id: self._on_battery(did, lvl)
         )
@@ -391,6 +463,9 @@ class DevicePanel(QWidget):
         """Highlight the specific device row; clear all others."""
         for did, row in self._rows.items():
             row.set_highlighted(device_id is not None and did == device_id)
+
+    def _on_rename_requested(self, device_id: str, new_alias: str) -> None:
+        self.rename_device_requested.emit(device_id, new_alias)
 
     def _on_row_clicked(self, device_id: str) -> None:
         dev = self._registry.get_device(device_id)
