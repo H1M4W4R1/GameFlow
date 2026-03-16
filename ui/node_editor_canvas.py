@@ -38,7 +38,7 @@ from typing import Optional
 
 from PyQt6.QtCore import Qt, QEvent, QObject, QPointF, QRectF, QPoint, QTimer, pyqtSignal
 from PyQt6.QtGui import (
-    QAction, QBrush, QColor, QFont, QKeyEvent, QLinearGradient,
+    QAction, QBrush, QColor, QCursor, QFont, QKeyEvent, QLinearGradient,
     QMouseEvent, QPaintEvent, QPainter, QPainterPath, QPen,
     QRadialGradient, QWheelEvent,
 )
@@ -1811,6 +1811,14 @@ class NodeEditorCanvas(QWidget):
                 self._center_origin()
             else:
                 self._tab_cycle()
+            return
+
+        shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+        if shift and event.key() == Qt.Key.Key_F:
+            global_pos = QCursor.pos()
+            widget_pos = self.mapFromGlobal(global_pos)
+            scene_pos = self._v2s(QPointF(widget_pos))
+            self._open_node_search(global_pos, scene_pos)
             return
 
         if event.key() == Qt.Key.Key_Escape:
