@@ -142,7 +142,7 @@ def _make_vibrate_node(
     """
     device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"
     node_name       = f"{device_cls.DEVICE_NAME}: {motor_label}"
-    node_group      = f"Lovense/{device_cls.DEVICE_NAME}"
+    node_group      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
     icon_path       = device_cls.ICON_PATH
 
     class _VibrateNode(DeviceNodeBase):
@@ -181,7 +181,7 @@ def _make_vibrate_node(
 def _make_stop_node(device_cls) -> type:
     device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"
     node_name       = f"{device_cls.DEVICE_NAME}: Stop All"
-    node_group      = f"Lovense/{device_cls.DEVICE_NAME}"
+    node_group      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
 
     class _StopNode(DeviceNodeBase):
         NODE_NAME       = node_name

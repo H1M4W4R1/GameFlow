@@ -94,7 +94,7 @@ class DeviceNodeBase(NodeBase):
         DEVICE_TYPE_KEY = "devices.lovense.vibrators.LovenseDomi"
         ICON_PATH       = "assets/icons/lovense/domi.svg"
         NODE_NAME       = "Domi: Vibrate"
-        NODE_GROUP      = "Lovense/Domi"
+        NODE_GROUP      = "Devices/Lovense/Domi"
         PINS            = [...]
 
     Reads / writes the bound device via:

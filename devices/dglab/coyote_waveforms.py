@@ -51,7 +51,7 @@ class _CoyoteWaveformBaseNode(_CoyoteNodeBase):
 
     The 'intensity' variable input (0–1) scales the waveform output amplitude.
     """
-    NODE_GROUP = "DGLab/Coyote/Waveforms"
+    NODE_GROUP = "Devices/DGLab/Coyote/Waveforms"
     PINS = [
         PinDescriptor(
             "intensity", PinDirection.INPUT, PinType.FLOAT, default=1.0,

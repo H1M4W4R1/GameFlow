@@ -39,7 +39,7 @@ class LovenseEdge(_LovenseBLEBase):
 class EdgeVibrateInternal(DeviceNodeBase):
     """Vibrate the insertable internal tip of the Edge."""
     NODE_NAME       = "Edge: Vibrate Internal"
-    NODE_GROUP      = "Lovense/Edge"
+    NODE_GROUP      = "Devices/Lovense/Edge"
     DEVICE_TYPE_KEY = f"{LovenseEdge.__module__}.LovenseEdge"
     ICON_PATH       = LovenseEdge.ICON_PATH
     PINS = [
@@ -61,7 +61,7 @@ class EdgeVibrateInternal(DeviceNodeBase):
 class EdgeVibratePerineum(DeviceNodeBase):
     """Vibrate the external perineum pad of the Edge."""
     NODE_NAME       = "Edge: Vibrate Perineum"
-    NODE_GROUP      = "Lovense/Edge"
+    NODE_GROUP      = "Devices/Lovense/Edge"
     DEVICE_TYPE_KEY = f"{LovenseEdge.__module__}.LovenseEdge"
     ICON_PATH       = LovenseEdge.ICON_PATH
     PINS = [
@@ -83,7 +83,7 @@ class EdgeVibratePerineum(DeviceNodeBase):
 class EdgeVibrateBoth(DeviceNodeBase):
     """Control both Edge motors simultaneously with independent intensities."""
     NODE_NAME       = "Edge: Vibrate Both"
-    NODE_GROUP      = "Lovense/Edge"
+    NODE_GROUP      = "Devices/Lovense/Edge"
     DEVICE_TYPE_KEY = f"{LovenseEdge.__module__}.LovenseEdge"
     ICON_PATH       = LovenseEdge.ICON_PATH
     PINS = [
@@ -130,7 +130,7 @@ class LovenseDiamo(_LovenseBLEBase):
 class DiamoVibrate(DeviceNodeBase):
     """Vibrate the Diamo cock ring."""
     NODE_NAME       = "Diamo: Vibrate"
-    NODE_GROUP      = "Lovense/Diamo"
+    NODE_GROUP      = "Devices/Lovense/Diamo"
     DEVICE_TYPE_KEY = f"{LovenseDiamo.__module__}.LovenseDiamo"
     ICON_PATH       = LovenseDiamo.ICON_PATH
     PINS = [
@@ -169,7 +169,7 @@ class LovenseMax(_LovenseBLEBase):
 class MaxVibrate(DeviceNodeBase):
     """Vibrate the Max masturbator."""
     NODE_NAME       = "Max: Vibrate"
-    NODE_GROUP      = "Lovense/Max"
+    NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
     ICON_PATH       = LovenseMax.ICON_PATH
     PINS = [
@@ -191,7 +191,7 @@ class MaxVibrate(DeviceNodeBase):
 class MaxAirLevel(DeviceNodeBase):
     """Set absolute air/constriction level on the Max (0 = fully deflated, 5 = max)."""
     NODE_NAME       = "Max: Air Level"
-    NODE_GROUP      = "Lovense/Max"
+    NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
     ICON_PATH       = LovenseMax.ICON_PATH
     PINS = [
@@ -214,7 +214,7 @@ class MaxAirLevel(DeviceNodeBase):
 class MaxAirInflate(DeviceNodeBase):
     """Inflate the Max by N steps relative to current level."""
     NODE_NAME       = "Max: Inflate"
-    NODE_GROUP      = "Lovense/Max"
+    NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
     ICON_PATH       = LovenseMax.ICON_PATH
     PINS = [
@@ -237,7 +237,7 @@ class MaxAirInflate(DeviceNodeBase):
 class MaxAirDeflate(DeviceNodeBase):
     """Deflate the Max by N steps relative to current level."""
     NODE_NAME       = "Max: Deflate"
-    NODE_GROUP      = "Lovense/Max"
+    NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
     ICON_PATH       = LovenseMax.ICON_PATH
     PINS = [
@@ -277,7 +277,7 @@ class LovenseNora(_LovenseBLEBase):
 class NoraVibrate(DeviceNodeBase):
     """Vibrate the Nora's vibration motor."""
     NODE_NAME       = "Nora: Vibrate"
-    NODE_GROUP      = "Lovense/Nora"
+    NODE_GROUP      = "Devices/Lovense/Nora"
     DEVICE_TYPE_KEY = f"{LovenseNora.__module__}.LovenseNora"
     ICON_PATH       = LovenseNora.ICON_PATH
     PINS = [
@@ -299,7 +299,7 @@ class NoraVibrate(DeviceNodeBase):
 class NoraRotate(DeviceNodeBase):
     """Control the rotation speed of Nora's rotating head (0.0–1.0)."""
     NODE_NAME       = "Nora: Rotate"
-    NODE_GROUP      = "Lovense/Nora"
+    NODE_GROUP      = "Devices/Lovense/Nora"
     DEVICE_TYPE_KEY = f"{LovenseNora.__module__}.LovenseNora"
     ICON_PATH       = LovenseNora.ICON_PATH
     PINS = [
@@ -323,7 +323,7 @@ class NoraRotate(DeviceNodeBase):
 class NoraRotateChange(DeviceNodeBase):
     """Reverse the rotation direction of Nora's head."""
     NODE_NAME       = "Nora: Reverse Rotation"
-    NODE_GROUP      = "Lovense/Nora"
+    NODE_GROUP      = "Devices/Lovense/Nora"
     DEVICE_TYPE_KEY = f"{LovenseNora.__module__}.LovenseNora"
     ICON_PATH       = LovenseNora.ICON_PATH
     PINS = [

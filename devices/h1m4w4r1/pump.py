@@ -246,7 +246,7 @@ def _pump_node_key(suffix: str) -> str:
 class _PumpNodeBase(DeviceNodeBase):
     DEVICE_TYPE_KEY = DEVICE_TYPE_KEY
     ICON_PATH       = "assets/icons/h1m4w4r1/pump.svg"
-    NODE_GROUP      = "H1M4W4R1/Pump"
+    NODE_GROUP      = "Devices/H1M4W4R1/Pump"
 
 
 class PumpSetSessionDurationNode(_PumpNodeBase):

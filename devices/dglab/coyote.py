@@ -555,7 +555,7 @@ class Coyote(DeviceBase):
 class _CoyoteNodeBase(DeviceNodeBase):
     DEVICE_TYPE_KEY = DEVICE_TYPE_KEY
     ICON_PATH = "assets/icons/dglab/coyote.svg"
-    NODE_GROUP = "DGLab/Coyote"
+    NODE_GROUP = "Devices/DGLab/Coyote"
 
 
 

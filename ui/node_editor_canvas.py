@@ -2285,7 +2285,7 @@ class NodeEditorCanvas(QWidget):
         structure = self._node_menu_fn()
 
         # Build nested menus from "/" delimited group paths
-        # e.g. "Lovense/Domi" → Menu > Lovense > Domi > [actions]
+        # e.g. "Devices/Lovense/Domi" → Menu > Lovense > Domi > [actions]
         # Cache of path → QMenu so we reuse parent menus
         submenu_cache: dict[str, QMenu] = {}
 

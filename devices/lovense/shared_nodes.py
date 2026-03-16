@@ -17,7 +17,7 @@ def make_battery_node(device_cls) -> type:
 
     class _BatteryNode(DeviceNodeBase):
         NODE_NAME       = f"{device_cls.DEVICE_NAME}: Get Battery"
-        NODE_GROUP      = f"Lovense/{device_cls.DEVICE_NAME}"
+        NODE_GROUP      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
         DEVICE_TYPE_KEY = device_type_key
         ICON_PATH       = device_cls.ICON_PATH
         PINS = [
