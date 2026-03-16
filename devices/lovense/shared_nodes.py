@@ -22,8 +22,8 @@ def make_battery_node(device_cls) -> type:
         ICON_PATH       = device_cls.ICON_PATH
         PINS = [
             PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
-            PinDescriptor("level",    PinDirection.OUTPUT, PinType.INT),
             PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+            PinDescriptor("level",    PinDirection.OUTPUT, PinType.INT),
         ]
 
         def __init__(self, *args, **kwargs) -> None:

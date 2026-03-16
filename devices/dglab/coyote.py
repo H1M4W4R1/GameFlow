@@ -741,8 +741,8 @@ class CoyoteSetStrengthANode(_CoyoteNodeBase):
     NODE_NAME = "Coyote: Set strength A"
     PINS = [
         PinDescriptor("exec_in", PinDirection.INPUT, PinType.TICK),
-        PinDescriptor("value", PinDirection.INPUT, PinType.INT, default=0),
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value", PinDirection.INPUT, PinType.INT, default=0),
     ]
     VARIABLE_INPUTS = {"value": (int, 0)}
 
@@ -906,8 +906,8 @@ class CoyoteGetBatteryNode(_CoyoteNodeBase):
     NODE_NAME = "Coyote: Get battery"
     PINS = [
         PinDescriptor("exec_in", PinDirection.INPUT, PinType.TICK),
-        PinDescriptor("level", PinDirection.OUTPUT, PinType.INT),
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("level", PinDirection.OUTPUT, PinType.INT),
     ]
 
     def execute(self, trigger_pin: str) -> None:
@@ -932,9 +932,9 @@ class CoyoteGetStrengthNode(_CoyoteNodeBase):
     NODE_NAME = "Coyote: Get strength"
     PINS = [
         PinDescriptor("exec_in", PinDirection.INPUT, PinType.TICK),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
         PinDescriptor("strength_a", PinDirection.OUTPUT, PinType.INT),
         PinDescriptor("strength_b", PinDirection.OUTPUT, PinType.INT),
-        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
     ]
 
     def execute(self, trigger_pin: str) -> None:

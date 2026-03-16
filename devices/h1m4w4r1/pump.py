@@ -350,8 +350,8 @@ class PumpGetCurrentSessionNode(_PumpNodeBase):
     NODE_NAME = "Pump: Get current session time"
     PINS = [
         PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
         PinDescriptor("seconds",   PinDirection.OUTPUT, PinType.INT),
-        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
     ]
 
     def execute(self, trigger_pin: str) -> None:
@@ -376,8 +376,8 @@ class PumpGetCurrentPumpNode(_PumpNodeBase):
     NODE_NAME = "Pump: Get current pumping time"
     PINS = [
         PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
         PinDescriptor("seconds",   PinDirection.OUTPUT, PinType.INT),
-        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
     ]
 
     def execute(self, trigger_pin: str) -> None:
