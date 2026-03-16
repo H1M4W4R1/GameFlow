@@ -292,6 +292,13 @@ class NodeBase(QObject):
         Default implementation does nothing.
         """
 
+    def on_output_wire_connected(self, pin_name: str) -> None:
+        """Called just before wire_added is emitted when a new wire leaves one of
+        our output pins.  Override to push a fresh value so the destination node
+        gets the correct initial value immediately (even when the graph is not
+        running and on_start() has not yet been called).
+        Default implementation does nothing."""
+
     def on_stop(self) -> None:
         """Called when graph execution stops. Override for clean-up."""
 

@@ -16,6 +16,12 @@ from core.node_base import NodeBase
 from core.types     import PinDescriptor, PinDirection, PinType
 
 
+class _ConstantBase(NodeBase):
+    """Shared base for all constant nodes — pushes fresh output on wire connect."""
+    def on_output_wire_connected(self, pin_name: str) -> None:
+        self._push()
+
+
 def _parse_color(s) -> tuple[float, float, float, float]:
     """Parse color from hex #RRGGBB or #RRGGBBAA or (r,g,b,a). Returns (r,g,b,a) 0-1."""
     if s is None:
@@ -42,7 +48,7 @@ def _parse_color(s) -> tuple[float, float, float, float]:
 # Float Constant
 # ─────────────────────────────────────────────────────────────────────────────
 
-class FloatConstantNode(NodeBase):
+class FloatConstantNode(_ConstantBase):
     """
     Emits a constant float.
     Double-click the value field in the node body to change it.
@@ -83,7 +89,7 @@ class FloatConstantNode(NodeBase):
 # Int Constant
 # ─────────────────────────────────────────────────────────────────────────────
 
-class IntConstantNode(NodeBase):
+class IntConstantNode(_ConstantBase):
     """
     Emits a constant integer.
     Double-click the value field to change it.
@@ -123,7 +129,7 @@ class IntConstantNode(NodeBase):
 # String Constant
 # ─────────────────────────────────────────────────────────────────────────────
 
-class StringConstantNode(NodeBase):
+class StringConstantNode(_ConstantBase):
     """
     Emits a constant string.
     Double-click the value field to change it.
@@ -164,7 +170,7 @@ class StringConstantNode(NodeBase):
 # Bool Constant
 # ─────────────────────────────────────────────────────────────────────────────
 
-class BoolConstantNode(NodeBase):
+class BoolConstantNode(_ConstantBase):
     """
     Emits a constant boolean.
     Double-click the value field and type  true / false  (or 1 / 0).
@@ -205,7 +211,7 @@ class BoolConstantNode(NodeBase):
 # Color Constant (outputs Color type; edit as #RRGGBB — ColorPicker in UI optional)
 # ─────────────────────────────────────────────────────────────────────────────
 
-class ColorConstantNode(NodeBase):
+class ColorConstantNode(_ConstantBase):
     """
     Emits a constant Color (r,g,b,a) 0-1.
     Double-click the color field to edit as #RRGGBB or #RRGGBBAA.

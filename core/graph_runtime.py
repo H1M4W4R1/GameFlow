@@ -99,6 +99,24 @@ class GraphRuntime(QObject):
             self._wires[wire.wire_id] = wire
             self._rebuild_routes_locked()
             cycles = self._find_tick_cycles_locked()
+        # Immediately push the source node's current output value to the newly
+        # connected destination so data-reactive nodes recompute correctly
+        # without waiting for the source to fire again.
+        src_node = self._nodes.get(wire.src_node)
+        dst_node = self._nodes.get(wire.dst_node)
+        if src_node and dst_node:
+            src_pin_desc = _find_pin(src_node, wire.src_pin, PinDirection.OUTPUT)
+            if src_pin_desc and src_pin_desc.pin_type != PinType.TICK:
+                try:
+                    src_node.on_output_wire_connected(wire.src_pin)
+                except Exception as exc:
+                    log.error("Wire-connect on_output_wire_connected error: %s", exc)
+                current_value = src_node._data.get(wire.src_pin)
+                if current_value is not None:
+                    try:
+                        dst_node.receive_data(wire.dst_pin, current_value, src_pin_desc.pin_type)
+                    except Exception as exc:
+                        log.error("Wire-connect initial push error: %s", exc)
         self.wire_added.emit(wire)
         if cycles:
             names = self._cycle_node_names(cycles[0])
