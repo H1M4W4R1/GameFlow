@@ -88,7 +88,11 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         SelectNode,
     )
     from nodes.utility_nodes import (
-        CounterNode, RandomNode, LogNode, LoopNode, LoopWhileNode,
+        CounterNode, RandomNode, LoopNode, LoopWhileNode,
+    )
+    from nodes.debug_nodes import (
+        LogNode,
+        NumericDisplayNode, TextDisplayNode, TimeDisplayNode, StateIndicatorNode,
     )
     from nodes.time_nodes import (
         TimeSinceStartNode, EpochMillisecondsNode, CurrentDateTimeNode,
@@ -119,8 +123,11 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
         LessNode, LessEqualNode,
         SelectNode,
-        # Utility (Loop, Loop While)
-        CounterNode, RandomNode, LogNode, LoopNode, LoopWhileNode,
+        # Utility
+        CounterNode, RandomNode, LoopNode, LoopWhileNode,
+        # Debug
+        LogNode,
+        NumericDisplayNode, TextDisplayNode, TimeDisplayNode, StateIndicatorNode,
         # Time
         TimeSinceStartNode, EpochMillisecondsNode, CurrentDateTimeNode,
         SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,

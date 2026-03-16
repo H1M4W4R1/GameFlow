@@ -1,12 +1,12 @@
 """
-Utility nodes — Counter, Random, Log/Debug, Loop, Loop While.
+Utility nodes — Counter, Random, Loop, Loop While.
 
 Timer and Delay are in nodes.time_nodes.
+Log/Debug and display nodes are in nodes.debug_nodes.
 """
 from __future__ import annotations
 
 import random
-import logging
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
@@ -14,8 +14,6 @@ from PyQt6.QtGui  import QPainter, QColor, QFont
 
 from core.node_base import NodeBase
 from core.types     import PinDescriptor, PinDirection, PinType
-
-log = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -129,55 +127,6 @@ class RandomNode(NodeBase):
         hi = float(self.get_var_input("max_val") or 1.0)
         self.set_output("value", random.uniform(lo, hi))
         self.fire_tick("exec_out")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# LOG / DEBUG
-# ─────────────────────────────────────────────────────────────────────────────
-
-class LogNode(NodeBase):
-    """
-    Logs a labelled value when triggered; shows the last logged message
-    inside the node body.  Label is set via editable field.
-    """
-    NODE_NAME  = "Log / Debug"
-    NODE_GROUP = "Utility"
-    PINS = [
-        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
-        PinDescriptor("value",    PinDirection.INPUT,  PinType.ANY,  default=""),
-        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
-    ]
-    EDITABLE_FIELDS = {
-        "label": (str, "LOG"),
-    }
-    MIN_WIDTH  = 200.0
-    MIN_HEIGHT = 90.0
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._last_msg: str = ""
-
-    def execute(self, trigger_pin: str) -> None:
-        label = str(self.get_field("label") or "LOG")
-        value = self.get_input("value")
-        msg   = f"[{label}] {value}"
-        log.info(msg)
-        self.log_message.emit(msg)
-        self._last_msg = msg
-        self.fire_tick("exec_out")
-        self.node_changed.emit()
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#aed581"))
-        painter.setFont(QFont("Courier New", 8))
-        txt = self._last_msg
-        if len(txt) > 28:
-            txt = txt[:25] + "…"
-        painter.drawText(
-            QRectF(rect.x(), rect.y(), rect.width(), 20),
-            Qt.AlignmentFlag.AlignCenter,
-            txt,
-        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

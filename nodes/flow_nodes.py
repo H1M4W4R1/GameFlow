@@ -113,28 +113,36 @@ class StartNode(NodeBase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Condition nodes (Any comparison; route tick to on_true or on_false)
+# Comparison nodes — pure data nodes, output a bool result pin only.
+# Wire their "result" into a Router node to branch execution.
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _CompareNodeBase(NodeBase):
-    """Base for a OP b with Any pins; subclasses set _op_name and _result."""
-    NODE_GROUP = "Conditional"
+    """
+    Pure data node: compares a OP b and pushes a bool on the *result* pin.
+    No exec_in / exec_out — connect *result* to a RouterNode to branch.
+    """
+    NODE_GROUP = "Logic"
     PINS = [
-        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
-        PinDescriptor("a",       PinDirection.INPUT,  PinType.ANY),
-        PinDescriptor("b",       PinDirection.INPUT,  PinType.ANY),
-        PinDescriptor("on_true", PinDirection.OUTPUT, PinType.TICK),
-        PinDescriptor("on_false", PinDirection.OUTPUT, PinType.TICK),
-        PinDescriptor("result",  PinDirection.OUTPUT, PinType.BOOL),
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.BOOL),
     ]
     MIN_WIDTH = 160.0
 
-    def execute(self, trigger_pin: str) -> None:
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
         a = self.get_input("a")
         b = self.get_input("b")
-        result = self._compare(a, b)
-        self.set_output("result", result)
-        self.fire_tick("on_true" if result else "on_false")
+        self.set_output("result", self._compare(a, b))
+
+    def execute(self, trigger_pin: str) -> None:
+        pass  # pure data node — never ticked
 
     def _compare(self, a: Any, b: Any) -> bool:
         raise NotImplementedError
@@ -216,7 +224,7 @@ class SelectNode(NodeBase):
     Pure data node — reacts instantly on any input change.
     """
     NODE_NAME  = "Select"
-    NODE_GROUP = "Conditional"
+    NODE_GROUP = "Logic"
     PINS = [
         PinDescriptor("condition", PinDirection.INPUT,  PinType.BOOL, default=False),
         PinDescriptor("a",         PinDirection.INPUT,  PinType.ANY),
@@ -240,3 +248,39 @@ class SelectNode(NodeBase):
         painter.setPen(QColor("#ffb74d"))
         painter.setFont(QFont("Courier New", 9))
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "? a : b")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Router  (routes exec_in to on_true or on_false based on a bool condition)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class RouterNode(NodeBase):
+    """
+    Exec router — reads a bool *condition* pin and forwards the incoming tick
+    to either *on_true* or *on_false*.
+
+    Typical wiring:
+        [Tick] ──exec──▶ [Router]
+        [Equal] ─result─▶ [Router.condition]
+        [Router.on_true]  ──▶ ...
+        [Router.on_false] ──▶ ...
+    """
+    NODE_NAME  = "Router"
+    NODE_GROUP = "Logic"
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("condition", PinDirection.INPUT,  PinType.BOOL, default=False),
+        PinDescriptor("on_true",   PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("on_false",  PinDirection.OUTPUT, PinType.TICK),
+    ]
+    MIN_WIDTH  = 160.0
+    MIN_HEIGHT = 80.0
+
+    def execute(self, trigger_pin: str) -> None:
+        cond = bool(self.get_input("condition"))
+        self.fire_tick("on_true" if cond else "on_false")
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#80cbc4"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "T ◀ ▶ F")
