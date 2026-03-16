@@ -85,6 +85,7 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         TickNode, ConfigurableTickNode, StartNode,
         EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
         LessNode, LessEqualNode,
+        SelectNode,
     )
     from nodes.utility_nodes import (
         CounterNode, RandomNode, LogNode, LoopNode, LoopWhileNode,
@@ -101,10 +102,7 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         ClampNode, LerpNode, MapRangeNode,
         Vector2DConstructorNode, Vector3DConstructorNode, Vector4DConstructorNode,
         Vector2DSplitNode, Vector3DSplitNode, Vector4DSplitNode,
-        Vector2DAddNode, Vector3DAddNode, Vector4DAddNode,
-        Vector2DSubtractNode, Vector3DSubtractNode, Vector4DSubtractNode,
-        Vector2DScaleNode, Vector3DScaleNode, Vector4DScaleNode,
-        Vector2DDotNode, Vector3DDotNode,
+        DotProductNode, CrossProductNode,
         ColorAddNode, ColorBlendNode,
         DateTimeDifferenceNode, DateTimeAddSecondsNode,
         IntToFloatNode, FloatToIntNode, BoolToFloatNode,
@@ -117,14 +115,16 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
     all_classes = [
         # Flow
         TickNode, ConfigurableTickNode, StartNode,
+        # Conditional
         EqualNode, NotEqualNode, GreaterNode, GreaterEqualNode,
         LessNode, LessEqualNode,
+        SelectNode,
         # Utility (Loop, Loop While)
         CounterNode, RandomNode, LogNode, LoopNode, LoopWhileNode,
         # Time
         TimeSinceStartNode, EpochMillisecondsNode, CurrentDateTimeNode,
         SpecifiedDateTimeNode, DelayNode, TimerNode, DeltaTimeNode,
-        # Math / Float
+        # Math / Arithmetic
         AddNode, SubtractNode, MultiplyNode, DivideNode, ModuloNode,
         PowerNode, MinNode, MaxNode,
         AbsNode, NegateNode, SinNode, CosNode, TanNode,
@@ -133,10 +133,7 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
         # Math / Vector
         Vector2DConstructorNode, Vector3DConstructorNode, Vector4DConstructorNode,
         Vector2DSplitNode, Vector3DSplitNode, Vector4DSplitNode,
-        Vector2DAddNode, Vector3DAddNode, Vector4DAddNode,
-        Vector2DSubtractNode, Vector3DSubtractNode, Vector4DSubtractNode,
-        Vector2DScaleNode, Vector3DScaleNode, Vector4DScaleNode,
-        Vector2DDotNode, Vector3DDotNode,
+        DotProductNode, CrossProductNode,
         # Math / Color
         ColorAddNode, ColorBlendNode,
         # Math / DateTime

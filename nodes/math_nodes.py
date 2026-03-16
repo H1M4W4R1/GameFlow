@@ -21,19 +21,53 @@ from core.types     import PinDescriptor, PinDirection, PinType
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Component-wise helpers for arithmetic on scalars, vectors, and colors
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _apply_binary(op, a, b):
+    """Apply a binary op to scalars, or component-wise to sequences (vectors/colors)."""
+    a_seq = isinstance(a, (tuple, list))
+    b_seq = isinstance(b, (tuple, list))
+    if a_seq or b_seq:
+        la = list(a) if a_seq else None
+        lb = list(b) if b_seq else None
+        if la is None:
+            la = [float(a)] * len(lb)
+        if lb is None:
+            lb = [float(b)] * len(la)
+        n = min(len(la), len(lb))
+        return tuple(op(float(la[i]), float(lb[i])) for i in range(n))
+    try:
+        return op(float(a), float(b))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _apply_unary(op, a):
+    """Apply a unary op to a scalar, or component-wise to a sequence."""
+    if isinstance(a, (tuple, list)):
+        return tuple(op(float(x)) for x in a)
+    try:
+        return op(float(a))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Shared base for binary ops (a OP b → result)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _BinaryMathNode(NodeBase):
     """
-    Internal base for nodes with two float inputs and one float output.
-    Subclasses set _op() and paint_symbol.
+    Internal base for nodes with two ANY inputs and one ANY output.
+    Operations are applied component-wise to vectors/colors, or as scalars.
+    Subclasses implement _compute().
     """
     NODE_GROUP = "Math / Arithmetic"
     PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY, default=0.0),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.ANY, default=0.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.ANY),
     ]
     # Each subclass may provide EDITABLE_FIELDS for b if it's commonly constant
     PAINT_SYMBOL: str = "?"
@@ -49,11 +83,13 @@ class _BinaryMathNode(NodeBase):
     def execute(self, trigger_pin: str) -> None:
         self._compute()
 
-    def _a(self) -> float:
-        return float(self.get_input("a") or 0.0)
+    def _a(self) -> Any:
+        v = self.get_input("a")
+        return v if v is not None else 0.0
 
-    def _b(self) -> float:
-        return float(self.get_input("b") or 0.0)
+    def _b(self) -> Any:
+        v = self.get_input("b")
+        return v if v is not None else 0.0
 
     def _compute(self) -> None:
         raise NotImplementedError
@@ -65,11 +101,11 @@ class _BinaryMathNode(NodeBase):
 
 
 class _UnaryMathNode(NodeBase):
-    """Internal base for single-input math nodes."""
+    """Internal base for single-input math nodes. Operates component-wise on vectors/colors."""
     NODE_GROUP = "Math / Arithmetic"
     PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY, default=0.0),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.ANY),
     ]
     PAINT_SYMBOL: str = "f(x)"
     MIN_WIDTH  = 140.0
@@ -84,8 +120,9 @@ class _UnaryMathNode(NodeBase):
     def execute(self, trigger_pin: str) -> None:
         self._compute()
 
-    def _a(self) -> float:
-        return float(self.get_input("a") or 0.0)
+    def _a(self) -> Any:
+        v = self.get_input("a")
+        return v if v is not None else 0.0
 
     def _compute(self) -> None:
         raise NotImplementedError
@@ -101,79 +138,81 @@ class _UnaryMathNode(NodeBase):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class AddNode(_BinaryMathNode):
-    """a + b"""
+    """a + b  (component-wise for vectors/colors)"""
     NODE_NAME    = "Add"
     PAINT_SYMBOL = "a + b"
 
     def _compute(self) -> None:
-        self.set_output("result", self._a() + self._b())
+        self.set_output("result", _apply_binary(lambda a, b: a + b, self._a(), self._b()))
 
 
 class SubtractNode(_BinaryMathNode):
-    """a − b"""
+    """a − b  (component-wise for vectors/colors)"""
     NODE_NAME    = "Subtract"
     PAINT_SYMBOL = "a − b"
 
     def _compute(self) -> None:
-        self.set_output("result", self._a() - self._b())
+        self.set_output("result", _apply_binary(lambda a, b: a - b, self._a(), self._b()))
 
 
 class MultiplyNode(_BinaryMathNode):
-    """a × b"""
+    """a × b  (component-wise for vectors/colors)"""
     NODE_NAME    = "Multiply"
     PAINT_SYMBOL = "a × b"
 
     def _compute(self) -> None:
-        self.set_output("result", self._a() * self._b())
+        self.set_output("result", _apply_binary(lambda a, b: a * b, self._a(), self._b()))
 
 
 class DivideNode(_BinaryMathNode):
-    """a ÷ b  (returns 0 if b == 0)"""
+    """a ÷ b  (returns 0 per component where b == 0)"""
     NODE_NAME    = "Divide"
     PAINT_SYMBOL = "a ÷ b"
 
     def _compute(self) -> None:
-        b = self._b()
-        self.set_output("result", self._a() / b if b != 0.0 else 0.0)
+        self.set_output("result", _apply_binary(
+            lambda a, b: a / b if b != 0.0 else 0.0, self._a(), self._b()
+        ))
 
 
 class ModuloNode(_BinaryMathNode):
-    """a mod b  (returns 0 if b == 0)"""
+    """a mod b  (returns 0 per component where b == 0)"""
     NODE_NAME    = "Modulo"
     PAINT_SYMBOL = "a mod b"
 
     def _compute(self) -> None:
-        b = self._b()
-        self.set_output("result", self._a() % b if b != 0.0 else 0.0)
+        self.set_output("result", _apply_binary(
+            lambda a, b: a % b if b != 0.0 else 0.0, self._a(), self._b()
+        ))
 
 
 class PowerNode(_BinaryMathNode):
-    """a ^ b"""
+    """a ^ b  (component-wise for vectors/colors)"""
     NODE_NAME    = "Power"
     PAINT_SYMBOL = "a ^ b"
 
     def _compute(self) -> None:
-        self.set_output("result", self._a() ** self._b())
+        self.set_output("result", _apply_binary(lambda a, b: a ** b, self._a(), self._b()))
 
 
 class MinNode(_BinaryMathNode):
-    """min(a, b)"""
+    """min(a, b)  (component-wise for vectors/colors)"""
     NODE_NAME    = "Min"
     NODE_GROUP   = "Math / Min-Max"
     PAINT_SYMBOL = "min(a,b)"
 
     def _compute(self) -> None:
-        self.set_output("result", min(self._a(), self._b()))
+        self.set_output("result", _apply_binary(min, self._a(), self._b()))
 
 
 class MaxNode(_BinaryMathNode):
-    """max(a, b)"""
+    """max(a, b)  (component-wise for vectors/colors)"""
     NODE_NAME    = "Max"
     NODE_GROUP   = "Math / Min-Max"
     PAINT_SYMBOL = "max(a,b)"
 
     def _compute(self) -> None:
-        self.set_output("result", max(self._a(), self._b()))
+        self.set_output("result", _apply_binary(max, self._a(), self._b()))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -181,90 +220,90 @@ class MaxNode(_BinaryMathNode):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class AbsNode(_UnaryMathNode):
-    """| a |"""
+    """| a |  (component-wise for vectors/colors)"""
     NODE_NAME    = "Abs"
     PAINT_SYMBOL = "| a |"
 
     def _compute(self) -> None:
-        self.set_output("result", abs(self._a()))
+        self.set_output("result", _apply_unary(abs, self._a()))
 
 
 class NegateNode(_UnaryMathNode):
-    """-a"""
+    """-a  (component-wise for vectors/colors)"""
     NODE_NAME    = "Negate"
     PAINT_SYMBOL = "−a"
 
     def _compute(self) -> None:
-        self.set_output("result", -self._a())
+        self.set_output("result", _apply_unary(lambda x: -x, self._a()))
 
 
 class SinNode(_UnaryMathNode):
-    """sin(a)  [radians]"""
+    """sin(a)  [radians, component-wise for vectors]"""
     NODE_NAME    = "Sin"
     NODE_GROUP   = "Math / Trigonometric"
     PAINT_SYMBOL = "sin(a)"
 
     def _compute(self) -> None:
-        self.set_output("result", math.sin(self._a()))
+        self.set_output("result", _apply_unary(math.sin, self._a()))
 
 
 class CosNode(_UnaryMathNode):
-    """cos(a)  [radians]"""
+    """cos(a)  [radians, component-wise for vectors]"""
     NODE_NAME    = "Cos"
     NODE_GROUP   = "Math / Trigonometric"
     PAINT_SYMBOL = "cos(a)"
 
     def _compute(self) -> None:
-        self.set_output("result", math.cos(self._a()))
+        self.set_output("result", _apply_unary(math.cos, self._a()))
 
 
 class TanNode(_UnaryMathNode):
-    """tan(a)  [radians]"""
+    """tan(a)  [radians, component-wise for vectors]"""
     NODE_NAME    = "Tan"
     NODE_GROUP   = "Math / Trigonometric"
     PAINT_SYMBOL = "tan(a)"
 
     def _compute(self) -> None:
-        self.set_output("result", math.tan(self._a()))
+        self.set_output("result", _apply_unary(math.tan, self._a()))
 
 
 class SqrtNode(_UnaryMathNode):
-    """√ a  (uses abs(a) to avoid domain errors)"""
+    """√ a  (uses abs per component to avoid domain errors)"""
     NODE_NAME    = "Sqrt"
     PAINT_SYMBOL = "√ a"
 
     def _compute(self) -> None:
-        self.set_output("result", math.sqrt(abs(self._a())))
+        self.set_output("result", _apply_unary(lambda x: math.sqrt(abs(x)), self._a()))
 
 
 class FloorNode(_UnaryMathNode):
-    """⌊ a ⌋"""
+    """⌊ a ⌋  (component-wise for vectors/colors)"""
     NODE_NAME    = "Floor"
     NODE_GROUP   = "Math / Rounding"
     PAINT_SYMBOL = "⌊ a ⌋"
 
     def _compute(self) -> None:
-        self.set_output("result", float(math.floor(self._a())))
+        self.set_output("result", _apply_unary(lambda x: float(math.floor(x)), self._a()))
 
 
 class CeilNode(_UnaryMathNode):
-    """⌈ a ⌉"""
+    """⌈ a ⌉  (component-wise for vectors/colors)"""
     NODE_NAME    = "Ceil"
     NODE_GROUP   = "Math / Rounding"
     PAINT_SYMBOL = "⌈ a ⌉"
 
     def _compute(self) -> None:
-        self.set_output("result", float(math.ceil(self._a())))
+        self.set_output("result", _apply_unary(lambda x: float(math.ceil(x)), self._a()))
 
 
 class RoundNode(_UnaryMathNode):
-    """round(a)"""
+    """round(a)  (component-wise for vectors/colors)"""
     NODE_NAME    = "Round"
     NODE_GROUP   = "Math / Rounding"
     PAINT_SYMBOL = "round(a)"
 
     def _compute(self) -> None:
-        self.set_output("result", float(round(self._a())))
+        self.set_output("result", _apply_unary(lambda x: float(round(x)), self._a()))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -646,289 +685,17 @@ class Vector4DSplitNode(NodeBase):
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "split Vec4")
 
 
-class Vector2DAddNode(NodeBase):
-    """Component-wise a + b for Vector2D."""
-    NODE_NAME  = "Vector2D Add"
+class DotProductNode(NodeBase):
+    """
+    Dot product of two vectors (or scalars).
+    Vec2: ax·bx + ay·by  |  Vec3: + az·bz  |  Vec4: + aw·bw  |  scalar: a*b
+    Always outputs Float.
+    """
+    NODE_NAME  = "Dot Product"
     NODE_GROUP = "Math / Vector"
     PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR2D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR2D),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR2D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        a = self.get_input("a") or (0.0, 0.0)
-        b = self.get_input("b") or (0.0, 0.0)
-        a = (float(a[0]) if len(a) >= 1 else 0.0, float(a[1]) if len(a) >= 2 else 0.0)
-        b = (float(b[0]) if len(b) >= 1 else 0.0, float(b[1]) if len(b) >= 2 else 0.0)
-        self.set_output("result", (a[0] + b[0], a[1] + b[1]))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#81c784"))
-        painter.setFont(QFont("Courier New", 10))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 +")
-
-
-class Vector3DAddNode(NodeBase):
-    """Component-wise a + b for Vector3D."""
-    NODE_NAME  = "Vector3D Add"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR3D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR3D),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR3D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        a = self.get_input("a") or (0.0, 0.0, 0.0)
-        b = self.get_input("b") or (0.0, 0.0, 0.0)
-        a = (_f(a, 0), _f(a, 1), _f(a, 2))
-        b = (_f(b, 0), _f(b, 1), _f(b, 2))
-        self.set_output("result", (a[0] + b[0], a[1] + b[1], a[2] + b[2]))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#66bb6a"))
-        painter.setFont(QFont("Courier New", 10))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 +")
-
-
-class Vector4DAddNode(NodeBase):
-    """Component-wise a + b for Vector4D."""
-    NODE_NAME  = "Vector4D Add"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR4D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR4D),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR4D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        a = self.get_input("a") or (0.0, 0.0, 0.0, 0.0)
-        b = self.get_input("b") or (0.0, 0.0, 0.0, 0.0)
-        a = (_f(a, 0), _f(a, 1), _f(a, 2), _f(a, 3))
-        b = (_f(b, 0), _f(b, 1), _f(b, 2), _f(b, 3))
-        self.set_output("result", (a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#4caf50"))
-        painter.setFont(QFont("Courier New", 10))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec4 +")
-
-
-class Vector2DSubtractNode(NodeBase):
-    """Component-wise a - b for Vector2D."""
-    NODE_NAME  = "Vector2D Subtract"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR2D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR2D),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR2D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        a = self.get_input("a") or (0.0, 0.0)
-        b = self.get_input("b") or (0.0, 0.0)
-        a = (_f(a, 0), _f(a, 1))
-        b = (_f(b, 0), _f(b, 1))
-        self.set_output("result", (a[0] - b[0], a[1] - b[1]))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#81c784"))
-        painter.setFont(QFont("Courier New", 10))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 −")
-
-
-class Vector3DSubtractNode(NodeBase):
-    """Component-wise a - b for Vector3D."""
-    NODE_NAME  = "Vector3D Subtract"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR3D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR3D),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR3D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        a = self.get_input("a") or (0.0, 0.0, 0.0)
-        b = self.get_input("b") or (0.0, 0.0, 0.0)
-        a = (_f(a, 0), _f(a, 1), _f(a, 2))
-        b = (_f(b, 0), _f(b, 1), _f(b, 2))
-        self.set_output("result", (a[0] - b[0], a[1] - b[1], a[2] - b[2]))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#66bb6a"))
-        painter.setFont(QFont("Courier New", 10))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 −")
-
-
-class Vector4DSubtractNode(NodeBase):
-    """Component-wise a - b for Vector4D."""
-    NODE_NAME  = "Vector4D Subtract"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR4D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR4D),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR4D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        a = self.get_input("a") or (0.0, 0.0, 0.0, 0.0)
-        b = self.get_input("b") or (0.0, 0.0, 0.0, 0.0)
-        a = (_f(a, 0), _f(a, 1), _f(a, 2), _f(a, 3))
-        b = (_f(b, 0), _f(b, 1), _f(b, 2), _f(b, 3))
-        self.set_output("result", (a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#4caf50"))
-        painter.setFont(QFont("Courier New", 10))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec4 −")
-
-
-class Vector2DScaleNode(NodeBase):
-    """Scale Vector2D by scalar."""
-    NODE_NAME  = "Vector2D Scale"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR2D),
-        PinDescriptor("scale",  PinDirection.INPUT,  PinType.FLOAT, default=1.0),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR2D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        v = self.get_input("vector") or (0.0, 0.0)
-        s = float(self.get_input("scale") or 1.0)
-        v = (_f(v, 0), _f(v, 1))
-        self.set_output("result", (v[0] * s, v[1] * s))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#81c784"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 × s")
-
-
-class Vector3DScaleNode(NodeBase):
-    """Scale Vector3D by scalar."""
-    NODE_NAME  = "Vector3D Scale"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR3D),
-        PinDescriptor("scale",  PinDirection.INPUT,  PinType.FLOAT, default=1.0),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR3D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        v = self.get_input("vector") or (0.0, 0.0, 0.0)
-        s = float(self.get_input("scale") or 1.0)
-        v = (_f(v, 0), _f(v, 1), _f(v, 2))
-        self.set_output("result", (v[0] * s, v[1] * s, v[2] * s))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#66bb6a"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 × s")
-
-
-class Vector4DScaleNode(NodeBase):
-    """Scale Vector4D by scalar."""
-    NODE_NAME  = "Vector4D Scale"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR4D),
-        PinDescriptor("scale",  PinDirection.INPUT,  PinType.FLOAT, default=1.0),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.VECTOR4D),
-    ]
-    MIN_WIDTH  = 150.0
-    MIN_HEIGHT = 60.0
-
-    def on_start(self) -> None:
-        self._compute()
-
-    def on_data_received(self, pin_name: str, value: Any) -> None:
-        self._compute()
-
-    def _compute(self) -> None:
-        v = self.get_input("vector") or (0.0, 0.0, 0.0, 0.0)
-        s = float(self.get_input("scale") or 1.0)
-        v = (_f(v, 0), _f(v, 1), _f(v, 2), _f(v, 3))
-        self.set_output("result", (v[0] * s, v[1] * s, v[2] * s, v[3] * s))
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#4caf50"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec4 × s")
-
-
-class Vector2DDotNode(NodeBase):
-    """Dot product of two Vector2D; outputs float."""
-    NODE_NAME  = "Vector2D Dot"
-    NODE_GROUP = "Math / Vector"
-    PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR2D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR2D),
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.ANY),
         PinDescriptor("result", PinDirection.OUTPUT, PinType.FLOAT),
     ]
     MIN_WIDTH  = 150.0
@@ -941,26 +708,34 @@ class Vector2DDotNode(NodeBase):
         self._compute()
 
     def _compute(self) -> None:
-        a = self.get_input("a") or (0.0, 0.0)
-        b = self.get_input("b") or (0.0, 0.0)
-        a = (_f(a, 0), _f(a, 1))
-        b = (_f(b, 0), _f(b, 1))
-        self.set_output("result", a[0] * b[0] + a[1] * b[1])
+        a = self.get_input("a") or 0.0
+        b = self.get_input("b") or 0.0
+        if isinstance(a, (tuple, list)) or isinstance(b, (tuple, list)):
+            la = list(a) if isinstance(a, (tuple, list)) else [float(a)]
+            lb = list(b) if isinstance(b, (tuple, list)) else [float(b)]
+            n = min(len(la), len(lb))
+            self.set_output("result", sum(float(la[i]) * float(lb[i]) for i in range(n)))
+        else:
+            self.set_output("result", float(a) * float(b))
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#81c784"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec2 ·")
+        painter.setPen(QColor("#66bb6a"))
+        painter.setFont(QFont("Courier New", 11))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "a · b")
 
 
-class Vector3DDotNode(NodeBase):
-    """Dot product of two Vector3D; outputs float."""
-    NODE_NAME  = "Vector3D Dot"
+class CrossProductNode(NodeBase):
+    """
+    Cross product of two vectors.
+    Vec2 inputs → Float (ax·by − ay·bx, the 2D pseudo-cross).
+    Vec3+ inputs → Vec3 (standard 3D cross, using first 3 components).
+    """
+    NODE_NAME  = "Cross Product"
     NODE_GROUP = "Math / Vector"
     PINS = [
-        PinDescriptor("a",      PinDirection.INPUT,  PinType.VECTOR3D),
-        PinDescriptor("b",      PinDirection.INPUT,  PinType.VECTOR3D),
-        PinDescriptor("result", PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("b",      PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("result", PinDirection.OUTPUT, PinType.ANY),
     ]
     MIN_WIDTH  = 150.0
     MIN_HEIGHT = 60.0
@@ -974,14 +749,28 @@ class Vector3DDotNode(NodeBase):
     def _compute(self) -> None:
         a = self.get_input("a") or (0.0, 0.0, 0.0)
         b = self.get_input("b") or (0.0, 0.0, 0.0)
-        a = (_f(a, 0), _f(a, 1), _f(a, 2))
-        b = (_f(b, 0), _f(b, 1), _f(b, 2))
-        self.set_output("result", a[0] * b[0] + a[1] * b[1] + a[2] * b[2])
+        la = list(a) if isinstance(a, (tuple, list)) else [float(a)]
+        lb = list(b) if isinstance(b, (tuple, list)) else [float(b)]
+        n = max(len(la), len(lb))
+        if n <= 2:
+            # 2D pseudo-cross → scalar
+            ax, ay = _f(la, 0), _f(la, 1)
+            bx, by = _f(lb, 0), _f(lb, 1)
+            self.set_output("result", ax * by - ay * bx)
+        else:
+            # 3D cross (uses first 3 components)
+            ax, ay, az = _f(la, 0), _f(la, 1), _f(la, 2)
+            bx, by, bz = _f(lb, 0), _f(lb, 1), _f(lb, 2)
+            self.set_output("result", (
+                ay * bz - az * by,
+                az * bx - ax * bz,
+                ax * by - ay * bx,
+            ))
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#66bb6a"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Vec3 ·")
+        painter.setFont(QFont("Courier New", 11))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "a × b")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

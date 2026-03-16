@@ -564,7 +564,7 @@ class CoyoteWaveformFromInputsNode(_CoyoteNodeBase):
     and outputs a 4-part CoyoteWaveformFrame every 100 ms, ready for Set Waveform nodes.
     Uses on_tick_check (runtime calls every 10 ms); no exec pins.
     """
-    NODE_NAME = "Coyote: Waveform (intensity + frequency)"
+    NODE_NAME = "Coyote: Build Waveform"
     PINS = [
         PinDescriptor("intensity", PinDirection.INPUT, PinType.FLOAT, default=0.0),
         PinDescriptor("frequency", PinDirection.INPUT, PinType.FLOAT, default=10.0),

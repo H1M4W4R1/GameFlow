@@ -108,7 +108,7 @@ class StartNode(NodeBase):
 
 class _CompareNodeBase(NodeBase):
     """Base for a OP b with Any pins; subclasses set _op_name and _result."""
-    NODE_GROUP = "Flow"
+    NODE_GROUP = "Conditional"
     PINS = [
         PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("a",       PinDirection.INPUT,  PinType.ANY),
@@ -193,3 +193,40 @@ class LessEqualNode(_CompareNodeBase):
             return a <= b
         except TypeError:
             return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Select  (ternary: condition ? a : b)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SelectNode(NodeBase):
+    """
+    Ternary select — outputs a when condition is True, b when False.
+    Equivalent to C#  condition ? a : b
+    Pure data node — reacts instantly on any input change.
+    """
+    NODE_NAME  = "Select"
+    NODE_GROUP = "Conditional"
+    PINS = [
+        PinDescriptor("condition", PinDirection.INPUT,  PinType.BOOL, default=False),
+        PinDescriptor("a",         PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("b",         PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("result",    PinDirection.OUTPUT, PinType.ANY),
+    ]
+    MIN_WIDTH  = 160.0
+    MIN_HEIGHT = 80.0
+
+    def on_start(self) -> None:
+        self._compute()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        self._compute()
+
+    def _compute(self) -> None:
+        cond = bool(self.get_input("condition"))
+        self.set_output("result", self.get_input("a") if cond else self.get_input("b"))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#ffb74d"))
+        painter.setFont(QFont("Courier New", 9))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "? a : b")
