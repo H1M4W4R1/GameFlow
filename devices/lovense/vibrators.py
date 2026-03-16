@@ -115,7 +115,7 @@ class LovenseGemini(_LovenseBLEBase):
     DEVICE_DESCRIPTION = "Couples vibrator — 2 independent motors"
     DEVICE_IDENTIFIER  = "G"
     VIBRATOR_COUNT     = 2
-    VIBRATOR_NAMES     = ["Vibrate Top", "Vibrate Bottom"]
+    VIBRATOR_NAMES     = ["Vibrate Left", "Vibrate Right"]
     ICON_PATH          = "assets/icons/lovense/gemini.svg"
 
     def get_node_types(self) -> list[str]:

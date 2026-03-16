@@ -203,6 +203,20 @@ class DeviceRow(QFrame):
     def set_alias(self, alias: str) -> None:
         self._name_lbl.setText(alias)
 
+    def set_highlighted(self, active: bool) -> None:
+        """Highlight this row when a node linked to this device is selected."""
+        if active:
+            self.setStyleSheet("""
+                QFrame#DeviceRow { background:#2d0f1a; border:1px solid #f95979;
+                                   border-radius:6px; margin:2px 4px; }
+            """)
+        else:
+            self.setStyleSheet("""
+                QFrame#DeviceRow { background:#220d14; border:1px solid #45072f;
+                                   border-radius:6px; margin:2px 4px; }
+                QFrame#DeviceRow:hover { border:1px solid #c90084; background:#2d1020; }
+            """)
+
     def mousePressEvent(self, _) -> None:
         self.clicked.emit(self.device_id)
 
@@ -242,10 +256,11 @@ class DevicePanel(QWidget):
         hl.addStretch()
         add_btn = QPushButton("+")
         add_btn.setFixedSize(24, 24)
+        add_btn.setToolTip("Add device")
         add_btn.setStyleSheet("""
-            QPushButton { background:#c90084; color:white; border-radius:12px;
-                          font-size:14pt; font-weight:bold; border:none; }
-            QPushButton:hover { background:#f95979; }
+            QPushButton { background:transparent; color:#c8889a; border:none;
+                          font-size:16pt; font-weight:bold; padding:0; margin:0; }
+            QPushButton:hover { color:#f95979; }
         """)
         add_btn.clicked.connect(self._on_add_clicked)
         hl.addWidget(add_btn)
@@ -355,6 +370,16 @@ class DevicePanel(QWidget):
         if row:
             row.set_battery(level)
 
+    def highlight_device(self, device_type_key: Optional[str]) -> None:
+        """Highlight the device row matching device_type_key; clear all others."""
+        for did, row in self._rows.items():
+            dev = self._registry.get_device(did)
+            if dev is None:
+                row.set_highlighted(False)
+                continue
+            key = f'{dev.__class__.__module__}.{dev.__class__.__name__}'
+            row.set_highlighted(device_type_key is not None and key == device_type_key)
+
     def _on_row_clicked(self, device_id: str) -> None:
         dev = self._registry.get_device(device_id)
         if not dev:
@@ -403,30 +428,28 @@ class _DeviceTile(QFrame):
         super().__init__(parent)
         self._key      = class_key
         self._selected = False
-        self.setFixedSize(80, 88)
+        self.setFixedSize(120, 132)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(self._STYLE_NORMAL)
 
+        # Set tooltip to description if available
+        desc = getattr(device_cls, 'DEVICE_DESCRIPTION', '')
+        if desc:
+            self.setToolTip(desc)
+
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(4, 6, 4, 4)
-        lay.setSpacing(2)
+        lay.setContentsMargins(6, 8, 6, 6)
+        lay.setSpacing(4)
         lay.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
-        icon_w = _make_icon_widget(device_cls.ICON_PATH, 44)
+        icon_w = _make_icon_widget(device_cls.ICON_PATH, 66)
         lay.addWidget(icon_w, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         name = QLabel(device_cls.DEVICE_NAME)
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name.setWordWrap(True)
-        name.setStyleSheet("color:#ffd0de;font-size:8pt;background:transparent;")
+        name.setStyleSheet("color:#ffd0de;font-size:9pt;background:transparent;")
         lay.addWidget(name)
-
-        if hasattr(device_cls, "DEVICE_DESCRIPTION") and device_cls.DEVICE_DESCRIPTION:
-            desc = QLabel(device_cls.DEVICE_DESCRIPTION)
-            desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            desc.setWordWrap(True)
-            desc.setStyleSheet("color:#7a4060;font-size:7pt;background:transparent;")
-            lay.addWidget(desc)
 
     def set_active(self, active: bool) -> None:
         self._selected = active
@@ -454,7 +477,7 @@ class AddDeviceDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Add Device")
         self.setStyleSheet(_DLG_STYLE)
-        self.setMinimumSize(520, 420)
+        self.setMinimumSize(560, 480)
         self._device_classes = {k: v for k, v in device_classes.items()
                                  if not v.__name__.startswith("_")}
         self._selected_key: Optional[str] = None
@@ -474,6 +497,8 @@ class AddDeviceDialog(QDialog):
         manufacturers: dict[str, list[tuple[str, type]]] = {}
         for key, cls in self._device_classes.items():
             mfr = getattr(cls, "MANUFACTURER", "Generic")
+            if mfr.lower() in ("unknown", "generic"):
+                continue   # hide abstraction/placeholder devices
             manufacturers.setdefault(mfr, []).append((key, cls))
 
         for mfr in sorted(manufacturers.keys()):
@@ -592,11 +617,16 @@ class _ManufacturerTab(QWidget):
         grid.setSpacing(8)
         grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
+        # Responsive columns: 120px tile + 8px gap; min 1 column
+        # The grid column count is determined when the dialog is shown
+        # We store tiles and rely on resizeEvent via _ManufacturerTab for reflow,
+        # but for simplicity use a fixed column count of 4 (fits well at 520px min).
+        COLS = 4
         for idx, (key, cls) in enumerate(items):
             t = _DeviceTile(key, cls)
             t.selected.connect(self.tile_selected)
             self._tiles[key] = t
-            grid.addWidget(t, idx // 5, idx % 5)
+            grid.addWidget(t, idx // COLS, idx % COLS)
 
         scroll.setWidget(container)
 

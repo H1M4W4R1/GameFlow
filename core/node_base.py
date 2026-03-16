@@ -292,6 +292,13 @@ class NodeBase(QObject):
     def on_stop(self) -> None:
         """Called when graph execution stops. Override for clean-up."""
 
+    def on_pause(self) -> None:
+        """Called when graph execution is paused (tick loop halted, nodes kept alive).
+        Override to zero outputs or halt hardware safely."""
+
+    def on_resume(self) -> None:
+        """Called when graph execution resumes after a pause."""
+
     # ── State serialisation (for save/load) ──────────────────────────────────
 
     def get_state(self) -> dict[str, Any]:

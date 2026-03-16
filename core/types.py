@@ -80,6 +80,7 @@ class PinType(Enum):
     VECTOR4D = auto()   # (x, y, z, w)
     COLOR    = auto()   # (r, g, b, a) 0–1 float
     DATETIME = auto()   # datetime-like (seconds since epoch or datetime)
+    COYOTE_FRAME = auto()  # CoyoteWaveformFrame (intensity 0–1, frequency device range)
 
 
 PIN_COLORS: dict[PinType, str] = {
@@ -94,6 +95,7 @@ PIN_COLORS: dict[PinType, str] = {
     PinType.VECTOR4D: "#4caf50",
     PinType.COLOR:    "#e57373",
     PinType.DATETIME: "#ba68c8",
+    PinType.COYOTE_FRAME: "#b39ddb",
 }
 
 # Which PinTypes can connect to which.
@@ -106,12 +108,13 @@ PIN_COMPATIBILITY: dict[PinType, set[PinType]] = {
     PinType.STRING:   {PinType.STRING, PinType.ANY},
     PinType.ANY:      {PinType.FLOAT, PinType.INT, PinType.BOOL, PinType.STRING,
                        PinType.VECTOR2D, PinType.VECTOR3D, PinType.VECTOR4D,
-                       PinType.COLOR, PinType.DATETIME, PinType.ANY},
+                       PinType.COLOR, PinType.DATETIME, PinType.COYOTE_FRAME, PinType.ANY},
     PinType.VECTOR2D: {PinType.VECTOR2D, PinType.ANY},
     PinType.VECTOR3D: {PinType.VECTOR3D, PinType.ANY},
     PinType.VECTOR4D: {PinType.VECTOR4D, PinType.ANY},
     PinType.COLOR:    {PinType.COLOR, PinType.ANY},
     PinType.DATETIME: {PinType.DATETIME, PinType.ANY},
+    PinType.COYOTE_FRAME: {PinType.COYOTE_FRAME, PinType.ANY},
 }
 
 # Auto-coercion applied in NodeBase.receive_data when src/dst types differ.

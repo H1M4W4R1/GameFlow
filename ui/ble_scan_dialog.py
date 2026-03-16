@@ -20,9 +20,7 @@ BLE identifier → device class matching:
 """
 from __future__ import annotations
 
-import asyncio
 import logging
-import threading
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -34,9 +32,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.types import ConnectionDescriptor, PortKind
-from devices.lovense._base import (
-    BLE_NAME_PREFIXES, BLE_SERVICE_UUIDS, BLE_NAME_TO_IDENTIFIER,
-)
+from core.ble_scanner import BLEScanner, DiscoveredDevice
 
 log = logging.getLogger(__name__)
 
@@ -191,6 +187,7 @@ class BLEScanDialog(QDialog):
         self._selected_addr:  Optional[str]            = None
         self._result:         Optional[tuple[str, ConnectionDescriptor]] = None
         self._bridge          = _Bridge()
+        self._scanner         = None   # BLEScanner instance
         self._scanning        = False
 
         # Build DEVICE_IDENTIFIER → class_key lookup
@@ -208,6 +205,12 @@ class BLEScanDialog(QDialog):
         QTimer.singleShot(120, self._start_scan)
 
     # ── UI ────────────────────────────────────────────────────────────────────
+
+    def _scan_status_text(self) -> str:
+        if self._preselected_key and self._preselected_key in self._device_classes:
+            cls = self._device_classes[self._preselected_key]
+            return f"Searching for {cls.DEVICE_NAME}…"
+        return "Scanning for nearby BLE devices…"
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -298,120 +301,41 @@ class BLEScanDialog(QDialog):
         self._hint_lbl.setText(
             "Make sure your device is turned on and not connected to another app.")
 
-        t = threading.Thread(target=self._run_scan, daemon=True, name="BLEScan")
-        t.start()
+        # Use the generic BLEScanner from core — it knows about ALL device classes
+        # (Lovense, Coyote, H1M4W4R1, …) via BLE_NAME_PREFIXES / BLE_SERVICE_UUID.
+        self._scanner = BLEScanner(self._device_classes)
+        self._scanner.device_found.connect(self._on_ble_found)
+        self._scanner.device_updated.connect(self._on_ble_updated)
+        self._scanner.scan_finished.connect(self._on_scan_finished)
+        self._scanner.scan_error.connect(self._on_scan_error)
+        self._scanner.start(timeout_s=SCAN_WINDOW_S)
 
-    def _run_scan(self) -> None:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(self._async_scan())
-        except Exception as exc:
-            self._bridge.scan_error.emit(str(exc))
-        finally:
-            loop.close()
-            self._scanning = False
-            self._bridge.scan_finished.emit()
+    def _on_ble_found(self, disc) -> None:
+        """Convert DiscoveredDevice → BLECandidate and route to existing slot."""
+        # If user preselected a specific tile, use that as the matched key
+        # as long as the class_key from the scan is either the preselected one
+        # or empty (unknown).
+        matched = disc.class_key or self._preselected_key or ""
+        if self._preselected_key and disc.class_key and disc.class_key != self._preselected_key:
+            # Scanner found it belongs to a different device type — trust the scanner
+            matched = disc.class_key
 
-    async def _async_scan(self) -> None:
-        try:
-            from bleak import BleakScanner  # type: ignore
-        except ImportError:
-            raise RuntimeError(
-                "bleak not installed — run:  pip install bleak"
-            )
+        c = BLECandidate(
+            address       = disc.address,
+            name          = disc.name,
+            rssi          = disc.rssi,
+            service_uuids = disc.uuids,
+            matched_key   = matched,
+        )
+        self._bridge.device_found.emit(c)
 
-        def _cb(device, adv) -> None:  # type: ignore
-            name = (device.name or "") or (adv.local_name or "") or "(unknown)"
-            adv_svcs = {s.lower() for s in (adv.service_uuids or [])}
-
-            # Filter: Lovense (name prefix or static service) OR preselected device's service UUID
-            name_ok = any(name.upper().startswith(p.upper())
-                          for p in BLE_NAME_PREFIXES)
-            static_svcs = {
-                "0000fff0-0000-1000-8000-00805f9b34fb",   # Gen1
-                "6e400001-b5a3-f393-e0a9-e50e24dcca9e",   # Gen2 NUS
-            }
-            preselected_svc_match = False
-            if self._preselected_key and self._preselected_key in self._device_classes:
-                cls = self._device_classes[self._preselected_key]
-                svc = getattr(cls, "BLE_SERVICE_UUID", None)
-                if svc and svc.lower() in adv_svcs:
-                    preselected_svc_match = True
-            if not name_ok and not preselected_svc_match:
-                if not adv_svcs.intersection(static_svcs):
-                    return
-
-            rssi = getattr(adv, "rssi", -100) or -100
-            if preselected_svc_match:
-                matched_key = self._preselected_key
-            else:
-                matched_key = self._resolve_class_key(name)
-            c = BLECandidate(
-                address       = device.address,
-                name          = name,
-                rssi          = rssi,
-                service_uuids = list(adv.service_uuids or []),
-                matched_key   = matched_key,
-            )
-            self._bridge.device_found.emit(c)
-
-        # Try newer bleak callback API; fall back to start/stop
-        try:
-            scanner = BleakScanner(detection_callback=_cb)
-            await scanner.start()
-            await asyncio.sleep(SCAN_WINDOW_S)
-            await scanner.stop()
-        except Exception as exc:
-            raise RuntimeError(f"BLE scan failed: {exc}") from exc
-
-    # ── Name → class key resolution ───────────────────────────────────────────
-
-    def _resolve_class_key(self, ble_name: str) -> Optional[str]:
-        """
-        Resolve the device class key from a Lovense BLE advertisement name.
-
-        Naming conventions:
-          Old firmware: "LVS-<single_char_id><firmware_ver>"  e.g. "LVS-Z011"
-          New firmware: "LVS-<ProductName><firmware_ver>"     e.g. "LVS-Edge36"
-
-        Steps:
-          1. Strip LVS- / LOVE- prefix.
-          2. Extract leading alpha characters.
-          3. Try longest-to-shortest match against BLE_NAME_TO_IDENTIFIER.
-          4. Look up the resulting DEVICE_IDENTIFIER in _ident_to_key.
-        """
-        raw = ble_name
-        for pfx in BLE_NAME_PREFIXES:
-            if raw.upper().startswith(pfx.upper()):
-                raw = raw[len(pfx):]
-                break
-
-        # Collect leading alpha run
-        alpha = ""
-        for ch in raw:
-            if ch.isalpha():
-                alpha += ch
-            else:
-                break
-
-        if not alpha:
-            return self._preselected_key
-
-        # Longest-first match
-        for length in range(len(alpha), 0, -1):
-            fragment  = alpha[:length]
-            ident     = BLE_NAME_TO_IDENTIFIER.get(fragment) or BLE_NAME_TO_IDENTIFIER.get(fragment.upper())
-            if ident:
-                key = self._ident_to_key.get(ident.upper())
-                if key:
-                    log.debug("BLE '%s' → fragment '%s' → ident '%s' → key '%s'",
-                              ble_name, fragment, ident, key)
-                    return key
-
-        log.debug("BLE '%s' → no match, using preselected '%s'",
-                  ble_name, self._preselected_key)
-        return self._preselected_key
+    def _on_ble_updated(self, disc) -> None:
+        """Update RSSI for an already-shown device."""
+        row = self._rows.get(disc.address)
+        if row:
+            row.update_rssi(disc.rssi)
+            if disc.address in self._candidates:
+                self._candidates[disc.address].rssi = disc.rssi
 
     # ── Qt slot handlers ──────────────────────────────────────────────────────
 
@@ -505,4 +429,6 @@ class BLEScanDialog(QDialog):
 
     def closeEvent(self, event) -> None:
         self._scanning = False
+        if self._scanner:
+            self._scanner.stop()
         super().closeEvent(event)

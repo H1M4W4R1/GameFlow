@@ -163,6 +163,11 @@ class GraphRuntime(QObject):
         if self._running and not self._paused:
             self._paused = True
             self._pause_event.set()
+            for node in self._nodes.values():
+                try:
+                    node.on_pause()
+                except Exception as exc:
+                    log.error("on_pause error in %s: %s", node, exc)
             self.paused_changed.emit(True)
             log.info("GraphRuntime paused.")
 
@@ -171,6 +176,11 @@ class GraphRuntime(QObject):
         if self._running and self._paused:
             self._paused = False
             self._pause_event.clear()
+            for node in self._nodes.values():
+                try:
+                    node.on_resume()
+                except Exception as exc:
+                    log.error("on_resume error in %s: %s", node, exc)
             self.paused_changed.emit(False)
             log.info("GraphRuntime resumed.")
 

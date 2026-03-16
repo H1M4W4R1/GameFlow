@@ -204,9 +204,10 @@ def _node_width(node: NodeBase) -> float:
 # ── Canvas ────────────────────────────────────────────────────────────────────
 
 class NodeEditorCanvas(QWidget):
-    wire_created   = pyqtSignal(object)
-    node_selected  = pyqtSignal(str)
-    status_message = pyqtSignal(str)
+    wire_created      = pyqtSignal(object)
+    node_selected     = pyqtSignal(str)
+    status_message    = pyqtSignal(str)
+    device_highlighted = pyqtSignal(object)   # Optional[str] — DEVICE_TYPE_KEY or None
 
     def __init__(
         self,
@@ -689,6 +690,10 @@ class NodeEditorCanvas(QWidget):
                 if node:
                     self._drag_node_start = QPointF(node.x, node.y)
                 self.node_selected.emit(nid)
+                # Highlight linked device in panel
+                node_obj = self._runtime.get_node(nid)
+                dtk = getattr(node_obj, 'DEVICE_TYPE_KEY', None) if node_obj else None
+                self.device_highlighted.emit(dtk)
                 self.update(); return
 
             # Try wire hit
@@ -700,6 +705,7 @@ class NodeEditorCanvas(QWidget):
 
             self._selected_node = None
             self._selected_wire  = None
+            self.device_highlighted.emit(None)
             self.update()
 
         if event.button() == Qt.MouseButton.RightButton:
@@ -913,6 +919,7 @@ class NodeEditorCanvas(QWidget):
             self._wire_src      = None
             self._selected_node = None
             self._selected_wire  = None
+            self.device_highlighted.emit(None)
             self.update()
 
         super().keyPressEvent(event)
@@ -939,11 +946,19 @@ class NodeEditorCanvas(QWidget):
     def _paste_clipboard(self) -> None:
         if not self._clipboard:
             return
+        # Paste at current cursor position if it's within the canvas,
+        # otherwise fall back to canvas centre + offset.
+        mx, my = self._last_mouse_view.x(), self._last_mouse_view.y()
+        if 0 <= mx <= self.width() and 0 <= my <= self.height():
+            paste_scene = self._v2s(QPointF(mx, my))
+        else:
+            centre = self._v2s(QPointF(self.width() / 2, self.height() / 2))
+            paste_scene = centre
         for entry in self._clipboard:
             self.status_message.emit(
                 f"__add_node__{entry['type_key']}__"
-                f"{self._v2s(QPointF(self.width()/2, self.height()/2)).x() + entry['dx']}__"
-                f"{self._v2s(QPointF(self.width()/2, self.height()/2)).y() + entry['dy']}"
+                f"{paste_scene.x() + entry['dx']}__"
+                f"{paste_scene.y() + entry['dy']}"
             )
 
     def _duplicate_selected(self) -> None:

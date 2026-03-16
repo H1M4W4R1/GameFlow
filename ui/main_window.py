@@ -165,14 +165,18 @@ class MainWindow(QWidget):
         layout.addWidget(self._save_btn)
         layout.addWidget(self._load_btn)
 
-        # ── Drag zone (stretchy centre) + filename ─────────────────────────
-        drag_zone = _DragZone(self)   # transparent, pass mouse events to window
-        layout.addWidget(drag_zone, stretch=1)
+        # ── Centre area: left drag zone | project name | right drag zone ──
+        drag_left = _DragZone(self)
+        layout.addWidget(drag_left, stretch=1)
 
         self._graph_name_label = QLabel("Untitled")
+        self._graph_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._graph_name_label.setStyleSheet(
             "color:#7a4060;font-size:8pt;background:transparent;")
         layout.addWidget(self._graph_name_label)
+
+        drag_right = _DragZone(self)
+        layout.addWidget(drag_right, stretch=1)
 
         layout.addSpacing(6)
 
@@ -222,6 +226,7 @@ class MainWindow(QWidget):
         self._device_panel.rename_device_requested.connect(self._on_rename_device)
 
         self._canvas.status_message.connect(self._handle_canvas_message)
+        self._canvas.device_highlighted.connect(self._device_panel.highlight_device)
         self._runtime.runtime_error.connect(
             lambda msg: self._status_bar.setText(f"⚠ {msg}")
         )
@@ -382,12 +387,15 @@ class MainWindow(QWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         if hasattr(self, "_resize_handle"):
-            sz = self._resize_handle.size()
-            self._resize_handle.move(
-                self.width()  - sz.width(),
-                self.height() - sz.height(),
-            )
-            self._resize_handle.raise_()
+            maximised = self.isMaximized()
+            self._resize_handle.setVisible(not maximised)
+            if not maximised:
+                sz = self._resize_handle.size()
+                self._resize_handle.move(
+                    self.width()  - sz.width(),
+                    self.height() - sz.height(),
+                )
+                self._resize_handle.raise_()
 
     def _on_post_show(self) -> None:
         """Restore saved devices after the window is visible."""
@@ -606,11 +614,11 @@ class _ResizeHandle(QWidget):
         sz   = self.HANDLE_SIZE
         col  = QColor("#c90084")
         col2 = QColor("#45072f")
-        # Three diagonal grip lines
+        # Three diagonal grip lines (bottom-right corner, lines run SW→NE)
         for i, (x1, y1, x2, y2) in enumerate([
-            (sz-4,  2,   sz-2, 4),
-            (sz-9,  2,   sz-2, 9),
-            (sz-14, 2,   sz-2, 14),
+            (2,   sz-4,  4,   sz-2),
+            (2,   sz-9,  9,   sz-2),
+            (2,   sz-14, 14,  sz-2),
         ]):
             p.setPen(QPen(col2, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
             p.drawLine(x1+1, y1+1, x2+1, y2+1)

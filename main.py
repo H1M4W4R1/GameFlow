@@ -180,6 +180,20 @@ def _seed_builtin_nodes(registry: DeviceRegistry) -> None:
     except ImportError as e:
         log.warning("H1M4W4R1 pump unavailable: %s", e)
 
+    # ── DGLab (Coyote) device + nodes ───────────────────────────────────────────
+    try:
+        from devices.dglab import ALL_DEVICE_CLASSES as _dglab_dev, ALL_NODE_CLASSES as _dglab_nod
+        for cls in _dglab_dev:
+            key = f"{cls.__module__}.{cls.__name__}"
+            registry._device_classes[key] = cls
+        for cls in _dglab_nod:
+            key = f"{cls.__module__}.{cls.__name__}"
+            registry._node_classes[key] = cls
+        log.info("Registered %d DGLab device(s), %d node(s)",
+                 len(_dglab_dev), len(_dglab_nod))
+    except ImportError as e:
+        log.warning("DGLab (Coyote) unavailable (bleak not installed?): %s", e)
+
 
 if __name__ == "__main__":
     main()
