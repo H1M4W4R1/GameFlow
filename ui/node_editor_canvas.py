@@ -517,6 +517,7 @@ class NodeEditorCanvas(QWidget):
         # Title bar
         title_rect = QRectF(node.x, node.y, width, TITLE_H)
         tp = QPainterPath()
+        tp.setFillRule(Qt.FillRule.WindingFill)
         tp.addRoundedRect(title_rect, NODE_RADIUS, NODE_RADIUS)
         tp.addRect(QRectF(node.x, node.y + NODE_RADIUS, width, TITLE_H - NODE_RADIUS))
         grad = QLinearGradient(title_rect.topLeft(), title_rect.bottomLeft())
