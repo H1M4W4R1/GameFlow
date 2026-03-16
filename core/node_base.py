@@ -39,12 +39,21 @@ from typing import Any, Callable, Optional, TYPE_CHECKING
 from PyQt6.QtCore import QObject, pyqtSignal, QRectF, QPointF
 from PyQt6.QtGui import QPainter, QColor
 
+import re as _re
+
 from core.types import PinDescriptor, PinDirection, PinType, PinType
 
 if TYPE_CHECKING:
     from core.graph_runtime import GraphRuntime
 
 log = logging.getLogger(__name__)
+
+
+def _node_name_to_tr_key(name: str) -> str:
+    """Convert a NODE_NAME like 'Map Range' to a tr key like 'map_range'."""
+    key = name.lower()
+    key = _re.sub(r'[^a-z0-9]+', '_', key)
+    return key.strip('_')
 
 
 class NodeBase(QObject):
@@ -105,6 +114,21 @@ class NodeBase(QObject):
     NODE_TITLE_COLOR: str = ""
 
     # ─────────────────────────────────────────────────────────────────────────
+
+    @classmethod
+    def display_name(cls) -> str:
+        """Return the localized display name for this node type."""
+        from core.localization import tr
+        tr_key = getattr(cls, '_TR_KEY', None) or _node_name_to_tr_key(cls.NODE_NAME)
+        return tr(f"node.{tr_key}.name", default=cls.NODE_NAME)
+
+    @classmethod
+    def display_group(cls) -> str:
+        """Return the localized group name for this node type."""
+        from core.localization import tr
+        tr_key = getattr(cls, '_TR_KEY', None) or _node_name_to_tr_key(cls.NODE_NAME)
+        group_key = _node_name_to_tr_key(cls.NODE_GROUP)
+        return tr(f"node.group.{group_key}", default=cls.NODE_GROUP)
 
     def __init__(
         self,

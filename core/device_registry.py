@@ -149,7 +149,7 @@ class DeviceRegistry(QObject):
             group = cls.NODE_GROUP
             if group.startswith("Invalid"):
                 continue   # broken / unresolvable node class
-            structure.setdefault(group, []).append((cls.NODE_NAME, key))
+            structure.setdefault(cls.display_group(), []).append((cls.display_name(), key))
         return structure
 
 

@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QFrame, QWidget, QProgressBar,
 )
 
+from core.localization import tr
 from core.types import ConnectionDescriptor, PortKind
 from core.ble_scanner import BLEScanner, DiscoveredDevice
 
@@ -121,14 +122,14 @@ class _CandidateRow(QFrame):
 
         self._rssi_bar = _RSSIBar(c.rssi)
         lay.addWidget(self._rssi_bar)
-        self._rssi_lbl = QLabel(f"{c.rssi} dBm")
+        self._rssi_lbl = QLabel(tr("ui.ble_scan.rssi").format(rssi=c.rssi))
         self._rssi_lbl.setStyleSheet(
             "color:#6b3050;font-size:7pt;background:transparent;min-width:52px;")
         lay.addWidget(self._rssi_lbl)
 
     def update_rssi(self, rssi: int) -> None:
         self._rssi_bar.set_rssi(rssi)
-        self._rssi_lbl.setText(f"{rssi} dBm")
+        self._rssi_lbl.setText(tr("ui.ble_scan.rssi").format(rssi=rssi))
 
     def set_active(self, v: bool) -> None:
         self.setStyleSheet(self._S_ACTIVE if v else self._S_NORMAL)
@@ -176,7 +177,7 @@ class BLEScanDialog(QDialog):
         parent           = None,
     ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Searching for Devices…")
+        self.setWindowTitle(tr("ui.ble_scan.title"))
         self.setStyleSheet(_DLG_STYLE)
         self.setMinimumSize(460, 400)
 
@@ -206,12 +207,6 @@ class BLEScanDialog(QDialog):
 
     # ── UI ────────────────────────────────────────────────────────────────────
 
-    def _scan_status_text(self) -> str:
-        if self._preselected_key and self._preselected_key in self._device_classes:
-            cls = self._device_classes[self._preselected_key]
-            return f"Searching for {cls.DEVICE_NAME}…"
-        return "Scanning for nearby BLE devices…"
-
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
@@ -222,7 +217,7 @@ class BLEScanDialog(QDialog):
         self._status_lbl = QLabel(self._scan_status_text())
         self._status_lbl.setStyleSheet("font-size:10pt;font-weight:bold;")
         hrow.addWidget(self._status_lbl, stretch=1)
-        self._scan_btn = QPushButton("Scan Again")
+        self._scan_btn = QPushButton(tr("ui.button.scan_again"))
         self._scan_btn.setEnabled(False)
         self._scan_btn.clicked.connect(self._start_scan)
         hrow.addWidget(self._scan_btn)
@@ -236,14 +231,13 @@ class BLEScanDialog(QDialog):
         root.addWidget(self._progress)
 
         # Hint text
-        self._hint_lbl = QLabel(
-            "Make sure your device is turned on and not connected to another app.")
+        self._hint_lbl = QLabel(tr("ui.ble_scan.device_hint"))
         self._hint_lbl.setStyleSheet("color:#6b3050;font-size:8pt;")
         self._hint_lbl.setWordWrap(True)
         root.addWidget(self._hint_lbl)
 
         # Divider label
-        found_lbl = QLabel("FOUND DEVICES")
+        found_lbl = QLabel(tr("ui.ble_scan.found_header"))
         found_lbl.setStyleSheet(
             "color:#45072f;font-size:7pt;letter-spacing:2px;padding-top:4px;")
         root.addWidget(found_lbl)
@@ -259,7 +253,7 @@ class BLEScanDialog(QDialog):
         self._list_lay.setContentsMargins(0, 0, 0, 0)
         self._list_lay.setSpacing(3)
         self._list_lay.addStretch()
-        self._empty_lbl = QLabel("No devices found yet…")
+        self._empty_lbl = QLabel(tr("ui.ble_scan.no_devices_yet"))
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_lbl.setStyleSheet(
             "color:#4a2030;font-size:9pt;padding:24px;")
@@ -270,10 +264,10 @@ class BLEScanDialog(QDialog):
         # Bottom buttons
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        cancel = QPushButton("Cancel")
+        cancel = QPushButton(tr("ui.button.cancel"))
         cancel.setObjectName("cancel")
         cancel.clicked.connect(self.reject)
-        self._connect_btn = QPushButton("Connect")
+        self._connect_btn = QPushButton(tr("ui.button.connect_plain"))
         self._connect_btn.setEnabled(False)
         self._connect_btn.clicked.connect(self._on_connect)
         btn_row.addWidget(cancel)
@@ -285,8 +279,8 @@ class BLEScanDialog(QDialog):
         if self._preselected_key and self._preselected_key in self._device_classes:
             cls = self._device_classes[self._preselected_key]
             name = getattr(cls, "DEVICE_NAME", "device")
-            return f"Scanning for {name}…"
-        return "Scanning for nearby BLE devices…"
+            return tr("ui.ble_scan.searching_named").format(name=name)
+        return tr("ui.ble_scan.scanning")
 
     # ── Scan logic (background thread) ────────────────────────────────────────
 
@@ -298,8 +292,7 @@ class BLEScanDialog(QDialog):
         self._connect_btn.setEnabled(False)
         self._status_lbl.setText(self._scan_status_text())
         self._progress.setRange(0, 0)
-        self._hint_lbl.setText(
-            "Make sure your device is turned on and not connected to another app.")
+        self._hint_lbl.setText(tr("ui.ble_scan.device_hint"))
 
         # Use the generic BLEScanner from core — it knows about ALL device classes
         # (Lovense, Coyote, H1M4W4R1, …) via BLE_NAME_PREFIXES / BLE_SERVICE_UUID.
@@ -360,10 +353,10 @@ class BLEScanDialog(QDialog):
         if c.matched_key and c.matched_key in self._device_classes:
             cls = self._device_classes[c.matched_key]
             self._status_lbl.setText(
-                f"Found: {cls.DEVICE_NAME} — select and click Connect")
+                tr("ui.ble_scan.found_named").format(name=cls.DEVICE_NAME))
         else:
             self._status_lbl.setText(
-                f"Found {len(self._candidates)} device(s) — select one")
+                tr("ui.ble_scan.found_count").format(count=len(self._candidates)))
 
         # Auto-connect if enabled and exactly one device
         if self.AUTO_CONNECT_SINGLE and len(self._candidates) == 1:
@@ -377,10 +370,8 @@ class BLEScanDialog(QDialog):
         self._scan_btn.setEnabled(True)
         count = len(self._candidates)
         if count == 0:
-            self._status_lbl.setText("No devices found.")
-            self._hint_lbl.setText(
-                "Ensure the device is on, in range, and not paired to another app. "
-                "Click Scan Again to retry.")
+            self._status_lbl.setText(tr("ui.ble_scan.no_devices_found"))
+            self._hint_lbl.setText(tr("ui.ble_scan.retry_hint"))
         else:
             self._hint_lbl.setText("")
 
@@ -389,8 +380,8 @@ class BLEScanDialog(QDialog):
         self._progress.setRange(0, 1)
         self._progress.setValue(0)
         self._scan_btn.setEnabled(True)
-        self._status_lbl.setText("Scan failed")
-        self._hint_lbl.setText(f"Error: {msg}")
+        self._status_lbl.setText(tr("ui.ble_scan.scan_failed"))
+        self._hint_lbl.setText(tr("ui.ble_scan.error").format(msg=msg))
         log.error("BLE scan error: %s", msg)
 
     def _on_row_selected(self, address: str) -> None:
@@ -407,7 +398,7 @@ class BLEScanDialog(QDialog):
         if key in self._device_classes:
             cls = self._device_classes[key]
             self._status_lbl.setText(
-                f"Selected: {cls.DEVICE_NAME}  ({c.address})")
+                tr("ui.ble_scan.selected").format(name=cls.DEVICE_NAME, address=c.address))
 
     def _on_connect(self) -> None:
         if not self._selected_addr:

@@ -262,6 +262,7 @@ class EulerConstantNode(_MathConstantBase):
     """Emits Euler's number e ≈ 2.71828…"""
     NODE_NAME      = "Euler (e)"
     NODE_GROUP     = "Constants"
+    _TR_KEY        = "euler"
     CONSTANT_VALUE  = _math.e
     CONSTANT_SYMBOL = "e"
     CONSTANT_COLOR  = "#ffb74d"
@@ -280,6 +281,7 @@ class TauConstantNode(_MathConstantBase):
     """Emits τ = 2π ≈ 6.28318…"""
     NODE_NAME      = "Tau (τ = 2π)"
     NODE_GROUP     = "Constants"
+    _TR_KEY        = "tau"
     CONSTANT_VALUE  = _math.tau
     CONSTANT_SYMBOL = "τ"
     CONSTANT_COLOR  = "#80cbc4"

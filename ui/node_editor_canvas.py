@@ -48,6 +48,7 @@ from PyQt6.QtWidgets import (
     QMenu, QVBoxLayout, QWidget, QToolTip, QColorDialog,
 )
 
+from core.localization import tr
 from core.command_history import (
     CommandHistory,
     CtrlPropCmd,
@@ -66,6 +67,14 @@ from core.types import (
 )
 
 log = logging.getLogger(__name__)
+
+
+def _node_display_name(node_or_cls) -> str:
+    """Return localized display name for a node instance or class."""
+    if hasattr(node_or_cls, 'display_name'):
+        return node_or_cls.display_name()
+    return node_or_cls.NODE_NAME
+
 
 # ── Visual constants ──────────────────────────────────────────────────────────
 COL_BG              = QColor("#1a0a0f")
@@ -538,7 +547,7 @@ class NodeEditorCanvas(QWidget):
         p.drawText(
             QRectF(node.x + PIN_RADIUS + 6, node.y, width - PIN_RADIUS * 2 - 12, TITLE_H),
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-            node.custom_name or node.NODE_NAME,
+            node.custom_name or _node_display_name(node.__class__),
         )
         self._rendered_title_bars.append((node.node_id, QRectF(title_rect)))
 
@@ -1617,7 +1626,7 @@ class NodeEditorCanvas(QWidget):
             }
         """)
         old_name = node.custom_name
-        editor.setText(node.custom_name or node.NODE_NAME)
+        editor.setText(node.custom_name or _node_display_name(node.__class__))
         editor.selectAll()
         editor.setGeometry(int(tl.x()), int(tl.y()),
                            int(br.x() - tl.x()), int(br.y() - tl.y()))
@@ -1631,7 +1640,7 @@ class NodeEditorCanvas(QWidget):
                 return
             _committed[0] = True
             text = editor.text().strip()
-            new_name = text if text and text != node.NODE_NAME else None
+            new_name = text if text and text != _node_display_name(node.__class__) else None
             node.custom_name = new_name
             if old_name != new_name:
                 self._history.push(NodeRenameCmd(self._runtime, node_id, old_name, new_name))
@@ -2073,7 +2082,7 @@ class NodeEditorCanvas(QWidget):
         menu = QMenu(self)
         menu.setStyleSheet(_MENU_STYLE)
 
-        rename_act = QAction("Rename…", menu)
+        rename_act = QAction(tr("ui.canvas.menu.rename"), menu)
         rename_act.triggered.connect(lambda: self._open_node_rename_editor(node_id))
         menu.addAction(rename_act)
 
@@ -2081,22 +2090,22 @@ class NodeEditorCanvas(QWidget):
         ctrl_actions: list = []
 
         if hasattr(node, "get_ctrl_label") and hasattr(node, "set_ctrl_label"):
-            lbl_act = QAction("Rename label…", menu)
+            lbl_act = QAction(tr("ui.canvas.menu.rename_label"), menu)
             lbl_act.triggered.connect(lambda: self._trigger_ctrl_label_editor(node_id))
             ctrl_actions.append(lbl_act)
 
         if hasattr(node, "get_ctrl_color") and hasattr(node, "set_ctrl_color"):
-            color_act = QAction("Button color…", menu)
+            color_act = QAction(tr("ui.canvas.menu.button_color"), menu)
             color_act.triggered.connect(lambda: self._open_ctrl_color_picker(node_id))
             ctrl_actions.append(color_act)
 
         if hasattr(node, "get_ctrl_range") and hasattr(node, "set_ctrl_range"):
-            range_act = QAction("Set range…", menu)
+            range_act = QAction(tr("ui.canvas.menu.set_range"), menu)
             range_act.triggered.connect(lambda: self._open_ctrl_range_dialog(node_id))
             ctrl_actions.append(range_act)
 
         if hasattr(node, "get_ctrl_scale") and hasattr(node, "set_ctrl_scale"):
-            scale_menu = QMenu("Scale mode", menu)
+            scale_menu = QMenu(tr("ui.canvas.menu.scale_mode"), menu)
             scale_menu.setStyleSheet(_MENU_STYLE)
             current_scale = node.get_ctrl_scale()
             for mode, label in [
@@ -2114,7 +2123,7 @@ class NodeEditorCanvas(QWidget):
             ctrl_actions.append(scale_menu)
 
         if hasattr(node, "get_channel_count") and hasattr(node, "set_channel_count"):
-            ch_menu = QMenu("Channel count", menu)
+            ch_menu = QMenu(tr("ui.canvas.menu.channel_count"), menu)
             ch_menu.setStyleSheet(_MENU_STYLE)
             current_ch = node.get_channel_count()
             for n_ch in range(2, 9):
@@ -2137,18 +2146,18 @@ class NodeEditorCanvas(QWidget):
 
         menu.addSeparator()
 
-        dup_act = QAction("Duplicate", menu)
+        dup_act = QAction(tr("ui.canvas.menu.duplicate"), menu)
         dup_act.triggered.connect(lambda: self._duplicate_node(node_id))
         menu.addAction(dup_act)
 
         node_wires = [w for w in self._runtime.wires.values()
                       if w.src_node == node_id or w.dst_node == node_id]
-        disc_act = QAction("Remove connections", menu)
+        disc_act = QAction(tr("ui.canvas.menu.remove_connections"), menu)
         disc_act.setEnabled(bool(node_wires))
         disc_act.triggered.connect(lambda: self._remove_node_connections(node_id))
         menu.addAction(disc_act)
 
-        del_act = QAction("Delete", menu)
+        del_act = QAction(tr("ui.canvas.menu.delete"), menu)
         del_act.triggered.connect(lambda: self._delete_node(node_id))
         menu.addAction(del_act)
 
@@ -2241,7 +2250,7 @@ class NodeEditorCanvas(QWidget):
         old_min, old_max = node.get_ctrl_range()
 
         dlg = QDialog(self)
-        dlg.setWindowTitle("Slider Range")
+        dlg.setWindowTitle(tr("ui.dialog.slider_range.title"))
         dlg.setStyleSheet("""
             QDialog      { background: #220d14; color: #ffd0de; }
             QLabel        { color: #ffd0de; font-family: 'Segoe UI'; font-size: 9pt; }
@@ -2318,11 +2327,11 @@ class NodeEditorCanvas(QWidget):
         menu = QMenu(self)
         menu.setStyleSheet(_MENU_STYLE)
 
-        search_act = QAction("Search nodes…", menu)
+        search_act = QAction(tr("ui.canvas.menu.search_nodes"), menu)
         search_act.triggered.connect(lambda: self._open_node_search(global_pos, scene_pos))
         menu.addAction(search_act)
 
-        add_grp = QAction("Add Group", menu)
+        add_grp = QAction(tr("ui.canvas.menu.add_group"), menu)
         add_grp.triggered.connect(lambda: self._add_group(scene_pos))
         menu.addAction(add_grp)
         menu.addSeparator()
@@ -2489,7 +2498,7 @@ class _NodeSearchPopup(QFrame):
         layout.setSpacing(4)
 
         self._search = QLineEdit()
-        self._search.setPlaceholderText("Search nodes…")
+        self._search.setPlaceholderText(tr("ui.canvas.menu.search_nodes"))
         layout.addWidget(self._search)
 
         self._list = QListWidget()

@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 from core.device_registry    import DeviceRegistry
 from core.graph_runtime      import GraphRuntime
 from core.device_persistence import save_devices, load_devices
+from core.localization       import tr
 from core.types           import SavedGraph, ConnectionDescriptor, WireDescriptor
 from ui.device_panel      import DevicePanel
 from ui.node_editor_canvas import NodeEditorCanvas
@@ -110,7 +111,7 @@ class MainWindow(QWidget):
         root.addWidget(body_widget, stretch=1)
 
         # Status bar (plain QLabel, not QStatusBar which requires QMainWindow)
-        self._status_bar = QLabel("Ready.")
+        self._status_bar = QLabel(tr("ui.status.ready"))
         self._status_bar.setFixedHeight(22)
         self._status_bar.setStyleSheet(
             "background: #45072f; color: #c8889a; font-size: 8pt; padding: 2px 10px;"
@@ -162,9 +163,9 @@ class MainWindow(QWidget):
         layout.addSpacing(4)
 
         # ── File buttons ───────────────────────────────────────────────────
-        self._new_btn  = _ToolButton("new.svg", "", "New Graph  (Ctrl+N)")
-        self._save_btn = _ToolButton("save.svg", "", "Save Graph  (Ctrl+S)")
-        self._load_btn = _ToolButton("load.svg", "", "Load Graph  (Ctrl+O)")
+        self._new_btn  = _ToolButton("new.svg", "", tr("ui.button.new_graph"))
+        self._save_btn = _ToolButton("save.svg", "", tr("ui.button.save_graph"))
+        self._load_btn = _ToolButton("load.svg", "", tr("ui.button.load_graph"))
         layout.addWidget(self._new_btn)
         layout.addWidget(self._save_btn)
         layout.addWidget(self._load_btn)
@@ -173,7 +174,7 @@ class MainWindow(QWidget):
         drag_left = _DragZone(self)
         layout.addWidget(drag_left, stretch=1)
 
-        self._graph_name_label = QLabel("Untitled")
+        self._graph_name_label = QLabel(tr("ui.untitled"))
         self._graph_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._graph_name_label.setStyleSheet(
             "color:#7a4060;font-size:8pt;background:transparent;")
@@ -185,9 +186,9 @@ class MainWindow(QWidget):
         layout.addSpacing(2)
 
         # ── Playback buttons ───────────────────────────────────────────────
-        self._run_btn   = _ToolButton("play.svg",  "▶", "Run Graph  (F5)",  accent=True)
-        self._pause_btn = _ToolButton("pause.svg", "⏺", "Pause Graph  (F7)")
-        self._stop_btn  = _ToolButton("stop.svg",  "■", "Stop Graph  (F6)")
+        self._run_btn   = _ToolButton("play.svg",  "▶", tr("ui.button.run_graph"),   accent=True)
+        self._pause_btn = _ToolButton("pause.svg", "⏺", tr("ui.button.pause_graph"))
+        self._stop_btn  = _ToolButton("stop.svg",  "■", tr("ui.button.stop_graph"))
         self._pause_btn.setEnabled(False)
         self._stop_btn.setEnabled(False)
         layout.addWidget(self._run_btn)
@@ -307,12 +308,12 @@ class MainWindow(QWidget):
         self._run_btn.setEnabled(not running)
         self._pause_btn.setEnabled(running)
         self._stop_btn.setEnabled(running)
-        self._status_bar.setText("▶ Running" if running else "■ Stopped")
+        self._status_bar.setText(tr("ui.status.running") if running else tr("ui.status.stopped"))
 
     def _on_paused_changed(self, paused: bool) -> None:
         self._pause_btn.set_svg("resume.svg" if paused else "pause.svg")
-        self._pause_btn.setToolTip("Resume Graph  (F7)" if paused else "Pause Graph  (F7)")
-        self._status_bar.setText("⏺ Paused" if paused else "▶ Running")
+        self._pause_btn.setToolTip(tr("ui.button.resume_graph") if paused else tr("ui.button.pause_graph"))
+        self._status_bar.setText(tr("ui.status.paused") if paused else tr("ui.status.running"))
 
     # ── New / dirty tracking ──────────────────────────────────────────────────
 
@@ -328,7 +329,7 @@ class MainWindow(QWidget):
         self._update_title_label()
 
     def _update_title_label(self) -> None:
-        name = self._graph_path.stem if self._graph_path else "Untitled"
+        name = self._graph_path.stem if self._graph_path else tr("ui.untitled")
         self._graph_name_label.setText(f"{name} •" if self._dirty else name)
 
     def _confirm_discard_changes(self) -> bool:
@@ -340,8 +341,8 @@ class MainWindow(QWidget):
             return True
         result = _ConfirmDialog(
             self,
-            "Unsaved Changes",
-            "The current graph has unsaved changes.",
+            tr("ui.dialog.unsaved_changes.title"),
+            tr("ui.dialog.unsaved_changes.message"),
         ).exec()
         if result == _ConfirmDialog.SAVE:
             self._on_save()
@@ -368,7 +369,7 @@ class MainWindow(QWidget):
         self._canvas.clear_history()
         self._place_default_nodes()
         self._mark_clean()
-        self._status_bar.setText("New graph created.")
+        self._status_bar.setText(tr("ui.status.new_graph_created"))
         if was_running:
             self._runtime.start()
 
@@ -377,8 +378,8 @@ class MainWindow(QWidget):
     def _on_save(self) -> None:
         if not self._graph_path:
             path, _ = QFileDialog.getSaveFileName(
-                self, "Save Graph", "untitled.sfgraph",
-                "SensoryFlow Graph (*.sfgraph);;JSON (*.json)"
+                self, tr("ui.dialog.save_graph.title"), "untitled.sfgraph",
+                tr("ui.dialog.save_graph.filter")
             )
             if not path:
                 return
@@ -392,17 +393,17 @@ class MainWindow(QWidget):
                 json.dumps(graph.to_dict(), indent=2), encoding="utf-8"
             )
             self._mark_clean()
-            self._status_bar.setText(f"Saved → {self._graph_path}")
+            self._status_bar.setText(tr("ui.status.graph_saved").format(path=self._graph_path))
         except Exception as exc:
             log.error("Save failed: %s", exc)
-            self._status_bar.setText(f"Save failed: {exc}")
+            self._status_bar.setText(tr("ui.status.save_failed").format(exc=exc))
 
     def _on_load(self) -> None:
         if not self._confirm_discard_changes():
             return
         path, _ = QFileDialog.getOpenFileName(
-            self, "Load Graph", "",
-            "SensoryFlow Graph (*.sfgraph);;JSON (*.json)"
+            self, tr("ui.dialog.load_graph.title"), "",
+            tr("ui.dialog.save_graph.filter")
         )
         if not path:
             return
@@ -412,10 +413,10 @@ class MainWindow(QWidget):
             self._load_graph(graph)
             self._graph_path = Path(path)
             self._mark_clean()
-            self._status_bar.setText(f"Loaded ← {path}")
+            self._status_bar.setText(tr("ui.status.graph_loaded").format(path=path))
         except Exception as exc:
             log.error("Load failed: %s", exc)
-            self._status_bar.setText(f"Load failed: {exc}")
+            self._status_bar.setText(tr("ui.status.load_failed").format(exc=exc))
 
     def _load_graph(self, graph: SavedGraph) -> None:
         was_running = self._runtime.is_running
@@ -468,7 +469,7 @@ class MainWindow(QWidget):
         device = self._registry.create_device(class_key, descriptor)
         if device:
             self._status_bar.setText(
-                f"Connecting to {device.DEVICE_NAME} @ {descriptor.address}…")
+                tr("ui.status.connecting").format(name=device.DEVICE_NAME, addr=descriptor.address))
 
     def _on_rename_device(self, device_id: str, alias: str) -> None:
         self._registry.rename_device(device_id, alias)
@@ -604,19 +605,19 @@ class _ConfirmDialog(QDialog):
             "QPushButton:hover {{ background:#f95979; color:#fff; border:none; }}"
         )
 
-        save_btn = QPushButton("Save")
+        save_btn = QPushButton(tr("ui.button.save"))
         save_btn.setFixedHeight(30)
         save_btn.setStyleSheet(
             _btn_style.format(bg="#c90084", fg="#fff", bd="none")
         )
 
-        discard_btn = QPushButton("Discard")
+        discard_btn = QPushButton(tr("ui.button.discard"))
         discard_btn.setFixedHeight(30)
         discard_btn.setStyleSheet(
             _btn_style.format(bg="#45072f", fg="#ffd0de", bd="1px solid #c90084")
         )
 
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(tr("ui.button.cancel"))
         cancel_btn.setFixedHeight(30)
         cancel_btn.setStyleSheet(
             _btn_style.format(bg="#2d1020", fg="#c8889a", bd="none")

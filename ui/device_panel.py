@@ -35,6 +35,7 @@ from PyQt6.QtWidgets import (
 
 from core.device_base import DeviceBase
 from core.device_registry import DeviceRegistry
+from core.localization import tr
 from core.types import DeviceStatus, ConnectionDescriptor, PortKind
 
 log = logging.getLogger(__name__)
@@ -99,11 +100,11 @@ class BatteryWidget(QWidget):
         super().__init__()
         self._level = -1
         self.setFixedSize(36, 14)
-        self.setToolTip("Battery level unknown")
+        self.setToolTip(tr("ui.panel.devices.battery_unknown"))
 
     def set_level(self, level: int) -> None:
         self._level = level
-        tip = f"Battery: {level}%" if level >= 0 else "Battery: unknown"
+        tip = tr("ui.panel.devices.battery").format(level=level) if level >= 0 else tr("ui.panel.devices.battery_unknown_short")
         self.setToolTip(tip)
         self.update()
 
@@ -340,14 +341,14 @@ class DevicePanel(QWidget):
         header.setStyleSheet("background:#45072f;border-bottom:1px solid #c90084;")
         hl = QHBoxLayout(header)
         hl.setContentsMargins(10, 8, 8, 8)
-        title = QLabel("DEVICES")
+        title = QLabel(tr("ui.panel.devices.title"))
         title.setStyleSheet(
             "color:#ffd0de;font-weight:bold;font-size:10pt;letter-spacing:2px;")
         hl.addWidget(title)
         hl.addStretch()
         add_btn = QPushButton("+")
         add_btn.setFixedSize(24, 24)
-        add_btn.setToolTip("Add device")
+        add_btn.setToolTip(tr("ui.panel.devices.add_tooltip"))
         add_btn.setStyleSheet("""
             QPushButton { background:transparent; color:#c8889a; border:none;
                           font-size:16pt; font-weight:bold; padding:0; margin:0; }
@@ -358,7 +359,7 @@ class DevicePanel(QWidget):
         root.addWidget(header)
 
         # BLE status banner (hidden by default, shown if no adapter)
-        self._ble_banner = QLabel("⚠ No Bluetooth adapter found")
+        self._ble_banner = QLabel(tr("ui.panel.devices.no_ble"))
         self._ble_banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._ble_banner.setWordWrap(True)
         self._ble_banner.setStyleSheet(
@@ -381,7 +382,7 @@ class DevicePanel(QWidget):
         self._list_lay.setContentsMargins(0, 6, 0, 6)
         self._list_lay.setSpacing(2)
         self._list_lay.addStretch()
-        self._empty_lbl = QLabel("No devices.\nClick + to add.")
+        self._empty_lbl = QLabel(tr("ui.panel.devices.empty"))
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_lbl.setStyleSheet("color:#6b3050;font-size:9pt;padding:20px;")
         self._list_lay.insertWidget(0, self._empty_lbl)
@@ -399,10 +400,10 @@ class DevicePanel(QWidget):
                 adapters = loop.run_until_complete(_async_get_adapters())
                 loop.close()
                 if not adapters:
-                    self._ble_banner.setText("⚠ No Bluetooth adapter found — BLE devices unavailable")
+                    self._ble_banner.setText(tr("ui.panel.devices.no_ble_detail"))
                     self._ble_banner.setVisible(True)
             except ImportError:
-                self._ble_banner.setText("⚠ bleak not installed — run: pip install bleak")
+                self._ble_banner.setText(tr("ui.panel.devices.no_bleak"))
                 self._ble_banner.setVisible(True)
             except Exception:
                 pass  # adapter may still work; don't show banner on generic errors
@@ -524,9 +525,11 @@ class _DeviceTile(QFrame):
         self.setStyleSheet(self._STYLE_NORMAL)
 
         # Set tooltip to description if available
-        desc = getattr(device_cls, 'DEVICE_DESCRIPTION', '')
-        if desc:
-            self.setToolTip(desc)
+        prefix = getattr(device_cls, "DEVICE_TR_PREFIX", None)
+        display_name = tr(f"device.{prefix}.name", default=device_cls.DEVICE_NAME) if prefix else device_cls.DEVICE_NAME
+        display_desc = tr(f"device.{prefix}.description", default=getattr(device_cls, "DEVICE_DESCRIPTION", "")) if prefix else getattr(device_cls, "DEVICE_DESCRIPTION", "")
+        if display_desc:
+            self.setToolTip(display_desc)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 8, 6, 6)
@@ -536,7 +539,7 @@ class _DeviceTile(QFrame):
         icon_w = _make_icon_widget(device_cls.ICON_PATH, 66)
         lay.addWidget(icon_w, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        name = QLabel(device_cls.DEVICE_NAME)
+        name = QLabel(display_name)
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name.setWordWrap(True)
         name.setStyleSheet("color:#ffd0de;font-size:9pt;background:transparent;")
@@ -566,7 +569,7 @@ class AddDeviceDialog(QDialog):
 
     def __init__(self, device_classes: dict, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Add Device")
+        self.setWindowTitle(tr("ui.dialog.add_device.title"))
         self.setStyleSheet(_DLG_STYLE)
         self.setMinimumSize(560, 480)
         self._device_classes = {k: v for k, v in device_classes.items()
@@ -602,7 +605,7 @@ class AddDeviceDialog(QDialog):
         root.addWidget(self._tabs)
 
         # Info bar
-        self._info_bar = QLabel("Select a device above to continue")
+        self._info_bar = QLabel(tr("ui.panel.devices.select_continue"))
         self._info_bar.setStyleSheet(
             "color:#9a5070;font-size:8pt;padding:4px;"
             "background:#220d14;border:1px solid #45072f;border-radius:4px;")
@@ -616,17 +619,17 @@ class AddDeviceDialog(QDialog):
 
         # Buttons
         btn_row = QHBoxLayout()
-        self._website_btn = QPushButton("Website ↗")
+        self._website_btn = QPushButton(tr("ui.button.website"))
         self._website_btn.setObjectName("cancel")
         self._website_btn.setEnabled(False)
-        self._website_btn.setToolTip("Open device webpage")
+        self._website_btn.setToolTip(tr("ui.panel.devices.website_tooltip"))
         self._website_btn.clicked.connect(self._on_website)
         btn_row.addWidget(self._website_btn)
         btn_row.addStretch()
-        cancel = QPushButton("Cancel")
+        cancel = QPushButton(tr("ui.button.cancel"))
         cancel.setObjectName("cancel")
         cancel.clicked.connect(self.reject)
-        self._next_btn = QPushButton("Search & Connect →")
+        self._next_btn = QPushButton(tr("ui.button.search_connect"))
         self._next_btn.setEnabled(False)
         self._next_btn.clicked.connect(self._on_next)
         btn_row.addWidget(cancel)
@@ -641,21 +644,22 @@ class AddDeviceDialog(QDialog):
         self._tiles[class_key].set_active(True)
 
         cls  = self._device_classes[class_key]
-        desc = getattr(cls, "DEVICE_DESCRIPTION", "")
+        prefix = getattr(cls, "DEVICE_TR_PREFIX", None)
+        display_name = tr(f"device.{prefix}.name", default=cls.DEVICE_NAME) if prefix else cls.DEVICE_NAME
+        display_desc = tr(f"device.{prefix}.description", default=getattr(cls, "DEVICE_DESCRIPTION", "")) if prefix else getattr(cls, "DEVICE_DESCRIPTION", "")
         self._info_bar.setText(
-            f"<b>{cls.DEVICE_NAME}</b>  —  {desc}" if desc
-            else f"<b>{cls.DEVICE_NAME}</b>"
+            f"<b>{display_name}</b>  —  {display_desc}" if display_desc
+            else f"<b>{display_name}</b>"
         )
 
         kinds = getattr(cls, "CONNECTION_KINDS", [])
         from core.types import PortKind as _PK
         if _PK.BLE in kinds:
-            self._hint_lbl.setText(
-                "Turn on your device.  Click Search & Connect to scan via Bluetooth.")
-            self._next_btn.setText("Search & Connect →")
+            self._hint_lbl.setText(tr("ui.panel.devices.turn_on_ble"))
+            self._next_btn.setText(tr("ui.button.search_connect"))
         else:
             self._hint_lbl.setText("")
-            self._next_btn.setText("Connect →")
+            self._next_btn.setText(tr("ui.button.connect"))
 
         self._next_btn.setEnabled(True)
         url = getattr(cls, "DEVICE_URL", "")
@@ -781,7 +785,7 @@ class DeviceDetailDialog(QDialog):
                  icon_path: Optional[str], current_alias: str = "",
                  device_url: str = "", parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle(f"Device: {name}")
+        self.setWindowTitle(tr("ui.dialog.device_detail.title").format(name=name))
         self.setStyleSheet(_DLG_STYLE)
         self.setMinimumWidth(320)
         self._remove      = False
@@ -801,7 +805,7 @@ class DeviceDetailDialog(QDialog):
         n_lbl = QLabel(f"<b>{name}</b>")
         n_lbl.setStyleSheet("font-size:12pt;")
         vinfo.addWidget(n_lbl)
-        s_lbl = QLabel(f"Status: {status.value}")
+        s_lbl = QLabel(tr("ui.panel.devices.status_label").format(status=status.value))
         s_lbl.setStyleSheet(f"color:{STATUS_COLORS[status]};")
         vinfo.addWidget(s_lbl)
         hrow.addLayout(vinfo)
@@ -809,7 +813,7 @@ class DeviceDetailDialog(QDialog):
 
         # Battery
         bat_row = QHBoxLayout()
-        bat_row.addWidget(QLabel("Battery:"))
+        bat_row.addWidget(QLabel(tr("ui.panel.devices.battery_label")))
         bat_w = BatteryWidget()
         bat_w.set_level(battery)
         bat_w.setFixedSize(60, 18)
@@ -817,29 +821,29 @@ class DeviceDetailDialog(QDialog):
         bat_row.addStretch()
         lay.addLayout(bat_row)
 
-        lay.addWidget(QLabel(f"Address: {address}"))
-        lay.addWidget(QLabel(f"ID: {device_id[:16]}…"))
+        lay.addWidget(QLabel(tr("ui.panel.devices.address_label").format(address=address)))
+        lay.addWidget(QLabel(tr("ui.panel.devices.id_label").format(id=device_id[:16])))
 
         # Rename field
-        lay.addWidget(QLabel("Device name / alias:"))
+        lay.addWidget(QLabel(tr("ui.panel.devices.alias_label")))
         self._alias_edit = QLineEdit(current_alias or name)
-        self._alias_edit.setPlaceholderText("e.g. Domi Wand Left")
+        self._alias_edit.setPlaceholderText(tr("ui.panel.devices.alias_placeholder"))
         lay.addWidget(self._alias_edit)
 
         btn_row = QHBoxLayout()
-        remove_btn = QPushButton("Remove")
+        remove_btn = QPushButton(tr("ui.button.remove"))
         remove_btn.clicked.connect(self._on_remove)
-        save_btn = QPushButton("Save")
+        save_btn = QPushButton(tr("ui.button.save"))
         save_btn.clicked.connect(self._on_save)
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(tr("ui.button.close"))
         close_btn.setObjectName("cancel")
         close_btn.clicked.connect(self.reject)
         btn_row.addWidget(remove_btn)
         btn_row.addStretch()
         if device_url:
-            website_btn = QPushButton("Website ↗")
+            website_btn = QPushButton(tr("ui.button.website"))
             website_btn.setObjectName("cancel")
-            website_btn.setToolTip(f"Open device webpage")
+            website_btn.setToolTip(tr("ui.panel.devices.website_tooltip"))
             website_btn.clicked.connect(self._on_website)
             btn_row.addWidget(website_btn)
         btn_row.addWidget(save_btn)

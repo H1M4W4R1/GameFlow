@@ -28,6 +28,7 @@ MANUFACTURER = "Lovense"
 
 class LovenseLush(_LovenseBLEBase):
     DEVICE_NAME        = "Lush"
+    DEVICE_TR_PREFIX   = "lovense.lush"
     DEVICE_DESCRIPTION = "Insertable wearable vibrator"
     DEVICE_IDENTIFIER  = "S"
     VIBRATOR_COUNT     = 1
@@ -41,6 +42,7 @@ class LovenseLush(_LovenseBLEBase):
 
 class LovenseHush(_LovenseBLEBase):
     DEVICE_NAME        = "Hush"
+    DEVICE_TR_PREFIX   = "lovense.hush"
     DEVICE_DESCRIPTION = "Vibrating butt plug"
     DEVICE_IDENTIFIER  = "Z"
     VIBRATOR_COUNT     = 1
@@ -54,6 +56,7 @@ class LovenseHush(_LovenseBLEBase):
 
 class LovenseDomi(_LovenseBLEBase):
     DEVICE_NAME        = "Domi"
+    DEVICE_TR_PREFIX   = "lovense.domi"
     DEVICE_DESCRIPTION = "Powerful wand vibrator"
     DEVICE_IDENTIFIER  = "W"
     VIBRATOR_COUNT     = 1
@@ -68,6 +71,7 @@ class LovenseDomi(_LovenseBLEBase):
 
 class LovenseAmbi(_LovenseBLEBase):
     DEVICE_NAME        = "Ambi"
+    DEVICE_TR_PREFIX   = "lovense.ambi"
     DEVICE_DESCRIPTION = "Clitoral bullet vibrator"
     DEVICE_IDENTIFIER  = "L"
     VIBRATOR_COUNT     = 1
@@ -81,6 +85,7 @@ class LovenseAmbi(_LovenseBLEBase):
 
 class LovenseFerri(_LovenseBLEBase):
     DEVICE_NAME        = "Ferri"
+    DEVICE_TR_PREFIX   = "lovense.ferri"
     DEVICE_DESCRIPTION = "Magnetic panty vibrator"
     DEVICE_IDENTIFIER  = "X"
     VIBRATOR_COUNT     = 1
@@ -94,6 +99,7 @@ class LovenseFerri(_LovenseBLEBase):
 
 class LovenseOsci(_LovenseBLEBase):
     DEVICE_NAME        = "Osci"
+    DEVICE_TR_PREFIX   = "lovense.osci"
     DEVICE_DESCRIPTION = "Oscillating G-spot vibrator"
     DEVICE_IDENTIFIER  = "O"
     VIBRATOR_COUNT     = 1
@@ -107,6 +113,7 @@ class LovenseOsci(_LovenseBLEBase):
 
 class LovenseGush(_LovenseBLEBase):
     DEVICE_NAME        = "Gush"
+    DEVICE_TR_PREFIX   = "lovense.gush"
     DEVICE_DESCRIPTION = "Male masturbator with vibration"
     DEVICE_IDENTIFIER  = "GU"
     VIBRATOR_COUNT     = 1
@@ -120,6 +127,7 @@ class LovenseGush(_LovenseBLEBase):
 
 class LovenseGemini(_LovenseBLEBase):
     DEVICE_NAME        = "Gemini"
+    DEVICE_TR_PREFIX   = "lovense.gemini"
     DEVICE_DESCRIPTION = "Couples vibrator — 2 independent motors"
     DEVICE_IDENTIFIER  = "G"
     VIBRATOR_COUNT     = 2

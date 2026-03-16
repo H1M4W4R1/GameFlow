@@ -67,6 +67,7 @@ class H1M4W4R1Pump(DeviceBase):
     """
 
     DEVICE_NAME        = "H1M4W4R1 Pump"
+    DEVICE_TR_PREFIX   = "h1m4w4r1.pump"
     DEVICE_VERSION     = "1.0.0"
     MANUFACTURER       = "H1M4W4R1"
     DEVICE_DESCRIPTION = "BLE pump with valve; session and pumping timers"

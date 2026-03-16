@@ -1,0 +1,223 @@
+ui.status.ready,Ready.
+ui.status.running,▶ Running
+ui.status.stopped,■ Stopped
+ui.status.paused,⏺ Paused
+ui.status.new_graph_created,New graph created.
+ui.status.graph_saved,Saved → {path}
+ui.status.save_failed,Save failed: {exc}
+ui.status.graph_loaded,Loaded ← {path}
+ui.status.load_failed,Load failed: {exc}
+ui.status.connecting,Connecting to {name} @ {addr}…
+ui.button.new_graph,New Graph  (Ctrl+N)
+ui.button.save_graph,Save Graph  (Ctrl+S)
+ui.button.load_graph,Load Graph  (Ctrl+O)
+ui.button.run_graph,Run Graph  (F5)
+ui.button.pause_graph,Pause Graph  (F7)
+ui.button.resume_graph,Resume Graph  (F7)
+ui.button.stop_graph,Stop Graph  (F6)
+ui.button.save,Save
+ui.button.discard,Discard
+ui.button.cancel,Cancel
+ui.dialog.unsaved_changes.title,Unsaved Changes
+ui.dialog.unsaved_changes.message,The current graph has unsaved changes.
+ui.dialog.save_graph.title,Save Graph
+ui.dialog.save_graph.filter,SensoryFlow Graph (*.sfgraph);;JSON (*.json)
+ui.dialog.load_graph.title,Load Graph
+ui.untitled,Untitled
+node.float.name,Float
+node.integer.name,Integer
+node.string.name,String
+node.boolean.name,Boolean
+node.pi.name,Pi (π)
+node.euler.name,Euler (e)
+node.golden_ratio.name,Golden Ratio (φ)
+node.tau.name,Tau (τ = 2π)
+node.color.name,Color
+node.slider.name,Slider
+node.button.name,Button
+node.toggle.name,Toggle
+node.time_selector.name,Time Selector
+node.log_debug.name,Log / Debug
+node.numeric_display.name,Numeric Display
+node.text_display.name,Text Display
+node.time_display.name,Time Display
+node.state_indicator.name,State Indicator
+node.group.constants,Constants
+node.group.controls,Controls
+node.group.debug,Debug
+device.lovense.manufacturer,Lovense
+device.lovense.lush.name,Lush
+device.lovense.lush.description,Insertable wearable vibrator
+device.lovense.lush.url,https://www.lovense.com/lush-4-best-bluetooth-remote-controlled-g-spot-vibrator
+device.lovense.hush.name,Hush
+device.lovense.hush.description,Vibrating butt plug
+device.lovense.domi.name,Domi
+device.lovense.domi.description,Powerful wand vibrator
+device.lovense.ambi.name,Ambi
+device.lovense.ambi.description,Clitoral bullet vibrator
+device.lovense.ferri.name,Ferri
+device.lovense.ferri.description,Magnetic panty vibrator
+device.lovense.osci.name,Osci
+device.lovense.osci.description,Oscillating G-spot vibrator
+device.lovense.gush.name,Gush
+device.lovense.gush.description,Male masturbator with vibration
+device.lovense.gemini.name,Gemini
+device.lovense.gemini.description,Couples vibrator — 2 independent motors
+device.lovense.edge.name,Edge
+device.lovense.edge.description,Dual-motor prostate massager
+device.lovense.edge.url,https://www.lovense.com/adjustable-prostate-massager
+device.lovense.diamo.name,Diamo
+device.lovense.diamo.description,Vibrating cock ring
+device.lovense.max.name,Max
+device.lovense.max.description,Male masturbator — vibration + air pump
+device.lovense.nora.name,Nora
+device.lovense.nora.description,Rabbit vibrator — vibration + rotating head
+device.lovense.nora.url,https://www.lovense.com/rabbit-vibrator
+device.dglab.manufacturer,DGLab
+device.dglab.coyote.name,Coyote
+device.dglab.coyote.description,Dual-channel estim pulse host (v3 BLE)
+device.dglab.coyote.url,https://dungeon-lab.com/e-stim-unit3.0.php
+device.h1m4w4r1.manufacturer,H1M4W4R1
+device.h1m4w4r1.pump.name,H1M4W4R1 Pump
+device.h1m4w4r1.pump.description,BLE pump with valve; session and pumping timers
+device.h1m4w4r1.pump.url,https://github.com/H1M4W4R1/RemoteVacuumPump
+core.ble.no_bleak,bleak is not installed. Run: pip install bleak
+core.graph.tick_cycle,Tick cycle detected
+core.graph.infinite_loop,Infinite tick loop: {src}:{pin} already firing
+ui.panel.devices.title,DEVICES
+ui.panel.devices.add_tooltip,Add device
+ui.panel.devices.empty,No devices.\nClick + to add.
+ui.panel.devices.no_ble,⚠ No Bluetooth adapter found
+ui.panel.devices.no_ble_detail,⚠ No Bluetooth adapter found — BLE devices unavailable
+ui.panel.devices.no_bleak,⚠ bleak not installed — run: pip install bleak
+ui.panel.devices.battery_unknown,Battery level unknown
+ui.panel.devices.battery,Battery: {level}%
+ui.panel.devices.battery_unknown_short,Battery: unknown
+ui.panel.devices.select_continue,Select a device above to continue
+ui.panel.devices.turn_on_ble,Turn on your device. Click Search & Connect to scan via Bluetooth.
+ui.panel.devices.alias_placeholder,e.g. Domi Wand Left
+ui.panel.devices.alias_label,Device name / alias:
+ui.panel.devices.website_tooltip,Open device webpage
+ui.panel.devices.address_label,Address: {address}
+ui.panel.devices.id_label,ID: {id}…
+ui.panel.devices.battery_label,Battery:
+ui.panel.devices.status_label,Status: {status}
+ui.button.website,Website ↗
+ui.button.search_connect,Search & Connect →
+ui.button.connect,Connect →
+ui.button.remove,Remove
+ui.button.close,Close
+ui.dialog.add_device.title,Add Device
+ui.dialog.device_detail.title,Device: {name}
+node.add.name,Add
+node.subtract.name,Subtract
+node.multiply.name,Multiply
+node.divide.name,Divide
+node.modulo.name,Modulo
+node.power.name,Power
+node.min.name,Min
+node.max.name,Max
+node.abs.name,Abs
+node.negate.name,Negate
+node.sin.name,Sin
+node.cos.name,Cos
+node.tan.name,Tan
+node.sqrt.name,Sqrt
+node.exp.name,Exp
+node.log.name,Log
+node.log10.name,Log10
+node.logn.name,LogN
+node.sign.name,Sign
+node.floor.name,Floor
+node.ceil.name,Ceil
+node.round.name,Round
+node.clamp.name,Clamp
+node.lerp.name,Lerp
+node.map_range.name,Map Range
+node.vector2d.name,Vector2D
+node.vector3d.name,Vector3D
+node.group.math_arithmetic,Math / Arithmetic
+node.group.math_trigonometric,Math / Trigonometric
+node.group.math_logarithm,Math / Logarithm
+node.group.math_min_max,Math / Min-Max
+node.group.math_rounding,Math / Rounding
+node.group.math_interpolation,Math / Interpolation
+node.group.math_vector,Math / Vector
+node.time_since_start.name,Time Since Start
+node.epoch_seconds.name,Epoch Seconds
+node.current_datetime.name,Current DateTime
+node.specified_datetime.name,Specified DateTime
+node.delay.name,Delay
+node.timer.name,Timer
+node.after_x_seconds.name,After X Seconds
+node.counter.name,Counter
+node.randomizer.name,Randomizer
+node.random_data.name,Random Data
+node.beep.name,Beep
+node.d_flip_flop.name,D Flip-Flop
+node.t_flip_flop.name,T Flip-Flop
+node.jk_flip_flop.name,JK Flip-Flop
+node.sr_flip_flop.name,SR Flip-Flop
+node.group.time,Time
+node.group.utility,Utility
+node.group.logic_gates,Logic/Gates
+ui.canvas.menu.rename,Rename…
+ui.canvas.menu.rename_label,Rename label…
+ui.canvas.menu.button_color,Button color…
+ui.canvas.menu.set_range,Set range…
+ui.canvas.menu.scale_mode,Scale mode
+ui.canvas.menu.channel_count,Channel count
+ui.canvas.menu.duplicate,Duplicate
+ui.canvas.menu.remove_connections,Remove connections
+ui.canvas.menu.delete,Delete
+ui.canvas.menu.search_nodes,Search nodes…
+ui.canvas.menu.add_group,Add Group
+ui.dialog.slider_range.title,Slider Range
+node.on_tick.name,On Tick
+node.on_tick_custom.name,On Tick (Custom)
+node.on_start.name,On Start
+node.on_pause.name,On Pause
+node.on_resume.name,On Resume
+node.on_stop.name,On Stop
+node.is_running.name,Is Running
+node.router.name,Router
+node.loop.name,Loop
+node.loop_while.name,Loop While
+node.equal.name,Equal
+node.not_equal.name,Not Equal
+node.greater.name,Greater
+node.greater_or_equal.name,Greater or Equal
+node.less.name,Less
+node.less_or_equal.name,Less or Equal
+node.select.name,Select
+node.and.name,AND
+node.or.name,OR
+node.not.name,NOT
+node.nand.name,NAND
+node.nor.name,NOR
+node.xor.name,XOR
+node.xnor.name,XNOR
+node.multiplexer.name,Multiplexer
+node.demultiplexer.name,Demultiplexer
+node.group.flow_events,Flow/Events
+node.group.flow_status,Flow/Status
+node.group.flow_redirect,Flow/Redirect
+node.group.logic_comparison,Logic/Comparison
+node.group.logic_combination,Logic/Combination
+node.group.logic_routing,Logic/Routing
+ui.ble_scan.title,Searching for Devices…
+ui.ble_scan.searching_named,Searching for {name}…
+ui.ble_scan.scanning,Scanning for nearby BLE devices…
+ui.ble_scan.found_header,FOUND DEVICES
+ui.ble_scan.no_devices_yet,No devices found yet…
+ui.ble_scan.no_devices_found,No devices found.
+ui.ble_scan.device_hint,Make sure your device is turned on and not connected to another app.
+ui.ble_scan.retry_hint,"Ensure the device is on, in range, and not paired to another app. Click Scan Again to retry."
+ui.ble_scan.found_named,Found: {name} — select and click Connect
+ui.ble_scan.found_count,Found {count} device(s) — select one
+ui.ble_scan.scan_failed,Scan failed
+ui.ble_scan.error,Error: {msg}
+ui.ble_scan.selected,Selected: {name} ({address})
+ui.ble_scan.rssi,{rssi} dBm
+ui.button.scan_again,Scan Again
+ui.button.connect_plain,Connect

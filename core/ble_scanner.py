@@ -32,6 +32,8 @@ from typing import Any, Optional
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
+from core.localization import tr
+
 log = logging.getLogger(__name__)
 
 
@@ -170,7 +172,7 @@ class BLEScanner(QObject):
         try:
             from bleak import BleakScanner  # type: ignore
         except ImportError:
-            self.scan_error.emit("bleak is not installed.  Run:  pip install bleak")
+            self.scan_error.emit(tr("core.ble.no_bleak"))
             return
 
         self.scan_started.emit()

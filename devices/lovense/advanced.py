@@ -29,6 +29,7 @@ MANUFACTURER = "Lovense"
 
 class LovenseEdge(_LovenseBLEBase):
     DEVICE_NAME        = "Edge"
+    DEVICE_TR_PREFIX   = "lovense.edge"
     DEVICE_DESCRIPTION = "Dual-motor prostate massager"
     DEVICE_IDENTIFIER  = "P"
     VIBRATOR_COUNT     = 2
@@ -121,6 +122,7 @@ _EdgeStopNode = _make_stop_node(LovenseEdge)
 
 class LovenseDiamo(_LovenseBLEBase):
     DEVICE_NAME        = "Diamo"
+    DEVICE_TR_PREFIX   = "lovense.diamo"
     DEVICE_DESCRIPTION = "Vibrating cock ring"
     DEVICE_IDENTIFIER  = "R"
     VIBRATOR_COUNT     = 1
@@ -160,6 +162,7 @@ _DiamoStopNode = _make_stop_node(LovenseDiamo)
 
 class LovenseMax(_LovenseBLEBase):
     DEVICE_NAME        = "Max"
+    DEVICE_TR_PREFIX   = "lovense.max"
     DEVICE_DESCRIPTION = "Male masturbator — vibration + air pump"
     DEVICE_IDENTIFIER  = "B"
     VIBRATOR_COUNT     = 1
@@ -352,6 +355,7 @@ class MaxAccelerometerEvent(DeviceNodeBase):
 
 class LovenseNora(_LovenseBLEBase):
     DEVICE_NAME        = "Nora"
+    DEVICE_TR_PREFIX   = "lovense.nora"
     DEVICE_DESCRIPTION = "Rabbit vibrator — vibration + rotating head"
     DEVICE_IDENTIFIER  = "A"   # also "C" on older firmware
     VIBRATOR_COUNT     = 1

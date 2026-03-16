@@ -16,6 +16,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from core.types import WireDescriptor, SavedGraph, SavedNode, PinType, PinDirection
 from core.node_base import NodeBase
+from core.localization import tr
 
 log = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ class GraphRuntime(QObject):
         if cycles:
             names = self._cycle_node_names(cycles[0])
             self.runtime_warning.emit(
-                f"Tick cycle detected: {names} — execution will stop at re-entry"
+                f"{tr('core.graph.tick_cycle')}: {names} — execution will stop at re-entry"
             )
         return True
 
@@ -350,7 +351,7 @@ class GraphRuntime(QObject):
         if call_key in self._tick_local.stack:
             log.error("Infinite tick loop: %s:%s already firing", src_node_id, src_pin)
             self.runtime_error.emit(
-                f"Infinite loop stopped: tick cycle at node {src_node_id[:8]}:{src_pin}"
+                tr("core.graph.infinite_loop").format(src=src_node_id, pin=src_pin)
             )
             return
         self._tick_local.stack.add(call_key)

@@ -241,6 +241,7 @@ class Coyote(DeviceBase):
     """
 
     DEVICE_NAME = "Coyote"
+    DEVICE_TR_PREFIX = "dglab.coyote"
     DEVICE_VERSION = "3.0.0"
     MANUFACTURER = "DGLab"
     DEVICE_DESCRIPTION = "Dual-channel estim pulse host (v3 BLE)"

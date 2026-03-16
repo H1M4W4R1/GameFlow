@@ -154,6 +154,7 @@ class RandomDataNode(NodeBase):
     """
     NODE_NAME  = "Random"
     NODE_GROUP = "Utility"
+    _TR_KEY    = "random_data"
     PINS = [
         PinDescriptor("min_val", PinDirection.INPUT,  PinType.FLOAT, optional=True),
         PinDescriptor("max_val", PinDirection.INPUT,  PinType.FLOAT, optional=True),
@@ -195,6 +196,7 @@ class BeepNode(NodeBase):
     """
     NODE_NAME  = "Beep (PC)"
     NODE_GROUP = "Utility"
+    _TR_KEY    = "beep"
     PINS = [
         PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("frequency", PinDirection.INPUT,  PinType.FLOAT, optional=True),
