@@ -1,5 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <rect x="3"  y="3"  width="18" height="18" rx="2" fill="none" stroke="#ffd0de" stroke-width="1.5"/>
-  <path d="M8 13 L12 17 L16 13" fill="none" stroke="#ffd0de" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="12" y1="6" x2="12" y2="17" stroke="#ffd0de" stroke-width="2" stroke-linecap="round"/>
+  <!-- Arrow shaft -->
+  <rect x="11" y="3" width="2" height="9" rx="1" fill="#ffd0de"/>
+  <!-- Arrow head (pointing down) -->
+  <polygon points="7,10 12,16 17,10" fill="#ffd0de"/>
+  <!-- Basin: base bar -->
+  <rect x="4" y="20" width="16" height="2" rx="1" fill="#ffd0de"/>
+  <!-- Basin: left rim -->
+  <rect x="4" y="16" width="2" height="5" rx="1" fill="#ffd0de"/>
+  <!-- Basin: right rim -->
+  <rect x="18" y="16" width="2" height="5" rx="1" fill="#ffd0de"/>
 </svg>

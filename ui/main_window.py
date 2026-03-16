@@ -162,17 +162,9 @@ class MainWindow(QWidget):
         layout.addSpacing(4)
 
         # ── File buttons ───────────────────────────────────────────────────
-        self._new_btn  = QPushButton("+")
-        self._new_btn.setFixedSize(30, 30)
-        self._new_btn.setToolTip("New Graph  (Ctrl+N)")
-        self._new_btn.setStyleSheet("""
-            QPushButton { background:transparent; color:#c8889a; border:none;
-                          font-size:18pt; font-weight:bold;
-                          padding: 0 0 6px 0; margin:0; }
-            QPushButton:hover { color:#f95979; }
-        """)
-        self._save_btn = _ToolButton("save.svg", "💾", "Save Graph  (Ctrl+S)", ghost=True)
-        self._load_btn = _ToolButton("load.svg", "📂", "Load Graph  (Ctrl+O)", ghost=True)
+        self._new_btn  = _ToolButton("new.svg", "", "New Graph  (Ctrl+N)")
+        self._save_btn = _ToolButton("save.svg", "", "Save Graph  (Ctrl+S)")
+        self._load_btn = _ToolButton("load.svg", "", "Load Graph  (Ctrl+O)")
         layout.addWidget(self._new_btn)
         layout.addWidget(self._save_btn)
         layout.addWidget(self._load_btn)
