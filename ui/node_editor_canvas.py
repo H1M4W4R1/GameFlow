@@ -2161,6 +2161,20 @@ class NodeEditorCanvas(QWidget):
                 ch_menu.addAction(act)
             ctrl_actions.append(ch_menu)
 
+        if hasattr(node, "get_sample_count") and hasattr(node, "set_sample_count"):
+            sample_menu = QMenu(tr("ui.canvas.menu.sample_count", default="Sample count"), menu)
+            sample_menu.setStyleSheet(_MENU_STYLE)
+            current_samples = node.get_sample_count()
+            for n_s in (50, 100, 200, 300, 500):
+                act = QAction(str(n_s), sample_menu)
+                act.setCheckable(True)
+                act.setChecked(current_samples == n_s)
+                act.triggered.connect(
+                    lambda _checked, s=n_s: self._set_sample_count(node_id, s)
+                )
+                sample_menu.addAction(act)
+            ctrl_actions.append(sample_menu)
+
         if ctrl_actions:
             menu.addSeparator()
             for item in ctrl_actions:
@@ -2233,6 +2247,13 @@ class NodeEditorCanvas(QWidget):
                 self._history.push(WireDeleteCmd(self._runtime, wire))
             node.set_channel_count(count)
             self._history.end_macro()
+        self.update()
+
+    def _set_sample_count(self, node_id: str, count: int) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "set_sample_count"):
+            return
+        node.set_sample_count(count)
         self.update()
 
     def _delete_node(self, node_id: str) -> None:

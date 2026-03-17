@@ -6,19 +6,21 @@ All display nodes update instantly when upstream data arrives
 
 Nodes
 -----
-LogNode           — logs a labelled value; shows last message in body
+LogNode            — logs a labelled value; shows last message in body
 NumericDisplayNode — shows live numeric value in large text
 TextDisplayNode    — shows live string/any value as wrapped text
 TimeDisplayNode    — converts seconds or milliseconds to HH:MM:SS
 StateIndicatorNode — coloured circle + TRUE/FALSE for a boolean input
+WaveformDisplayNode — scrolling oscilloscope-style waveform history
 """
 from __future__ import annotations
 
 import logging
+from collections import deque
 from typing import Any
 
-from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui  import QPainter, QColor, QFont
+from PyQt6.QtCore import QRectF, Qt, QPointF
+from PyQt6.QtGui  import QPainter, QColor, QFont, QPen, QPainterPath, QBrush
 
 from core.node_base import NodeBase
 from core.types     import PinDescriptor, PinDirection, PinType
@@ -304,4 +306,132 @@ class StateIndicatorNode(NodeBase):
             QRectF(rect.x(), rect.y() + radius * 2 + 6, rect.width(), 22),
             Qt.AlignmentFlag.AlignCenter,
             text,
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WAVEFORM DISPLAY
+# ─────────────────────────────────────────────────────────────────────────────
+
+class WaveformDisplayNode(NodeBase):
+    """
+    Scrolling oscilloscope-style waveform display.
+
+    Buffers incoming float values and draws them as a continuous trace.
+    The Y axis auto-scales to the visible samples.  The sample count is
+    configured via the right-click context menu (50 / 100 / 200 / 300 / 500).
+    Updates instantly whenever upstream data is pushed — no tick required.
+    """
+    NODE_NAME  = "Waveform Display"
+    NODE_GROUP = "Debug"
+    PINS = [
+        PinDescriptor("value", PinDirection.INPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 220.0
+    MIN_HEIGHT = 130.0
+
+    _MAX_SAMPLES = 500
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._buf:          deque[float] = deque(maxlen=self._MAX_SAMPLES)
+        self._sample_count: int          = 200
+
+    def on_start(self) -> None:
+        self._buf.clear()
+
+    # ── context-menu API ──────────────────────────────────────────────────────
+
+    def get_sample_count(self) -> int:
+        return self._sample_count
+
+    def set_sample_count(self, n: int) -> None:
+        self._sample_count = max(10, min(int(n), self._MAX_SAMPLES))
+        self.node_changed.emit()
+
+    # ── data / state ──────────────────────────────────────────────────────────
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        if pin_name == "value":
+            try:
+                self._buf.append(float(value))
+            except (TypeError, ValueError):
+                pass
+            self.node_changed.emit()
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+    def get_state(self) -> dict[str, Any]:
+        state = super().get_state()
+        state["_buf"]          = list(self._buf)
+        state["_sample_count"] = self._sample_count
+        return state
+
+    def set_state(self, state: dict[str, Any]) -> None:
+        super().set_state(state)
+        raw = state.get("_buf", [])
+        self._buf = deque(
+            (float(v) for v in raw),
+            maxlen=self._MAX_SAMPLES,
+        )
+        self._sample_count = int(state.get("_sample_count", 200))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        margin = 4
+        x0 = rect.x()     + margin
+        w  = rect.width()  - 2 * margin
+        y0 = rect.y()      + margin
+        # Reserve 14 px at bottom for the value label
+        h  = max(1.0, rect.height() - 2 * margin - 14)
+
+        # Scope background
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(QColor("#0d1b1e")))
+        painter.drawRoundedRect(QRectF(x0, y0, w, h), 3, 3)
+
+        samples = list(self._buf)[-self._sample_count:]
+
+        if len(samples) < 2:
+            painter.setPen(QColor("#4db6ac"))
+            painter.setFont(QFont("Courier New", 9))
+            painter.drawText(
+                QRectF(x0, y0, w, h),
+                Qt.AlignmentFlag.AlignCenter,
+                "---",
+            )
+            return
+
+        v_min   = min(samples)
+        v_max   = max(samples)
+        v_range = max(1e-6, v_max - v_min)
+
+        # Centre gridline
+        painter.setPen(QPen(QColor("#1e3a3a"), 1, Qt.PenStyle.DotLine))
+        mid_y = y0 + h * 0.5
+        painter.drawLine(QPointF(x0, mid_y), QPointF(x0 + w, mid_y))
+
+        # Waveform trace
+        n = len(samples)
+        path = QPainterPath()
+        for i, v in enumerate(samples):
+            px = x0 + w * i / (n - 1)
+            py = y0 + h * (1.0 - (v - v_min) / v_range)
+            if i == 0:
+                path.moveTo(px, py)
+            else:
+                path.lineTo(px, py)
+
+        painter.setPen(QPen(QColor("#4db6ac"), 1.5))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawPath(path)
+
+        # Current value label
+        cur_val = samples[-1]
+        painter.setPen(QColor("#80cbc4"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(
+            QRectF(rect.x(), rect.bottom() - 14, rect.width(), 14),
+            Qt.AlignmentFlag.AlignCenter,
+            f"{cur_val:.4f}",
         )
