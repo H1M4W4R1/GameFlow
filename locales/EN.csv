@@ -73,6 +73,44 @@ device.lovense.max.description,Male masturbator — vibration + air pump
 device.lovense.nora.name,Nora
 device.lovense.nora.description,Rabbit vibrator — vibration + rotating head
 device.lovense.nora.url,https://www.lovense.com/rabbit-vibrator
+device.lovense.lush_anal.name,Lush Anal
+device.lovense.lush_anal.description,Anal vibrator
+device.lovense.gush2.name,Gush 2
+device.lovense.gush2.description,Male masturbator v2 with vibration
+device.lovense.calor.name,Calor
+device.lovense.calor.description,Vibrating sleeve with warming
+device.lovense.tenera.name,Tenera
+device.lovense.tenera.description,Clitoral suction vibrator
+device.lovense.vulse.name,Vulse
+device.lovense.vulse.description,Thrusting vibrator
+device.lovense.mission.name,Mission
+device.lovense.mission.description,Couples vibrator
+device.lovense.mission2.name,Mission 2
+device.lovense.mission2.description,Couples vibrator v2
+device.lovense.dolce.name,Dolce
+device.lovense.dolce.description,Dual-stimulation vibrator
+device.lovense.osci3.name,Osci 3
+device.lovense.osci3.description,Dual-stimulation G-spot oscillator
+device.lovense.hyphy.name,Hyphy
+device.lovense.hyphy.description,Dual vibrator
+device.lovense.solace.name,Solace
+device.lovense.solace.description,Automatic stroker
+device.lovense.solace_pro.name,Solace Pro
+device.lovense.solace_pro.description,Automatic stroker with motion control
+device.lovense.sex_machine.name,Sex Machine
+device.lovense.sex_machine.description,Motorised sex machine
+device.lovense.mini_sex_machine.name,Mini Sex Machine
+device.lovense.mini_sex_machine.description,Compact motorised sex machine
+device.lovense.ridge.name,Ridge
+device.lovense.ridge.description,Prostate massager — vibration + rotation
+device.lovense.gravity.name,Gravity
+device.lovense.gravity.description,Dual-stimulation — vibration + oscillation
+device.lovense.spinel.name,Spinel
+device.lovense.spinel.description,Attachment vibe + thrusting motor
+device.lovense.flexer.name,Flexer
+device.lovense.flexer.description,Dual-motor vibrator + rotating finger
+device.lovense.lapis.name,Lapis
+device.lovense.lapis.description,Triple-motor vibrator — tip, internal, external
 device.dglab.manufacturer,DGLab
 device.dglab.coyote.name,Coyote
 device.dglab.coyote.description,Dual-channel estim pulse host (v3 BLE)
@@ -273,6 +311,25 @@ node.group.devices_lovense_edge,Devices/Lovense/Edge
 node.group.devices_lovense_diamo,Devices/Lovense/Diamo
 node.group.devices_lovense_max,Devices/Lovense/Max
 node.group.devices_lovense_nora,Devices/Lovense/Nora
+node.group.devices_lovense_lush_anal,Devices/Lovense/Lush Anal
+node.group.devices_lovense_gush2,Devices/Lovense/Gush 2
+node.group.devices_lovense_calor,Devices/Lovense/Calor
+node.group.devices_lovense_tenera,Devices/Lovense/Tenera
+node.group.devices_lovense_vulse,Devices/Lovense/Vulse
+node.group.devices_lovense_mission,Devices/Lovense/Mission
+node.group.devices_lovense_mission2,Devices/Lovense/Mission 2
+node.group.devices_lovense_dolce,Devices/Lovense/Dolce
+node.group.devices_lovense_osci3,Devices/Lovense/Osci 3
+node.group.devices_lovense_hyphy,Devices/Lovense/Hyphy
+node.group.devices_lovense_solace,Devices/Lovense/Solace
+node.group.devices_lovense_solace_pro,Devices/Lovense/Solace Pro
+node.group.devices_lovense_sex_machine,Devices/Lovense/Sex Machine
+node.group.devices_lovense_mini_sex_machine,Devices/Lovense/Mini Sex Machine
+node.group.devices_lovense_ridge,Devices/Lovense/Ridge
+node.group.devices_lovense_gravity,Devices/Lovense/Gravity
+node.group.devices_lovense_spinel,Devices/Lovense/Spinel
+node.group.devices_lovense_flexer,Devices/Lovense/Flexer
+node.group.devices_lovense_lapis,Devices/Lovense/Lapis
 node.group.devices_h1m4w4r1_pump,Devices/H1M4W4R1/Pump
 node.group.devices_dglab_coyote,Devices/DGLab/Coyote
 node.group.devices_dglab_coyote_waveforms,Devices/DGLab/Coyote/Waveforms

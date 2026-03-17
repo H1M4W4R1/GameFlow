@@ -1,15 +1,19 @@
 """
 Lovense multi-feature devices.
 
-  LovenseEdge  — prostate massager: 2 independent vibrators
-                 Motor 0: Internal (insertable tip)
-                 Motor 1: Perineum (external pad)
-
-  LovenseDiamo — cock ring: 1 vibrator
-
-  LovenseMax   — male masturbator: 1 vibrator + air pump (inflate/deflate)
-
-  LovenseNora  — rabbit vibrator: 1 vibrator + 1 rotating head
+  LovenseEdge        — prostate massager: 2 vibrators               [P]
+  LovenseDiamo       — cock ring: 1 vibrator                         [R]
+  LovenseMax         — male masturbator: 1 vibrator + air pump       [B]
+  LovenseNora        — rabbit vibrator: 1 vibrator + rotating head   [A/C]
+  LovenseSolace      — stroker / sex machine (oscillate)             [H]
+  LovenseSolacePro   — stroker with motion control                   [BA]
+  LovenseSexMachine  — full sex machine (oscillate)                  [F]
+  LovenseMiniSexMachine — compact sex machine (oscillate)            [FS]
+  LovenseRidge       — prostate: 1 vibrator + rotate                 [EL]
+  LovenseGravity     — dual: vibrate + oscillate                     [EA]
+  LovenseSpinel      — dual: vibrate + oscillate (thrusting)         [WD]
+  LovenseFlexer      — dual vibrators + finger flex/rotate           [EI]
+  LovenseLapis       — 3-motor vibrator                              [U]
 """
 from __future__ import annotations
 
@@ -32,6 +36,7 @@ class LovenseEdge(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.edge"
     DEVICE_DESCRIPTION = "Dual-motor prostate massager"
     DEVICE_IDENTIFIER  = "P"
+    BLE_NAME_PREFIXES  = ("LVS-P", "LOVE-P", "LVS-Edge", "LOVE-Edge")
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate Internal", "Vibrate Perineum"]
     ICON_PATH          = "assets/icons/lovense/edge.svg"
@@ -39,7 +44,6 @@ class LovenseEdge(_LovenseBLEBase):
 
 
 class EdgeVibrateInternal(DeviceNodeBase):
-    """Vibrate the insertable internal tip of the Edge."""
     NODE_NAME       = "Edge: Vibrate Internal"
     NODE_GROUP      = "Devices/Lovense/Edge"
     DEVICE_TYPE_KEY = f"{LovenseEdge.__module__}.LovenseEdge"
@@ -61,7 +65,6 @@ class EdgeVibrateInternal(DeviceNodeBase):
 
 
 class EdgeVibratePerineum(DeviceNodeBase):
-    """Vibrate the external perineum pad of the Edge."""
     NODE_NAME       = "Edge: Vibrate Perineum"
     NODE_GROUP      = "Devices/Lovense/Edge"
     DEVICE_TYPE_KEY = f"{LovenseEdge.__module__}.LovenseEdge"
@@ -83,7 +86,6 @@ class EdgeVibratePerineum(DeviceNodeBase):
 
 
 class EdgeVibrateBoth(DeviceNodeBase):
-    """Control both Edge motors simultaneously with independent intensities."""
     NODE_NAME       = "Edge: Vibrate Both"
     NODE_GROUP      = "Devices/Lovense/Edge"
     DEVICE_TYPE_KEY = f"{LovenseEdge.__module__}.LovenseEdge"
@@ -125,6 +127,7 @@ class LovenseDiamo(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.diamo"
     DEVICE_DESCRIPTION = "Vibrating cock ring"
     DEVICE_IDENTIFIER  = "R"
+    BLE_NAME_PREFIXES  = ("LVS-R", "LOVE-R", "LVS-Diamo", "LOVE-Diamo")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/diamo.svg"
@@ -132,7 +135,6 @@ class LovenseDiamo(_LovenseBLEBase):
 
 
 class DiamoVibrate(DeviceNodeBase):
-    """Vibrate the Diamo cock ring."""
     NODE_NAME       = "Diamo: Vibrate"
     NODE_GROUP      = "Devices/Lovense/Diamo"
     DEVICE_TYPE_KEY = f"{LovenseDiamo.__module__}.LovenseDiamo"
@@ -165,6 +167,7 @@ class LovenseMax(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.max"
     DEVICE_DESCRIPTION = "Male masturbator — vibration + air pump"
     DEVICE_IDENTIFIER  = "B"
+    BLE_NAME_PREFIXES  = ("LVS-B", "LOVE-B", "LVS-Max", "LOVE-Max")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     SUPPORTS_AIR           = True
@@ -174,7 +177,6 @@ class LovenseMax(_LovenseBLEBase):
 
 
 class MaxVibrate(DeviceNodeBase):
-    """Vibrate the Max masturbator."""
     NODE_NAME       = "Max: Vibrate"
     NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
@@ -196,7 +198,6 @@ class MaxVibrate(DeviceNodeBase):
 
 
 class MaxAirLevel(DeviceNodeBase):
-    """Set absolute air/constriction level on the Max (0 = fully deflated, 5 = max)."""
     NODE_NAME       = "Max: Air Level"
     NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
@@ -219,7 +220,6 @@ class MaxAirLevel(DeviceNodeBase):
 
 
 class MaxAirInflate(DeviceNodeBase):
-    """Inflate the Max by N steps relative to current level."""
     NODE_NAME       = "Max: Inflate"
     NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
@@ -242,7 +242,6 @@ class MaxAirInflate(DeviceNodeBase):
 
 
 class MaxAirDeflate(DeviceNodeBase):
-    """Deflate the Max by N steps relative to current level."""
     NODE_NAME       = "Max: Deflate"
     NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
@@ -268,7 +267,6 @@ _MaxStopNode = _make_stop_node(LovenseMax)
 
 
 class MaxAccelerometerEnable(DeviceNodeBase):
-    """Start streaming accelerometer data from the Max."""
     NODE_NAME       = "Max: Accelerometer Enable"
     NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
@@ -288,7 +286,6 @@ class MaxAccelerometerEnable(DeviceNodeBase):
 
 
 class MaxAccelerometerDisable(DeviceNodeBase):
-    """Stop streaming accelerometer data from the Max."""
     NODE_NAME       = "Max: Accelerometer Disable"
     NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
@@ -308,11 +305,6 @@ class MaxAccelerometerDisable(DeviceNodeBase):
 
 
 class MaxAccelerometerEvent(DeviceNodeBase):
-    """
-    Fires on_event whenever an accelerometer frame arrives from the Max.
-    Outputs decoded Vector3 (x, y, z) as raw signed int16 sensor values.
-    Requires accelerometer streaming to be started via MaxAccelerometerEnable.
-    """
     NODE_NAME       = "Max: Accelerometer"
     NODE_GROUP      = "Devices/Lovense/Max"
     DEVICE_TYPE_KEY = f"{LovenseMax.__module__}.LovenseMax"
@@ -354,10 +346,12 @@ class MaxAccelerometerEvent(DeviceNodeBase):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class LovenseNora(_LovenseBLEBase):
-    DEVICE_NAME        = "Nora"
-    DEVICE_TR_PREFIX   = "lovense.nora"
-    DEVICE_DESCRIPTION = "Rabbit vibrator — vibration + rotating head"
-    DEVICE_IDENTIFIER  = "A"   # also "C" on older firmware
+    DEVICE_NAME               = "Nora"
+    DEVICE_TR_PREFIX          = "lovense.nora"
+    DEVICE_DESCRIPTION        = "Rabbit vibrator — vibration + rotating head"
+    DEVICE_IDENTIFIER         = "A"
+    DEVICE_IDENTIFIER_ALIASES = ["C"]   # old firmware
+    BLE_NAME_PREFIXES  = ("LVS-A", "LOVE-A", "LVS-C", "LOVE-C", "LVS-Nora", "LOVE-Nora")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     SUPPORTS_ROTATE    = True
@@ -366,7 +360,6 @@ class LovenseNora(_LovenseBLEBase):
 
 
 class NoraVibrate(DeviceNodeBase):
-    """Vibrate the Nora's vibration motor."""
     NODE_NAME       = "Nora: Vibrate"
     NODE_GROUP      = "Devices/Lovense/Nora"
     DEVICE_TYPE_KEY = f"{LovenseNora.__module__}.LovenseNora"
@@ -388,7 +381,6 @@ class NoraVibrate(DeviceNodeBase):
 
 
 class NoraRotate(DeviceNodeBase):
-    """Control the rotation speed of Nora's rotating head (0.0–1.0)."""
     NODE_NAME       = "Nora: Rotate"
     NODE_GROUP      = "Devices/Lovense/Nora"
     DEVICE_TYPE_KEY = f"{LovenseNora.__module__}.LovenseNora"
@@ -412,7 +404,6 @@ class NoraRotate(DeviceNodeBase):
 
 
 class NoraRotateChange(DeviceNodeBase):
-    """Reverse the rotation direction of Nora's head."""
     NODE_NAME       = "Nora: Reverse Rotation"
     NODE_GROUP      = "Devices/Lovense/Nora"
     DEVICE_TYPE_KEY = f"{LovenseNora.__module__}.LovenseNora"
@@ -435,10 +426,441 @@ _NoraStopNode = _make_stop_node(LovenseNora)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Solace / Solace Pro — stroker / sex machine
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LovenseSolace(_LovenseBLEBase):
+    DEVICE_NAME        = "Solace"
+    DEVICE_TR_PREFIX   = "lovense.solace"
+    DEVICE_DESCRIPTION = "Automatic stroker"
+    DEVICE_IDENTIFIER  = "H"
+    BLE_NAME_PREFIXES  = ("LVS-H", "LOVE-H", "LVS-Solace", "LOVE-Solace")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Stroke Speed"]
+    ICON_PATH          = "assets/icons/lovense/solace.svg"
+
+
+class LovenseSolacePro(_LovenseBLEBase):
+    DEVICE_NAME        = "Solace Pro"
+    DEVICE_TR_PREFIX   = "lovense.solace_pro"
+    DEVICE_DESCRIPTION = "Automatic stroker with motion control"
+    DEVICE_IDENTIFIER  = "BA"
+    BLE_NAME_PREFIXES  = ("LVS-BA", "LOVE-BA")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Stroke Speed"]
+    ICON_PATH          = "assets/icons/lovense/solace_pro.svg"
+
+
+class LovenseSexMachine(_LovenseBLEBase):
+    DEVICE_NAME        = "Sex Machine"
+    DEVICE_TR_PREFIX   = "lovense.sex_machine"
+    DEVICE_DESCRIPTION = "Motorised sex machine"
+    DEVICE_IDENTIFIER  = "F"
+    BLE_NAME_PREFIXES  = ("LVS-F", "LOVE-F")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Thrust Speed"]
+    ICON_PATH          = "assets/icons/lovense/sex_machine.svg"
+
+
+class LovenseMiniSexMachine(_LovenseBLEBase):
+    DEVICE_NAME        = "Mini Sex Machine"
+    DEVICE_TR_PREFIX   = "lovense.mini_sex_machine"
+    DEVICE_DESCRIPTION = "Compact motorised sex machine"
+    DEVICE_IDENTIFIER  = "FS"
+    BLE_NAME_PREFIXES  = ("LVS-FS", "LOVE-FS")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Thrust Speed"]
+    ICON_PATH          = "assets/icons/lovense/mini_sex_machine.svg"
+
+
+def _make_single_vibe_node(device_cls, label: str) -> type:
+    """Create a single vibrate/speed node for oscillate/stroker devices."""
+    device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"
+    node_name       = f"{device_cls.DEVICE_NAME}: {label}"
+    node_group      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
+
+    class _Node(DeviceNodeBase):
+        NODE_NAME       = node_name
+        NODE_GROUP      = node_group
+        DEVICE_TYPE_KEY = device_type_key
+        ICON_PATH       = device_cls.ICON_PATH
+        PINS = [
+            PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+            PinDescriptor("intensity", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+        ]
+        VARIABLE_INPUTS = {"intensity": (float, 0.5)}
+
+        def execute(self, trigger_pin: str) -> None:
+            dev = self.get_device()
+            if dev:
+                dev.vibrate(0, float(self.get_var_input("intensity") or 0.0),
+                            on_success=lambda _: self.fire_tick("exec_out"))
+            else:
+                self.fire_tick("exec_out")
+
+    _Node.__name__     = f"Speed_{device_cls.__name__}"
+    _Node.__qualname__ = _Node.__name__
+    return _Node
+
+
+_SolaceSpeedNode     = _make_single_vibe_node(LovenseSolace, "Stroke Speed")
+_SolaceProSpeedNode  = _make_single_vibe_node(LovenseSolacePro, "Stroke Speed")
+_SexMachineSpeedNode = _make_single_vibe_node(LovenseSexMachine, "Thrust Speed")
+_MiniMachineSpeedNode = _make_single_vibe_node(LovenseMiniSexMachine, "Thrust Speed")
+_SolaceStop          = _make_stop_node(LovenseSolace)
+_SolaceProStop       = _make_stop_node(LovenseSolacePro)
+_SexMachineStop      = _make_stop_node(LovenseSexMachine)
+_MiniMachineStop     = _make_stop_node(LovenseMiniSexMachine)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Ridge — vibrate + rotate (like Nora but different form factor)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LovenseRidge(_LovenseBLEBase):
+    DEVICE_NAME        = "Ridge"
+    DEVICE_TR_PREFIX   = "lovense.ridge"
+    DEVICE_DESCRIPTION = "Prostate massager — vibration + rotation"
+    DEVICE_IDENTIFIER  = "EL"
+    BLE_NAME_PREFIXES  = ("LVS-EL", "LOVE-EL", "LVS-Ridge", "LOVE-Ridge")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    SUPPORTS_ROTATE    = True
+    ICON_PATH          = "assets/icons/lovense/ridge.svg"
+
+
+class RidgeVibrate(DeviceNodeBase):
+    NODE_NAME       = "Ridge: Vibrate"
+    NODE_GROUP      = "Devices/Lovense/Ridge"
+    DEVICE_TYPE_KEY = f"{LovenseRidge.__module__}.LovenseRidge"
+    ICON_PATH       = LovenseRidge.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("intensity", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {"intensity": (float, 0.5)}
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.vibrate(0, float(self.get_var_input("intensity") or 0.0),
+                        on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+class RidgeRotate(DeviceNodeBase):
+    NODE_NAME       = "Ridge: Rotate"
+    NODE_GROUP      = "Devices/Lovense/Ridge"
+    DEVICE_TYPE_KEY = f"{LovenseRidge.__module__}.LovenseRidge"
+    ICON_PATH       = LovenseRidge.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("speed",    PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {"speed": (float, 0.5)}
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            speed = max(0.0, min(1.0, float(self.get_var_input("speed") or 0.0)))
+            raw   = int(round(speed * VIBRATE_MAX))
+            dev.send_command("rotate", {"level": raw},
+                             on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+_RidgeStopNode = _make_stop_node(LovenseRidge)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Gravity / Spinel — vibrate + oscillate (two independent channels)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LovenseGravity(_LovenseBLEBase):
+    DEVICE_NAME        = "Gravity"
+    DEVICE_TR_PREFIX   = "lovense.gravity"
+    DEVICE_DESCRIPTION = "Dual-stimulation — vibration + oscillation"
+    DEVICE_IDENTIFIER  = "EA"
+    BLE_NAME_PREFIXES  = ("LVS-EA", "LOVE-EA", "LVS-Gravity", "LOVE-Gravity")
+    VIBRATOR_COUNT     = 2
+    VIBRATOR_NAMES     = ["Vibrate", "Oscillate"]
+    ICON_PATH          = "assets/icons/lovense/gravity.svg"
+
+
+class LovenseSpinel(_LovenseBLEBase):
+    DEVICE_NAME        = "Spinel"
+    DEVICE_TR_PREFIX   = "lovense.spinel"
+    DEVICE_DESCRIPTION = "Attachment vibe + thrusting motor"
+    DEVICE_IDENTIFIER  = "WD"
+    BLE_NAME_PREFIXES  = ("LVS-WD", "LOVE-WD", "LVS-Spinel", "LOVE-Spinel")
+    VIBRATOR_COUNT     = 2
+    VIBRATOR_NAMES     = ["Vibrate", "Thrust"]
+    ICON_PATH          = "assets/icons/lovense/spinel.svg"
+
+
+def _make_dual_vibe_nodes(device_cls) -> list[type]:
+    device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"
+    node_group      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
+    label0, label1  = device_cls.VIBRATOR_NAMES
+
+    class _Node0(DeviceNodeBase):
+        NODE_NAME       = f"{device_cls.DEVICE_NAME}: {label0}"
+        NODE_GROUP      = node_group
+        DEVICE_TYPE_KEY = device_type_key
+        ICON_PATH       = device_cls.ICON_PATH
+        PINS = [
+            PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+            PinDescriptor("intensity", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+        ]
+        VARIABLE_INPUTS = {"intensity": (float, 0.5)}
+
+        def execute(self, trigger_pin: str) -> None:
+            dev = self.get_device()
+            if dev:
+                dev.vibrate(0, float(self.get_var_input("intensity") or 0.0),
+                            on_success=lambda _: self.fire_tick("exec_out"))
+            else:
+                self.fire_tick("exec_out")
+
+    class _Node1(DeviceNodeBase):
+        NODE_NAME       = f"{device_cls.DEVICE_NAME}: {label1}"
+        NODE_GROUP      = node_group
+        DEVICE_TYPE_KEY = device_type_key
+        ICON_PATH       = device_cls.ICON_PATH
+        PINS = [
+            PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+            PinDescriptor("intensity", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+        ]
+        VARIABLE_INPUTS = {"intensity": (float, 0.5)}
+
+        def execute(self, trigger_pin: str) -> None:
+            dev = self.get_device()
+            if dev:
+                dev.vibrate(1, float(self.get_var_input("intensity") or 0.0),
+                            on_success=lambda _: self.fire_tick("exec_out"))
+            else:
+                self.fire_tick("exec_out")
+
+    class _NodeBoth(DeviceNodeBase):
+        NODE_NAME       = f"{device_cls.DEVICE_NAME}: Both"
+        NODE_GROUP      = node_group
+        DEVICE_TYPE_KEY = device_type_key
+        ICON_PATH       = device_cls.ICON_PATH
+        PINS = [
+            PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+            PinDescriptor("motor_0",  PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("motor_1",  PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        ]
+        VARIABLE_INPUTS = {"motor_0": (float, 0.5), "motor_1": (float, 0.5)}
+
+        def execute(self, trigger_pin: str) -> None:
+            dev = self.get_device()
+            if dev:
+                l0 = max(0.0, min(1.0, float(self.get_var_input("motor_0") or 0.0)))
+                l1 = max(0.0, min(1.0, float(self.get_var_input("motor_1") or 0.0)))
+                dev.send_command(
+                    "vibrate",
+                    {"levels": [int(l0 * VIBRATE_MAX), int(l1 * VIBRATE_MAX)]},
+                    on_success=lambda _: self.fire_tick("exec_out"),
+                )
+            else:
+                self.fire_tick("exec_out")
+
+    n = device_cls.__name__
+    _Node0.__name__ = _Node0.__qualname__ = f"Motor0_{n}"
+    _Node1.__name__ = _Node1.__qualname__ = f"Motor1_{n}"
+    _NodeBoth.__name__ = _NodeBoth.__qualname__ = f"Both_{n}"
+    return [_Node0, _Node1, _NodeBoth, _make_stop_node(device_cls)]
+
+
+_GravityNodes = _make_dual_vibe_nodes(LovenseGravity)
+_SpinelNodes  = _make_dual_vibe_nodes(LovenseSpinel)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Flexer — dual vibrators + finger flex/rotate
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LovenseFlexer(_LovenseBLEBase):
+    DEVICE_NAME        = "Flexer"
+    DEVICE_TR_PREFIX   = "lovense.flexer"
+    DEVICE_DESCRIPTION = "Dual-motor vibrator + rotating finger (requires FW3+)"
+    DEVICE_IDENTIFIER  = "EI"
+    BLE_NAME_PREFIXES  = ("LVS-EI", "LOVE-EI", "LVS-Flexer", "LOVE-Flexer")
+    VIBRATOR_COUNT     = 2
+    VIBRATOR_NAMES     = ["Vibrate Internal", "Vibrate External"]
+    SUPPORTS_ROTATE    = True
+    ICON_PATH          = "assets/icons/lovense/flexer.svg"
+
+
+class FlexerVibrateInternal(DeviceNodeBase):
+    NODE_NAME       = "Flexer: Vibrate Internal"
+    NODE_GROUP      = "Devices/Lovense/Flexer"
+    DEVICE_TYPE_KEY = f"{LovenseFlexer.__module__}.LovenseFlexer"
+    ICON_PATH       = LovenseFlexer.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("intensity", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {"intensity": (float, 0.5)}
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.vibrate(0, float(self.get_var_input("intensity") or 0.0),
+                        on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+class FlexerVibrateExternal(DeviceNodeBase):
+    NODE_NAME       = "Flexer: Vibrate External"
+    NODE_GROUP      = "Devices/Lovense/Flexer"
+    DEVICE_TYPE_KEY = f"{LovenseFlexer.__module__}.LovenseFlexer"
+    ICON_PATH       = LovenseFlexer.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("intensity", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {"intensity": (float, 0.5)}
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            dev.vibrate(1, float(self.get_var_input("intensity") or 0.0),
+                        on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+class FlexerRotate(DeviceNodeBase):
+    NODE_NAME       = "Flexer: Finger Speed"
+    NODE_GROUP      = "Devices/Lovense/Flexer"
+    DEVICE_TYPE_KEY = f"{LovenseFlexer.__module__}.LovenseFlexer"
+    ICON_PATH       = LovenseFlexer.ICON_PATH
+    PINS = [
+        PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("speed",    PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+    VARIABLE_INPUTS = {"speed": (float, 0.5)}
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if dev:
+            speed = max(0.0, min(1.0, float(self.get_var_input("speed") or 0.0)))
+            raw   = int(round(speed * VIBRATE_MAX))
+            dev.send_command("rotate", {"level": raw},
+                             on_success=lambda _: self.fire_tick("exec_out"))
+        else:
+            self.fire_tick("exec_out")
+
+
+_FlexerStopNode = _make_stop_node(LovenseFlexer)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Lapis — 3-motor vibrator
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LovenseLapis(_LovenseBLEBase):
+    DEVICE_NAME        = "Lapis"
+    DEVICE_TR_PREFIX   = "lovense.lapis"
+    DEVICE_DESCRIPTION = "Triple-motor vibrator — tip, internal, external"
+    DEVICE_IDENTIFIER  = "U"
+    BLE_NAME_PREFIXES  = ("LVS-U", "LOVE-U", "LVS-Lapis", "LOVE-Lapis")
+    VIBRATOR_COUNT     = 3
+    VIBRATOR_NAMES     = ["Vibrate Tip", "Vibrate Internal", "Vibrate External"]
+    ICON_PATH          = "assets/icons/lovense/lapis.svg"
+
+
+def _make_lapis_nodes() -> list[type]:
+    device_type_key = f"{LovenseLapis.__module__}.LovenseLapis"
+    node_group      = "Devices/Lovense/Lapis"
+    labels = LovenseLapis.VIBRATOR_NAMES
+    nodes  = []
+    for idx, lbl in enumerate(labels):
+        _idx = idx
+
+        class _N(DeviceNodeBase):
+            NODE_NAME       = f"Lapis: {lbl}"
+            NODE_GROUP      = node_group
+            DEVICE_TYPE_KEY = device_type_key
+            ICON_PATH       = LovenseLapis.ICON_PATH
+            PINS = [
+                PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+                PinDescriptor("intensity", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+                PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+            ]
+            VARIABLE_INPUTS = {"intensity": (float, 0.5)}
+            _MOTOR = _idx
+
+            def execute(self, trigger_pin: str) -> None:
+                dev = self.get_device()
+                if dev:
+                    dev.vibrate(self._MOTOR,
+                                float(self.get_var_input("intensity") or 0.0),
+                                on_success=lambda _: self.fire_tick("exec_out"))
+                else:
+                    self.fire_tick("exec_out")
+
+        _N.__name__ = _N.__qualname__ = f"LapisVib{idx}"
+        nodes.append(_N)
+
+    class _All(DeviceNodeBase):
+        NODE_NAME       = "Lapis: All Motors"
+        NODE_GROUP      = node_group
+        DEVICE_TYPE_KEY = device_type_key
+        ICON_PATH       = LovenseLapis.ICON_PATH
+        PINS = [
+            PinDescriptor("exec_in",    PinDirection.INPUT,  PinType.TICK),
+            PinDescriptor("tip",        PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("internal",   PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("external",   PinDirection.INPUT,  PinType.FLOAT, optional=True),
+            PinDescriptor("exec_out",   PinDirection.OUTPUT, PinType.TICK),
+        ]
+        VARIABLE_INPUTS = {"tip": (float, 0.5), "internal": (float, 0.5), "external": (float, 0.5)}
+
+        def execute(self, trigger_pin: str) -> None:
+            dev = self.get_device()
+            if dev:
+                levels = [
+                    int(max(0.0, min(1.0, float(self.get_var_input(k) or 0.0))) * VIBRATE_MAX)
+                    for k in ("tip", "internal", "external")
+                ]
+                dev.send_command("vibrate", {"levels": levels},
+                                 on_success=lambda _: self.fire_tick("exec_out"))
+            else:
+                self.fire_tick("exec_out")
+
+    _All.__name__ = _All.__qualname__ = "LapisAll"
+    nodes.append(_All)
+    nodes.append(_make_stop_node(LovenseLapis))
+    return nodes
+
+
+_LapisNodes = _make_lapis_nodes()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Module-level export lists
 # ─────────────────────────────────────────────────────────────────────────────
 
-ALL_DEVICE_CLASSES = [LovenseEdge, LovenseDiamo, LovenseMax, LovenseNora]
+ALL_DEVICE_CLASSES = [
+    LovenseEdge, LovenseDiamo, LovenseMax, LovenseNora,
+    LovenseSolace, LovenseSolacePro, LovenseSexMachine, LovenseMiniSexMachine,
+    LovenseRidge, LovenseGravity, LovenseSpinel, LovenseFlexer, LovenseLapis,
+]
 
 ALL_NODE_CLASSES = [
     # Edge
@@ -450,4 +872,18 @@ ALL_NODE_CLASSES = [
     MaxAccelerometerEnable, MaxAccelerometerDisable, MaxAccelerometerEvent,
     # Nora
     NoraVibrate, NoraRotate, NoraRotateChange, _NoraStopNode,
+    # Solace / machines
+    _SolaceSpeedNode, _SolaceStop,
+    _SolaceProSpeedNode, _SolaceProStop,
+    _SexMachineSpeedNode, _SexMachineStop,
+    _MiniMachineSpeedNode, _MiniMachineStop,
+    # Ridge
+    RidgeVibrate, RidgeRotate, _RidgeStopNode,
+    # Gravity + Spinel (dual vibe + oscillate)
+    *_GravityNodes,
+    *_SpinelNodes,
+    # Flexer
+    FlexerVibrateInternal, FlexerVibrateExternal, FlexerRotate, _FlexerStopNode,
+    # Lapis
+    *_LapisNodes,
 ]

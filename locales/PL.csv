@@ -73,6 +73,44 @@ device.lovense.max.description,Masturbator męski — wibracja + pompka powietrz
 device.lovense.nora.name,Nora
 device.lovense.nora.description,Wibrator królik — wibracja + obracająca się główka
 device.lovense.nora.url,https://www.lovense.com/rabbit-vibrator
+device.lovense.lush_anal.name,Lush Anal
+device.lovense.lush_anal.description,Wibrator analny
+device.lovense.gush2.name,Gush 2
+device.lovense.gush2.description,Masturbator z wibracją v2
+device.lovense.calor.name,Calor
+device.lovense.calor.description,Wibrator rękawiczy z podgrzewaniem
+device.lovense.tenera.name,Tenera
+device.lovense.tenera.description,Wibrator łechtaczkowy z zasysaniem
+device.lovense.vulse.name,Vulse
+device.lovense.vulse.description,Wibrator z ruchem posuwistym
+device.lovense.mission.name,Mission
+device.lovense.mission.description,Wibrator dla par
+device.lovense.mission2.name,Mission 2
+device.lovense.mission2.description,Wibrator dla par v2
+device.lovense.dolce.name,Dolce
+device.lovense.dolce.description,Wibrator z dwoma niezależnymi silnikami
+device.lovense.osci3.name,Osci 3
+device.lovense.osci3.description,Dwupunktowy stymulator G-spot
+device.lovense.hyphy.name,Hyphy
+device.lovense.hyphy.description,Dwusilnikowy wibrator
+device.lovense.solace.name,Solace
+device.lovense.solace.description,Automatyczny masturbator
+device.lovense.solace_pro.name,Solace Pro
+device.lovense.solace_pro.description,Automatyczny masturbator z kontrolą ruchu
+device.lovense.sex_machine.name,Sex Machine
+device.lovense.sex_machine.description,Motoryzowana maszyna
+device.lovense.mini_sex_machine.name,Mini Sex Machine
+device.lovense.mini_sex_machine.description,Kompaktowa motoryzowana maszyna
+device.lovense.ridge.name,Ridge
+device.lovense.ridge.description,Masażer prostaty — wibracja + obrót
+device.lovense.gravity.name,Gravity
+device.lovense.gravity.description,Dwukanałowy — wibracja + oscylacja
+device.lovense.spinel.name,Spinel
+device.lovense.spinel.description,Nakładka wibracyjna + silnik posuwisty
+device.lovense.flexer.name,Flexer
+device.lovense.flexer.description,Dwusilnikowy wibrator + obracający się palec
+device.lovense.lapis.name,Lapis
+device.lovense.lapis.description,Trójsilnikowy wibrator — końcówka, wewnętrzny, zewnętrzny
 device.dglab.manufacturer,DGLab
 device.dglab.coyote.name,Coyote
 device.dglab.coyote.description,Dwukanałowy host impulsów estim (v3 BLE)
@@ -273,6 +311,25 @@ node.group.devices_lovense_edge,Urządzenia/Lovense/Edge
 node.group.devices_lovense_diamo,Urządzenia/Lovense/Diamo
 node.group.devices_lovense_max,Urządzenia/Lovense/Max
 node.group.devices_lovense_nora,Urządzenia/Lovense/Nora
+node.group.devices_lovense_lush_anal,Urządzenia/Lovense/Lush Anal
+node.group.devices_lovense_gush2,Urządzenia/Lovense/Gush 2
+node.group.devices_lovense_calor,Urządzenia/Lovense/Calor
+node.group.devices_lovense_tenera,Urządzenia/Lovense/Tenera
+node.group.devices_lovense_vulse,Urządzenia/Lovense/Vulse
+node.group.devices_lovense_mission,Urządzenia/Lovense/Mission
+node.group.devices_lovense_mission2,Urządzenia/Lovense/Mission 2
+node.group.devices_lovense_dolce,Urządzenia/Lovense/Dolce
+node.group.devices_lovense_osci3,Urządzenia/Lovense/Osci 3
+node.group.devices_lovense_hyphy,Urządzenia/Lovense/Hyphy
+node.group.devices_lovense_solace,Urządzenia/Lovense/Solace
+node.group.devices_lovense_solace_pro,Urządzenia/Lovense/Solace Pro
+node.group.devices_lovense_sex_machine,Urządzenia/Lovense/Sex Machine
+node.group.devices_lovense_mini_sex_machine,Urządzenia/Lovense/Mini Sex Machine
+node.group.devices_lovense_ridge,Urządzenia/Lovense/Ridge
+node.group.devices_lovense_gravity,Urządzenia/Lovense/Gravity
+node.group.devices_lovense_spinel,Urządzenia/Lovense/Spinel
+node.group.devices_lovense_flexer,Urządzenia/Lovense/Flexer
+node.group.devices_lovense_lapis,Urządzenia/Lovense/Lapis
 node.group.devices_h1m4w4r1_pump,Urządzenia/H1M4W4R1/Pompa
 node.group.devices_dglab_coyote,Urządzenia/DGLab/Coyote
 node.group.devices_dglab_coyote_waveforms,Urządzenia/DGLab/Coyote/Przebiegi

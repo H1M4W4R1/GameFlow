@@ -7,17 +7,21 @@ GATT service/characteristic UUIDs (all firmware generations):
   Gen1/2 service:  0000fff0-0000-1000-8000-00805f9b34fb
     TX char:       0000fff2-0000-1000-8000-00805f9b34fb
     RX char:       0000fff1-0000-1000-8000-00805f9b34fb
-  Gen3 service:    59610001-eda-... (varies; scan by name prefix LVS-*/LOVE-*)
-  Edge2 service:   50300011-0023-4bd4-bbd5-a6920e4c5653
-    TX char:       50300012-0023-4bd4-bbd5-a6920e4c5653
-    RX char:       50300013-0023-4bd4-bbd5-a6920e4c5653
+  Gen2 NUS service: 6e400001-b5a3-f393-e0a9-e50e24dcca9e
+    TX char:       6e400002-b5a3-f393-e0a9-e50e24dcca9e
+    RX char:       6e400003-b5a3-f393-e0a9-e50e24dcca9e
+  Gen3 service:    XY300001-002Z-4bd4-bbd5-a6920e4c5653 (many variants)
 
 Command format: "<Command>[:<arg>][:<arg>];"
 Response format: "<value>;"  or  "OK;"  or  "ERR;"
 
 Device identifier letters (returned by DeviceType;):
-  R=Diamo  S=Lush  C/A=Nora  B=Max  Z=Hush  L=Ambi
-  P=Edge   W=Domi  O=Osci    X=Ferri  EF=Exomoon  G=Gemini  GU=Gush
+  S=Lush   AN=LushAnal  Z=Hush   W=Domi   L=Ambi   X=Ferri
+  O=Osci   OC=Osci3     N=Gemini J=Dolce  P=Edge   R=Diamo
+  B=Max    A/C=Nora     ED=Gush  EZ=Gush2 EB=Hyphy T=Calor
+  Q=Tenera SD=Vulse     V=Mission CA=Mission2
+  H=Solace BA=SolacePro EL=Ridge EA=Gravity WD=Spinel
+  EI=Flexer U=Lapis      F=SexMachine FS=MiniSexMachine
 """
 from __future__ import annotations
 
@@ -36,7 +40,6 @@ log = logging.getLogger(__name__)
 
 # ── Known GATT profiles ───────────────────────────────────────────────────────
 # Each entry: (service_uuid, tx_char_uuid, rx_char_uuid)
-# Source: https://buttplug.io/stpihkal/protocols/lovense/
 
 _GATT_PROFILES = [
     (
@@ -54,12 +57,6 @@ _GATT_PROFILES = [
 ]
 
 # Generation 3 — variable service UUID: XY300001-002Z-4bd4-bbd5-a6920e4c5653
-#   X ∈ {4, 5}
-#   Y ∈ {0..f}
-#   Z ∈ {3, 4}
-# Generates 2 × 16 × 2 = 64 combinations.
-# TX char: XY300002-002Z-4bd4-bbd5-a6920e4c5653
-# RX char: XY300003-002Z-4bd4-bbd5-a6920e4c5653
 _GEN3_PROFILES: list[tuple[str, str, str]] = []
 for _x in (4, 5):
     for _y in range(16):
@@ -72,53 +69,32 @@ for _x in (4, 5):
 # Vibration level scale: 0-20 (0=off, 20=max)
 VIBRATE_MAX = 20
 
-# ── BLE advertisement filters used by the scanner ────────────────────────────
+# ── BLE advertisement filters ─────────────────────────────────────────────────
 
-# Device name prefixes to match during BLE scan
+# Fallback name prefixes (used by LovenseUnknownDevice generic class)
 BLE_NAME_PREFIXES: tuple[str, ...] = ("LVS-", "LOVE-")
 
-# All known Lovense service UUIDs (Gen1 + Gen2 static; Gen3 generated below)
+# All known Lovense service UUIDs (Gen1 + Gen2 static; Gen3 generated)
 BLE_SERVICE_UUIDS: list[str] = (
     [p[0] for p in _GATT_PROFILES] + [p[0] for p in _GEN3_PROFILES]
 )
 
-# Map BLE advertisement name suffix fragment → DEVICE_IDENTIFIER
-# "LVS-<identifier><firmware>" e.g. "LVS-Z011" → "Z", "LVS-Edge36" → "Edge"
-BLE_NAME_TO_IDENTIFIER: dict[str, str] = {
-    # Single-char identifiers (old naming convention)
-    "S": "S",   # Lush
-    "Z": "Z",   # Hush
-    "W": "W",   # Domi
-    "L": "L",   # Ambi
-    "X": "X",   # Ferri
-    "O": "O",   # Osci
-    "G": "G",   # Gemini
-    "P": "P",   # Edge
-    "R": "R",   # Diamo
-    "B": "B",   # Max
-    "A": "A",   # Nora (old)
-    "C": "A",   # Nora (very old firmware)
-    # Full product-name convention (newer firmware)
-    "Lush":   "S",
-    "Hush":   "Z",
-    "Domi":   "W",
-    "Ambi":   "L",
-    "Ferri":  "X",
-    "Osci":   "O",
-    "Gemini": "G",
-    "Gush":   "GU",
-    "Edge":   "P",
-    "Diamo":  "R",
-    "Max":    "B",
-    "Nora":   "A",
-    "Ridge":  "W",   # Domi2 / Ridge
-}
+# ── Global identifier → class_key registry ───────────────────────────────────
+# Populated automatically when each _LovenseBLEBase subclass is defined.
+# Key: DEVICE_IDENTIFIER (upper), Value: "<module>.<ClassName>"
+
+_IDENTIFIER_TO_CLASS_KEY: dict[str, str] = {}
+
+
+def _lookup_class_key_by_identifier(identifier: str) -> str:
+    """Return the class_key for a DeviceType; identifier, or '' if unknown."""
+    return _IDENTIFIER_TO_CLASS_KEY.get(identifier.upper(), "")
 
 
 class _LovenseBLEBase(DeviceBase):
     """
     Abstract BLE base for all Lovense devices.
-    Subclasses only need to set class attributes and implement get_node_types().
+    Subclasses set class attributes and implement get_node_types().
 
     Subclass example:
         class LovenseHush(_LovenseBLEBase):
@@ -126,6 +102,7 @@ class _LovenseBLEBase(DeviceBase):
             DEVICE_DESCRIPTION = "Vibrating butt plug"
             ICON_PATH          = "assets/icons/lovense/hush.svg"
             DEVICE_IDENTIFIER  = "Z"
+            BLE_NAME_PREFIXES  = ("LVS-Z", "LOVE-Z", "LVS-Hush", "LOVE-Hush")
             VIBRATOR_COUNT     = 1
             VIBRATOR_NAMES     = ["Vibrate"]
     """
@@ -134,22 +111,39 @@ class _LovenseBLEBase(DeviceBase):
     CONNECTION_KINDS   = [PortKind.BLE]
     ICON_PATH          = "assets/icons/lovense/lovense.svg"
 
-    # Override in subclass
-    DEVICE_IDENTIFIER:  str       = ""     # single-letter code from DeviceType response
+    # Override in subclass —————————————————————————————————————————————————————
+    # Primary identifier returned by DeviceType;
+    DEVICE_IDENTIFIER:  str       = ""
+    # Additional identifiers (e.g. Nora's old-firmware "C")
+    DEVICE_IDENTIFIER_ALIASES: list[str] = []
+    # BLE advertisement name prefixes (should be device-specific, e.g. ("LVS-Z",))
+    BLE_NAME_PREFIXES:  tuple     = ("LVS-", "LOVE-")
+
     VIBRATOR_COUNT:     int       = 1
     VIBRATOR_NAMES:     list[str] = ["Vibrate"]
     SUPPORTS_ROTATE:    bool      = False
-    SUPPORTS_AIR:       bool      = False  # Max-style inflate/deflate
-    SUPPORTS_ACCELEROMETER: bool  = False  # Max: StartMove/StopMove
-    SUPPORTS_ALIGHT:    bool      = False  # Domi: ALight:On/Off ambient ring
+    SUPPORTS_AIR:       bool      = False       # Max-style inflate/deflate
+    SUPPORTS_ACCELEROMETER: bool  = False       # Max: StartMove/StopMove
+    SUPPORTS_ALIGHT:    bool      = False       # Domi: ALight:On/Off
 
-    # Battery poll interval (seconds); 0 to disable
     BATTERY_POLL_S: float = 30.0
+
+    # ── Auto-register identifiers when subclass is defined ────────────────────
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        class_key = f"{cls.__module__}.{cls.__name__}"
+        ident = getattr(cls, "DEVICE_IDENTIFIER", "")
+        if ident:
+            _IDENTIFIER_TO_CLASS_KEY[ident.upper()] = class_key
+        for alias in getattr(cls, "DEVICE_IDENTIFIER_ALIASES", []):
+            if alias:
+                _IDENTIFIER_TO_CLASS_KEY[alias.upper()] = class_key
 
     def __init__(self, descriptor: ConnectionDescriptor, **kwargs) -> None:
         super().__init__(descriptor, **kwargs)
         self._loop:       Optional[asyncio.AbstractEventLoop] = None
-        self._client:     Any = None          # bleak.BleakClient
+        self._client:     Any = None
         self._tx_char:    Optional[str] = None
         self._rx_char:    Optional[str] = None
         self._rx_buffer:  str = ""
@@ -174,18 +168,62 @@ class _LovenseBLEBase(DeviceBase):
         await self._detect_gatt_profile()
         if self._rx_char:
             await self._client.start_notify(self._rx_char, self._on_notification)
-        # Identify device
-        resp = await self._send_command_async("DeviceType")
+        # Identify device via DeviceType; command
+        resp = await self._send_command_async("DeviceType", timeout=2.0)
         if resp:
-            self.log_message.emit(f"[{self.DEVICE_NAME}] DeviceType: {resp}")
+            self._handle_device_type_response(resp)
         # Initial battery read
         await self._read_battery_async()
 
+    def _handle_device_type_response(self, resp: str) -> None:
+        """
+        Parse DeviceType; response: "<identifier>:<fw>:<mac>..."
+        Verify the identifier matches this class. If not, emit data_received
+        with type "device_type_mismatch" so the UI/registry can inform the user.
+        """
+        clean  = resp.strip().rstrip(";")
+        parts  = clean.split(":")
+        if not parts or not parts[0]:
+            return
+
+        detected = parts[0].upper()
+        fw       = parts[1] if len(parts) > 1 else "?"
+        my_key   = f"{self.__class__.__module__}.{self.__class__.__name__}"
+
+        self.log_message.emit(
+            f"[{self.DEVICE_NAME}] DeviceType={detected} FW={fw}"
+        )
+
+        # Emit generic event
+        self.data_received.emit({
+            "type":       "device_type",
+            "identifier": detected,
+            "firmware":   fw,
+            "raw":        clean,
+        })
+
+        # Check for mismatch (detected identifier doesn't match this class)
+        all_idents = {self.DEVICE_IDENTIFIER.upper()} | {
+            a.upper() for a in self.DEVICE_IDENTIFIER_ALIASES
+        }
+        if detected not in all_idents:
+            expected_key = _lookup_class_key_by_identifier(detected)
+            log.warning(
+                "[%s] DeviceType mismatch: device reports %r, "
+                "expected one of %r (class=%s). Correct class: %s",
+                self.DEVICE_NAME, detected, sorted(all_idents), my_key,
+                expected_key or "(unknown)",
+            )
+            self.data_received.emit({
+                "type":         "device_type_mismatch",
+                "detected":     detected,
+                "firmware":     fw,
+                "current_key":  my_key,
+                "expected_key": expected_key,
+            })
+
     async def _detect_gatt_profile(self) -> None:
-        """
-        Try all known GATT profiles (Gen1, Gen2, all 32 Gen3 variants) until
-        one has a matching TX characteristic in the connected device's service table.
-        """
+        """Try all known GATT profiles until one matches."""
         services = self._client.services
         all_profiles = _GATT_PROFILES + _GEN3_PROFILES
         for svc_uuid, tx_uuid, rx_uuid in all_profiles:
@@ -198,7 +236,6 @@ class _LovenseBLEBase(DeviceBase):
                 self._rx_char = rx_uuid
                 log.info("[%s] GATT profile: %s", self.DEVICE_NAME, svc_uuid)
                 return
-        # Descriptor override
         if "tx_char" in self.descriptor.extra:
             self._tx_char = self.descriptor.extra["tx_char"]
             self._rx_char = self.descriptor.extra.get("rx_char", "")
@@ -233,7 +270,6 @@ class _LovenseBLEBase(DeviceBase):
             raise ConnectionError("Not connected")
         if not self._client.is_connected:
             raise ConnectionError("BLE disconnected")
-        # Poll battery periodically as the ping
         now = time.monotonic()
         if self.BATTERY_POLL_S > 0 and (now - self._last_bat) >= self.BATTERY_POLL_S:
             future = asyncio.run_coroutine_threadsafe(
@@ -260,7 +296,6 @@ class _LovenseBLEBase(DeviceBase):
         params = command.params
 
         if name == "vibrate":
-            # params: {"index": 0, "level": 0-20}  or {"levels": [l0, l1, ...]}
             levels = params.get("levels")
             if levels is None:
                 idx   = int(params.get("index", 0))
@@ -284,7 +319,6 @@ class _LovenseBLEBase(DeviceBase):
             return await self._send_command_async("RotateChange")
 
         if name == "air":
-            # inflate: Air:In:<steps>;  deflate: Air:Out:<steps>;  level: Air:Level:<0-5>;
             action = params.get("action", "level")
             value  = int(params.get("value", 0))
             cmd_map = {"in": f"Air:In:{value}", "out": f"Air:Out:{value}",
@@ -303,7 +337,6 @@ class _LovenseBLEBase(DeviceBase):
             return await self._send_command_async(cmd)
 
         if name == "light":
-            # Indicator LED — all Lovense devices
             action = params.get("action", "on")
             if action == "get":
                 return await self._send_command_async("GetLight")
@@ -311,7 +344,6 @@ class _LovenseBLEBase(DeviceBase):
             return await self._send_command_async(cmd)
 
         if name == "alight":
-            # Ambient ring light — Domi only
             action = params.get("action", "on")
             if action == "get":
                 return await self._send_command_async("GetAlight")
@@ -325,35 +357,20 @@ class _LovenseBLEBase(DeviceBase):
         if self.VIBRATOR_COUNT == 1:
             cmd = f"Vibrate:{self._vib_levels[0]}"
         else:
-            # Multi-motor: Vibrate1:l1;Vibrate2:l2; ... (separate commands)
-            # or Vibrate:l; sets all.  Use indexed commands for per-motor control.
             parts = [f"Vibrate{i+1}:{l}" for i, l in enumerate(self._vib_levels)]
-            # Send as a batch; devices respond once per command
             for part in parts:
                 await self._send_command_async(part, 0.01)
             return "OK"
         return await self._send_command_async(cmd, 0.01)
 
     async def _send_command_async(self, cmd: str, timeout: float = 1.0) -> str:
-        """
-        Send a semicolon-terminated command and wait up to *timeout* seconds
-        for the device to respond via BLE notification.
-
-        The response is captured by _on_notification into self._rx_buffer.
-        We poll that buffer for up to *timeout* seconds.
-        Non-critical commands (like Vibrate) don't require a response — we
-        return "OK" immediately after writing if no response arrives.
-        """
         if not self._client or not self._tx_char:
             raise ConnectionError("Not ready")
 
-        # Clear any previous partial response for this command
         self._rx_buffer = ""
-
         payload = f"{cmd};".encode("ascii")
         await self._client.write_gatt_char(self._tx_char, payload, response=False)
 
-        # Wait for notification response
         deadline = asyncio.get_event_loop().time() + timeout
         while asyncio.get_event_loop().time() < deadline:
             if self._rx_buffer:
@@ -362,10 +379,9 @@ class _LovenseBLEBase(DeviceBase):
                 return resp
             await asyncio.sleep(0.02)
 
-        return "OK"   # no response received — not an error for fire-and-forget commands
+        return "OK"
 
     async def _read_battery_async(self) -> int:
-        """Send Battery; command and parse the numeric response."""
         resp = await self._send_command_async("Battery", timeout=2.0)
         self._last_bat = time.monotonic()
         if resp.isdigit():
@@ -376,31 +392,22 @@ class _LovenseBLEBase(DeviceBase):
         return -1
 
     def _on_notification(self, sender: Any, data: bytes) -> None:
-        """
-        Handle incoming BLE notifications from the device.
-
-        All raw text is written to _rx_buffer so _send_command_async can read it.
-        Additional parsing happens here for well-known response formats.
-        """
         try:
             text = data.decode("ascii", errors="ignore").strip()
         except Exception:
             return
 
-        # Store in buffer so awaited commands can read the response
         self._rx_buffer = text
-
         clean = text.rstrip(";")
 
-        # Battery response: a plain integer "85"
+        # Battery response: plain integer
         if clean.isdigit():
             level = int(clean)
             if 0 <= level <= 100:
                 self._update_battery(level)
             return
 
-        # Accelerometer frame: "G" + 12 hex chars → 3 × signed int16 (little-endian)
-        # Format: StartMove:1 response stream e.g. "GEF008312ED00"
+        # Accelerometer frame: "G" + 12 hex chars
         if (clean.startswith("G") and len(clean) == 13
                 and self.SUPPORTS_ACCELEROMETER):
             try:
@@ -417,20 +424,23 @@ class _LovenseBLEBase(DeviceBase):
             except (ValueError, struct.error):
                 pass
 
-        # DeviceType response: "<type>:<fw>:<mac>"  e.g. "W:10:AA:BB:CC:DD:EE:FF"
+        # DeviceType response: "<identifier>:<fw>:<mac...>"
+        # identifier may contain letters, digits, hyphens (e.g. "EI-FW3")
         parts = clean.split(":")
-        if 2 <= len(parts) <= 8 and len(parts[0]) <= 3 and parts[0].isalpha():
+        if (len(parts) >= 2
+                and 1 <= len(parts[0]) <= 8
+                and parts[0].replace("-", "").isalnum()
+                and not parts[0].isdigit()):
             dev_ident = parts[0].upper()
             fw        = parts[1] if len(parts) > 1 else "?"
             self.log_message.emit(
                 f"[{self.DEVICE_NAME}] DeviceType={dev_ident} FW={fw}"
             )
-            # Emit raw data for any listener that wants it
             self.data_received.emit({
-                "type": "device_type",
+                "type":       "device_type",
                 "identifier": dev_ident,
-                "firmware": fw,
-                "raw": clean,
+                "firmware":   fw,
+                "raw":        clean,
             })
             return
 
@@ -441,7 +451,7 @@ class _LovenseBLEBase(DeviceBase):
         key = f"{self.__class__.__module__}.{self.__class__.__name__}"
         register_device_instance(key, self)
 
-    # ── Convenience helpers for node subclasses ───────────────────────────────
+    # ── Convenience helpers ───────────────────────────────────────────────────
 
     def vibrate(self, index: int, level: float,
                 on_success: Optional[Callable] = None,

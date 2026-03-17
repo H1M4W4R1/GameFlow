@@ -1,15 +1,25 @@
 """
-Lovense single-motor vibrator devices and their graph nodes.
+Lovense single/dual-motor vibrator devices and their graph nodes.
 
 Devices covered:
-  LovenseLush   — insertable vibrator (1 motor)
-  LovenseHush   — vibrating butt plug (1 motor)
-  LovenseDomi   — wand vibrator (1 motor, high-power)
-  LovenseAmbi   — clitoral vibrator (1 motor)
-  LovenseFerri  — magnetic clip vibrator (1 motor)
-  LovenseOsci   — oscillating vibrator (1 motor, uses Vibrate command)
-  LovenseGemini — couples vibrator (2 motors)
-  LovenseGush   — male masturbator (1 motor)
+  LovenseLush        — insertable vibrator (1 motor)           [S]
+  LovenseLushAnal    — anal vibrator (1 motor)                 [AN]
+  LovenseHush        — vibrating butt plug (1 motor)           [Z]
+  LovenseDomi        — wand vibrator (1 motor, high-power)     [W]
+  LovenseAmbi        — clitoral vibrator (1 motor)             [L]
+  LovenseFerri       — magnetic clip vibrator (1 motor)        [X]
+  LovenseOsci        — oscillating G-spot vibrator (1 motor)   [O]
+  LovenseGemini      — couples vibrator (2 motors)             [N]
+  LovenseGush        — male masturbator (1 motor)              [ED]
+  LovenseGush2       — male masturbator v2 (1 motor)           [EZ]
+  LovenseCalor       — sleeve vibrator (1 motor)               [T]
+  LovenseTenera      — clitoral suction vibe (1 motor)         [Q]
+  LovenseVulse       — thrusting vibrator (1 motor)            [SD]
+  LovenseMission     — couples vibe (1 motor)                  [V]
+  LovenseMission2    — couples vibe v2 (1 motor)               [CA]
+  LovenseDolce       — dual-motor vibrator                     [J]
+  LovenseOsci3       — dual-stimulation G-spot                 [OC]
+  LovenseHyphy       — dual-vibrator                           [EB]
 """
 from __future__ import annotations
 
@@ -23,7 +33,7 @@ MANUFACTURER = "Lovense"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Devices
+# Single-motor vibrators
 # ─────────────────────────────────────────────────────────────────────────────
 
 class LovenseLush(_LovenseBLEBase):
@@ -31,10 +41,25 @@ class LovenseLush(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.lush"
     DEVICE_DESCRIPTION = "Insertable wearable vibrator"
     DEVICE_IDENTIFIER  = "S"
+    BLE_NAME_PREFIXES  = ("LVS-S", "LOVE-S", "LVS-Lush", "LOVE-Lush")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/lush.svg"
     DEVICE_URL         = "https://www.lovense.com/lush-4-best-bluetooth-remote-controlled-g-spot-vibrator"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0)]
+
+
+class LovenseLushAnal(_LovenseBLEBase):
+    DEVICE_NAME        = "Lush Anal"
+    DEVICE_TR_PREFIX   = "lovense.lush_anal"
+    DEVICE_DESCRIPTION = "Anal vibrator"
+    DEVICE_IDENTIFIER  = "AN"
+    BLE_NAME_PREFIXES  = ("LVS-AN", "LOVE-AN")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    ICON_PATH          = "assets/icons/lovense/lush_anal.svg"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -45,6 +70,7 @@ class LovenseHush(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.hush"
     DEVICE_DESCRIPTION = "Vibrating butt plug"
     DEVICE_IDENTIFIER  = "Z"
+    BLE_NAME_PREFIXES  = ("LVS-Z", "LOVE-Z", "LVS-Hush", "LOVE-Hush")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/hush.svg"
@@ -59,6 +85,7 @@ class LovenseDomi(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.domi"
     DEVICE_DESCRIPTION = "Powerful wand vibrator"
     DEVICE_IDENTIFIER  = "W"
+    BLE_NAME_PREFIXES  = ("LVS-W", "LOVE-W", "LVS-Domi", "LOVE-Domi")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     SUPPORTS_ALIGHT    = True
@@ -74,6 +101,7 @@ class LovenseAmbi(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.ambi"
     DEVICE_DESCRIPTION = "Clitoral bullet vibrator"
     DEVICE_IDENTIFIER  = "L"
+    BLE_NAME_PREFIXES  = ("LVS-L", "LOVE-L", "LVS-Ambi", "LOVE-Ambi")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/ambi.svg"
@@ -88,6 +116,7 @@ class LovenseFerri(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.ferri"
     DEVICE_DESCRIPTION = "Magnetic panty vibrator"
     DEVICE_IDENTIFIER  = "X"
+    BLE_NAME_PREFIXES  = ("LVS-X", "LOVE-X", "LVS-Ferri", "LOVE-Ferri")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/ferri.svg"
@@ -102,6 +131,7 @@ class LovenseOsci(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.osci"
     DEVICE_DESCRIPTION = "Oscillating G-spot vibrator"
     DEVICE_IDENTIFIER  = "O"
+    BLE_NAME_PREFIXES  = ("LVS-O", "LOVE-O", "LVS-Osci", "LOVE-Osci")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Oscillate"]
     ICON_PATH          = "assets/icons/lovense/osci.svg"
@@ -115,7 +145,8 @@ class LovenseGush(_LovenseBLEBase):
     DEVICE_NAME        = "Gush"
     DEVICE_TR_PREFIX   = "lovense.gush"
     DEVICE_DESCRIPTION = "Male masturbator with vibration"
-    DEVICE_IDENTIFIER  = "GU"
+    DEVICE_IDENTIFIER  = "ED"
+    BLE_NAME_PREFIXES  = ("LVS-ED", "LOVE-ED", "LVS-Gush", "LOVE-Gush")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/gush.svg"
@@ -125,11 +156,100 @@ class LovenseGush(_LovenseBLEBase):
         return [_vib_key(self, 0)]
 
 
+class LovenseGush2(_LovenseBLEBase):
+    DEVICE_NAME        = "Gush 2"
+    DEVICE_TR_PREFIX   = "lovense.gush2"
+    DEVICE_DESCRIPTION = "Male masturbator v2 with vibration"
+    DEVICE_IDENTIFIER  = "EZ"
+    BLE_NAME_PREFIXES  = ("LVS-EZ", "LOVE-EZ", "LVS-Gush2", "LOVE-Gush2")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    ICON_PATH          = "assets/icons/lovense/gush.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0)]
+
+
+class LovenseCalor(_LovenseBLEBase):
+    DEVICE_NAME        = "Calor"
+    DEVICE_TR_PREFIX   = "lovense.calor"
+    DEVICE_DESCRIPTION = "Vibrating sleeve with warming"
+    DEVICE_IDENTIFIER  = "T"
+    BLE_NAME_PREFIXES  = ("LVS-T", "LOVE-T", "LVS-Calor", "LOVE-Calor")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    ICON_PATH          = "assets/icons/lovense/calor.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0)]
+
+
+class LovenseTenera(_LovenseBLEBase):
+    DEVICE_NAME        = "Tenera"
+    DEVICE_TR_PREFIX   = "lovense.tenera"
+    DEVICE_DESCRIPTION = "Clitoral suction vibrator"
+    DEVICE_IDENTIFIER  = "Q"
+    BLE_NAME_PREFIXES  = ("LVS-Q", "LOVE-Q", "LVS-Tenera", "LOVE-Tenera")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    ICON_PATH          = "assets/icons/lovense/tenera.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0)]
+
+
+class LovenseVulse(_LovenseBLEBase):
+    DEVICE_NAME        = "Vulse"
+    DEVICE_TR_PREFIX   = "lovense.vulse"
+    DEVICE_DESCRIPTION = "Thrusting vibrator"
+    DEVICE_IDENTIFIER  = "SD"
+    BLE_NAME_PREFIXES  = ("LVS-SD", "LOVE-SD", "LVS-Vulse", "LOVE-Vulse")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    ICON_PATH          = "assets/icons/lovense/vulse.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0)]
+
+
+class LovenseMission(_LovenseBLEBase):
+    DEVICE_NAME        = "Mission"
+    DEVICE_TR_PREFIX   = "lovense.mission"
+    DEVICE_DESCRIPTION = "Couples vibrator"
+    DEVICE_IDENTIFIER  = "V"
+    BLE_NAME_PREFIXES  = ("LVS-V", "LOVE-V", "LVS-Mission", "LOVE-Mission")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    ICON_PATH          = "assets/icons/lovense/mission.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0)]
+
+
+class LovenseMission2(_LovenseBLEBase):
+    DEVICE_NAME        = "Mission 2"
+    DEVICE_TR_PREFIX   = "lovense.mission2"
+    DEVICE_DESCRIPTION = "Couples vibrator v2"
+    DEVICE_IDENTIFIER  = "CA"
+    BLE_NAME_PREFIXES  = ("LVS-CA", "LOVE-CA")
+    VIBRATOR_COUNT     = 1
+    VIBRATOR_NAMES     = ["Vibrate"]
+    ICON_PATH          = "assets/icons/lovense/mission.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0)]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dual-motor vibrators
+# ─────────────────────────────────────────────────────────────────────────────
+
 class LovenseGemini(_LovenseBLEBase):
     DEVICE_NAME        = "Gemini"
     DEVICE_TR_PREFIX   = "lovense.gemini"
     DEVICE_DESCRIPTION = "Couples vibrator — 2 independent motors"
-    DEVICE_IDENTIFIER  = "G"
+    DEVICE_IDENTIFIER  = "N"
+    BLE_NAME_PREFIXES  = ("LVS-N", "LOVE-N", "LVS-Gemini", "LOVE-Gemini")
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate Left", "Vibrate Right"]
     ICON_PATH          = "assets/icons/lovense/gemini.svg"
@@ -139,8 +259,50 @@ class LovenseGemini(_LovenseBLEBase):
         return [_vib_key(self, 0), _vib_key(self, 1)]
 
 
+class LovenseDolce(_LovenseBLEBase):
+    DEVICE_NAME        = "Dolce"
+    DEVICE_TR_PREFIX   = "lovense.dolce"
+    DEVICE_DESCRIPTION = "Dual-stimulation vibrator — 2 independent motors"
+    DEVICE_IDENTIFIER  = "J"
+    BLE_NAME_PREFIXES  = ("LVS-J", "LOVE-J", "LVS-Dolce", "LOVE-Dolce")
+    VIBRATOR_COUNT     = 2
+    VIBRATOR_NAMES     = ["Vibrate Tip", "Vibrate Base"]
+    ICON_PATH          = "assets/icons/lovense/dolce.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0), _vib_key(self, 1)]
+
+
+class LovenseOsci3(_LovenseBLEBase):
+    DEVICE_NAME        = "Osci 3"
+    DEVICE_TR_PREFIX   = "lovense.osci3"
+    DEVICE_DESCRIPTION = "Dual-stimulation G-spot oscillator"
+    DEVICE_IDENTIFIER  = "OC"
+    BLE_NAME_PREFIXES  = ("LVS-OC", "LOVE-OC", "LVS-Osci3", "LOVE-Osci3")
+    VIBRATOR_COUNT     = 2
+    VIBRATOR_NAMES     = ["Oscillate Internal", "Oscillate External"]
+    ICON_PATH          = "assets/icons/lovense/osci.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0), _vib_key(self, 1)]
+
+
+class LovenseHyphy(_LovenseBLEBase):
+    DEVICE_NAME        = "Hyphy"
+    DEVICE_TR_PREFIX   = "lovense.hyphy"
+    DEVICE_DESCRIPTION = "Dual-vibrator"
+    DEVICE_IDENTIFIER  = "EB"
+    BLE_NAME_PREFIXES  = ("LVS-EB", "LOVE-EB", "LVS-Hyphy", "LOVE-Hyphy")
+    VIBRATOR_COUNT     = 2
+    VIBRATOR_NAMES     = ["Vibrate 1", "Vibrate 2"]
+    ICON_PATH          = "assets/icons/lovense/hyphy.svg"
+
+    def get_node_types(self) -> list[str]:
+        return [_vib_key(self, 0), _vib_key(self, 1)]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Shared node factory helper
+# Shared node factory helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _vib_key(device: _LovenseBLEBase, motor_index: int) -> str:
@@ -153,10 +315,6 @@ def _make_vibrate_node(
     motor_index: int,
     motor_label: str,
 ) -> type:
-    """
-    Dynamically create a VibrateNode class for a specific device motor.
-    Returns a new class each time — used to populate node registry.
-    """
     device_type_key = f"{device_cls.__module__}.{device_cls.__name__}"
     node_name       = f"{device_cls.DEVICE_NAME}: {motor_label}"
     node_group      = f"Devices/Lovense/{device_cls.DEVICE_NAME}"
@@ -223,18 +381,20 @@ def _make_stop_node(device_cls) -> type:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Registry of all generated node classes for this module
+# Registry
 # ─────────────────────────────────────────────────────────────────────────────
 
 _VIBRATOR_DEVICES = [
-    LovenseLush, LovenseHush, LovenseDomi, LovenseAmbi,
-    LovenseFerri, LovenseOsci, LovenseGush, LovenseGemini,
+    # Single-motor
+    LovenseLush, LovenseLushAnal, LovenseHush, LovenseDomi, LovenseAmbi,
+    LovenseFerri, LovenseOsci, LovenseGush, LovenseGush2,
+    LovenseCalor, LovenseTenera, LovenseVulse, LovenseMission, LovenseMission2,
+    # Dual-motor
+    LovenseGemini, LovenseDolce, LovenseOsci3, LovenseHyphy,
 ]
 
-# All device classes
 ALL_DEVICE_CLASSES = _VIBRATOR_DEVICES
 
-# All node classes (vibrate + stop per device)
 ALL_NODE_CLASSES: list[type] = []
 for _dev_cls in _VIBRATOR_DEVICES:
     for _i, _label in enumerate(_dev_cls.VIBRATOR_NAMES):

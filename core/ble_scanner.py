@@ -97,6 +97,7 @@ class BLEScanner(QObject):
 
         # Built once per scan from device_classes
         self._prefix_map:  dict[str, str] = {}   # name_prefix_upper → class_key
+        self._prefix_list: list[tuple[str, str]] = []  # sorted descending by length
         self._service_map: dict[str, str] = {}   # service_uuid_lower → class_key
 
     # ── Public API ─────────────────────────────────────────────────────────────
@@ -152,6 +153,10 @@ class BLEScanner(QObject):
             if svc:
                 self._service_map[svc.lower()] = key
 
+        # Sort longest-first so "LVS-Z" beats "LVS-" when both match
+        self._prefix_list = sorted(
+            self._prefix_map.items(), key=lambda kv: -len(kv[0])
+        )
         log.debug("BLEScanner lookup: %d prefixes, %d service UUIDs",
                   len(self._prefix_map), len(self._service_map))
 
@@ -214,7 +219,7 @@ class BLEScanner(QObject):
         display_name = name or addr
 
         name_upper = name.upper()
-        for prefix, key in self._prefix_map.items():
+        for prefix, key in self._prefix_list:  # longest-first for specificity
             if name_upper.startswith(prefix):
                 class_key = key
                 cls = self._device_classes.get(key)
