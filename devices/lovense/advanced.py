@@ -457,6 +457,7 @@ class LovenseSolace(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Stroke Speed"]
     ICON_PATH          = "assets/icons/lovense/solace.svg"
+    DEVICE_URL         = "https://www.lovense.com/solace-automatic-hands-free-male-masturbator"
 
 
 class LovenseSolacePro(_LovenseBLEBase):
@@ -468,6 +469,7 @@ class LovenseSolacePro(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Stroke Speed"]
     ICON_PATH          = "assets/icons/lovense/solace_pro.svg"
+    DEVICE_URL         = "https://www.lovense.com/solace-pro-ai-automatic-blowjob-machine-men"
 
 
 class LovenseSexMachine(_LovenseBLEBase):
@@ -479,6 +481,7 @@ class LovenseSexMachine(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Thrust Speed"]
     ICON_PATH          = "assets/icons/lovense/sex_machine.svg"
+    DEVICE_URL         = "https://www.lovense.com/lovense-sex-machine"
 
 
 class LovenseMiniSexMachine(_LovenseBLEBase):
@@ -490,6 +493,7 @@ class LovenseMiniSexMachine(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Thrust Speed"]
     ICON_PATH          = "assets/icons/lovense/mini_sex_machine.svg"
+    DEVICE_URL         = "https://www.lovense.com/mini-thrusting-app-controlled-dildo-machine"
 
 
 def _make_single_vibe_node(device_cls, label: str) -> type:
@@ -547,6 +551,7 @@ class LovenseRidge(_LovenseBLEBase):
     VIBRATOR_NAMES     = ["Vibrate"]
     SUPPORTS_ROTATE    = True
     ICON_PATH          = "assets/icons/lovense/ridge.svg"
+    DEVICE_URL         = "https://www.lovense.com/ridge-vibrating-rotating-anal-beads"
 
 
 class RidgeVibrate(DeviceNodeBase):
@@ -609,6 +614,7 @@ class LovenseGravity(_LovenseBLEBase):
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate", "Oscillate"]
     ICON_PATH          = "assets/icons/lovense/gravity.svg"
+    DEVICE_URL         = "https://www.lovense.com/thrusting-vibrating-dildo"
 
 
 class LovenseSpinel(_LovenseBLEBase):
@@ -620,6 +626,7 @@ class LovenseSpinel(_LovenseBLEBase):
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate", "Thrust"]
     ICON_PATH          = "assets/icons/lovense/spinel.svg"
+    DEVICE_URL         = "https://www.lovense.com/spinel-app-controlled-ultra-high-speed-thrusting-vibrating-dildo"
 
 
 def _make_dual_vibe_nodes(device_cls) -> list[type]:
@@ -718,6 +725,7 @@ class LovenseFlexer(_LovenseBLEBase):
     VIBRATOR_NAMES     = ["Vibrate Internal", "Vibrate External"]
     SUPPORTS_ROTATE    = True
     ICON_PATH          = "assets/icons/lovense/flexer.svg"
+    DEVICE_URL         = "https://www.lovense.com/dual-wearable-panty-vibrator"
 
 
 class FlexerVibrateInternal(DeviceNodeBase):
@@ -801,6 +809,7 @@ class LovenseLapis(_LovenseBLEBase):
     VIBRATOR_COUNT     = 3
     VIBRATOR_NAMES     = ["Vibrate Tip", "Vibrate Internal", "Vibrate External"]
     ICON_PATH          = "assets/icons/lovense/lapis.svg"
+    DEVICE_URL         = "https://www.lovense.com/lapis-strapless-strap-on-double-sided-dildo"
 
 
 def _make_lapis_nodes() -> list[type]:

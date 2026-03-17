@@ -60,6 +60,7 @@ class LovenseLushAnal(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/lush_anal.svg"
+    DEVICE_URL         = "https://www.lovense.com/lush-anal-remote-control-vibrating-small-butt-plug"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -135,7 +136,6 @@ class LovenseOsci(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Oscillate"]
     ICON_PATH          = "assets/icons/lovense/osci.svg"
-    DEVICE_URL         = "https://www.lovense.com/osci-3-gspot-clitoral-dual-stimulation-rabbit-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -150,7 +150,6 @@ class LovenseGush(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/gush.svg"
-    DEVICE_URL         = "https://www.lovense.com/gush-2-best-remote-controlled-vibrating-male-penis-massager"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -165,6 +164,7 @@ class LovenseGush2(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/gush.svg"
+    DEVICE_URL         = "https://www.lovense.com/gush-2-best-remote-controlled-vibrating-male-penis-massager"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -179,6 +179,7 @@ class LovenseCalor(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/calor.svg"
+    DEVICE_URL         = "https://www.lovense.com/vibrating-pocket-pussy"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -193,6 +194,7 @@ class LovenseTenera(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/tenera.svg"
+    DEVICE_URL         = "https://www.lovense.com/tenera-2-best-clit-sucker-vibrator-clitoral-stimulator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -207,6 +209,7 @@ class LovenseVulse(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/vulse.svg"
+    DEVICE_URL         = "https://www.lovense.com/vulse-wireless-g-spot-egg-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -235,6 +238,7 @@ class LovenseMission2(_LovenseBLEBase):
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/mission.svg"
+    DEVICE_URL         = "https://www.lovense.com/mission-2-best-touch-sense-vibrating-dildo-with-suction-cup"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
@@ -268,6 +272,7 @@ class LovenseDolce(_LovenseBLEBase):
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate Tip", "Vibrate Base"]
     ICON_PATH          = "assets/icons/lovense/dolce.svg"
+    DEVICE_URL         = "https://www.lovense.com/adjustable-dual-clit-gspot-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0), _vib_key(self, 1)]
@@ -282,6 +287,7 @@ class LovenseOsci3(_LovenseBLEBase):
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Oscillate Internal", "Oscillate External"]
     ICON_PATH          = "assets/icons/lovense/osci.svg"
+    DEVICE_URL         = "https://www.lovense.com/osci-3-gspot-clitoral-dual-stimulation-rabbit-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0), _vib_key(self, 1)]
@@ -296,6 +302,7 @@ class LovenseHyphy(_LovenseBLEBase):
     VIBRATOR_COUNT     = 2
     VIBRATOR_NAMES     = ["Vibrate 1", "Vibrate 2"]
     ICON_PATH          = "assets/icons/lovense/hyphy.svg"
+    DEVICE_URL         = "https://www.lovense.com/high-frequency-dual-end-vibrator"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0), _vib_key(self, 1)]
