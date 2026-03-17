@@ -384,7 +384,7 @@ node.max_inflate.name,Max: Inflate
 node.max_deflate.name,Max: Deflate
 node.max_accelerometer_enable.name,Max: Accelerometer Enable
 node.max_accelerometer_disable.name,Max: Accelerometer Disable
-node.max_accelerometer.name,Max: Accelerometer
+node.max_accelerometer.name,⚠️ Max: Accelerometer
 node.max_get_battery.name,Max: Get Battery
 node.max_red_light_on.name,Max: Red Light On
 node.max_red_light_off.name,Max: Red Light Off
