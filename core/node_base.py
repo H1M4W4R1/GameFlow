@@ -346,8 +346,11 @@ class NodeBase(QObject):
         """
         state: dict[str, Any] = {}
         for pin in self.PINS:
-            if pin.direction == PinDirection.INPUT and pin.pin_type not in (PinType.TICK, PinType.COYOTE_FRAME):
-                state[pin.name] = self._data.get(pin.name, pin.default)
+            if pin.direction == PinDirection.INPUT and pin.pin_type != PinType.TICK:
+                val = self._data.get(pin.name, pin.default)
+                if hasattr(val, "to_dict"):
+                    val = val.to_dict()
+                state[pin.name] = val
         # Persist editable fields under a namespaced key to avoid collisions
         if self._fields:
             state["__fields__"] = dict(self._fields)
