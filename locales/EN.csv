@@ -36,12 +36,14 @@ node.color.name,Color
 node.slider.name,Slider
 node.button.name,Button
 node.toggle.name,Toggle
+node.touchpad.name,Touchpad
 node.time_selector.name,Time Selector
 node.log_debug.name,Log / Debug
 node.numeric_display.name,Numeric Display
 node.text_display.name,Text Display
 node.time_display.name,Time Display
 node.state_indicator.name,State Indicator
+node.touchpad_display.name,Touchpad Display
 node.group.constants,Constants
 node.group.controls,Controls
 node.group.debug,Debug
@@ -157,6 +159,8 @@ node.min.name,Min
 node.max.name,Max
 node.abs.name,Abs
 node.negate.name,Negate
+node.reciprocal.name,Reciprocal
+node.one_minus.name,One Minus
 node.sin.name,Sin
 node.cos.name,Cos
 node.tan.name,Tan

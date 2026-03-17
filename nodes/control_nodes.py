@@ -178,6 +178,10 @@ class SliderNode(NodeBase):
         if mx is not None:    self._max_val = float(mx)
         if scale is not None: self._scale   = str(scale)
 
+    def should_select_on_ctrl_press(self) -> bool:
+        """Don't select the node when clicking on the control."""
+        return False
+
 
 # ── Button ─────────────────────────────────────────────────────────────────────
 
@@ -304,6 +308,10 @@ class ButtonNode(NodeBase):
         if lbl is not None:   self._label     = str(lbl) or self._DEFAULT_LABEL
         if color is not None: self._btn_color = str(color)
 
+    def should_select_on_ctrl_press(self) -> bool:
+        """Don't select the node when clicking on the control."""
+        return False
+
 
 # ── Toggle ─────────────────────────────────────────────────────────────────────
 
@@ -401,6 +409,10 @@ class ToggleNode(NodeBase):
         super().set_state(state)
         if v is not None:
             self._state = bool(v)
+
+    def should_select_on_ctrl_press(self) -> bool:
+        """Don't select the node when clicking on the control."""
+        return False
 
 
 # ── Time Selector ──────────────────────────────────────────────────────────────
@@ -561,3 +573,217 @@ class TimeSelectorNode(NodeBase):
             self._hours   = int(hms[0])
             self._minutes = int(hms[1])
             self._seconds = int(hms[2])
+
+    def should_select_on_ctrl_press(self) -> bool:
+        """Don't select the node when clicking on the control."""
+        return False
+
+
+# ── Touchpad ───────────────────────────────────────────────────────────────
+
+class TouchpadNode(NodeBase):
+    """
+    Touchpad input: outputs x and y coordinates [0, 1] based on mouse position.
+
+    Coordinate system: 0,0 at bottom-left, 1,1 at top-right.
+    - x: 0 at left, 1 at right
+    - y: 0 at bottom, 1 at top
+
+    When LMB is pressed over the touchpad area, outputs update with normalized position.
+
+    When mouse is released, mode determines behavior:
+    - "reset": outputs reset to 0.0, 0.0
+    - "hold": outputs hold last pressed position
+    """
+
+    NODE_NAME        = "Touchpad"
+    NODE_GROUP       = "Controls"
+    NODE_TITLE_COLOR = "#1a3a5f"
+
+    PINS = [
+        PinDescriptor("x", PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("y", PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+
+    MIN_WIDTH  = 300.0   # Touchpad fills node width
+    MIN_HEIGHT = 300.0   # Node is square to match width
+
+    def __init__(self, **kw: Any) -> None:
+        super().__init__(**kw)
+        self._x_value:    float = 0.0   # normalized position [0, 1]
+        self._y_value:    float = 0.0
+        self._mode:       str   = "reset"  # "reset" | "hold"
+        self._is_pressed: bool  = False
+
+    # ── lifecycle ──────────────────────────────────────────────────────────────
+
+    def on_start(self) -> None:
+        self.set_output("x", self._x_value)
+        self.set_output("y", self._y_value)
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+    def on_stop(self) -> None:
+        self._is_pressed = False
+
+    def on_output_wire_connected(self, pin_name: str) -> None:
+        self.set_output("x", self._x_value)
+        self.set_output("y", self._y_value)
+
+    # ── touchpad mode protocol (duck-typed by canvas context menu) ────────────
+
+    def get_touchpad_mode(self) -> str:
+        return self._mode
+
+    def set_touchpad_mode(self, mode: str) -> None:
+        if mode in ("reset", "hold"):
+            self._mode = mode
+            self.node_changed.emit()
+
+    # ── ctrl interaction ───────────────────────────────────────────────────────
+
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+        self._is_pressed = True
+        self._update_from_scene(scene_pos, ctrl_rect)
+        return True
+
+    def on_ctrl_drag(self, scene_pos: QPointF, ctrl_rect: QRectF) -> None:
+        if self._is_pressed:
+            self._update_from_scene(scene_pos, ctrl_rect)
+
+    def on_ctrl_release(self) -> None:
+        self._is_pressed = False
+        if self._mode == "reset":
+            self._x_value = 0.0
+            self._y_value = 0.0
+            self.set_output("x", 0.0)
+            self.set_output("y", 0.0)
+        # else: "hold" mode keeps last value (no action needed)
+        self.node_changed.emit()
+
+    def should_select_on_ctrl_press(self) -> bool:
+        """Don't select the node when clicking on the touchpad."""
+        return False
+
+    def _update_from_scene(self, scene_pos: QPointF, ctrl_rect: QRectF) -> None:
+        """Update x, y based on mouse position within the touchpad area.
+
+        Coordinate system: 0,0 at bottom-left, 1,1 at top-right.
+        """
+        pad = 12.0
+        # Ensure square aspect ratio and center (same as paint_custom)
+        side = min(ctrl_rect.width(), ctrl_rect.height()) - pad * 2
+
+        if side <= 0:
+            return
+
+        # Calculate centered position
+        offset_x = (ctrl_rect.width() - side) / 2
+        offset_y = (ctrl_rect.height() - side) / 2
+
+        # Clamp position to pad boundaries
+        local_x = scene_pos.x() - ctrl_rect.x() - offset_x
+        local_y = scene_pos.y() - ctrl_rect.y() - offset_y
+
+        self._x_value = max(0.0, min(1.0, local_x / side))
+        # Invert y: 0 at bottom, 1 at top
+        self._y_value = max(0.0, min(1.0, 1.0 - (local_y / side)))
+
+        self.set_output("x", self._x_value)
+        self.set_output("y", self._y_value)
+        self.node_changed.emit()
+
+    # ── painting ───────────────────────────────────────────────────────────────
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        pad = 12.0
+        # Ensure square aspect ratio and center in node
+        side = min(rect.width(), rect.height()) - pad * 2
+        # Center horizontally and vertically
+        offset_x = (rect.width() - side) / 2
+        offset_y = (rect.height() - side) / 2
+        pad_rect = QRectF(
+            rect.x() + offset_x,
+            rect.y() + offset_y,
+            side,
+            side,
+        )
+
+        # Background (dark touchpad area)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(QColor("#0a0a0a")))
+        painter.drawRoundedRect(pad_rect, 6, 6)
+
+        # Grid (5x5, with inset to respect rounded corners)
+        inset = 4.0  # Inset from edges
+        grid_rect = pad_rect.adjusted(inset, inset, -inset, -inset)
+        painter.setPen(QPen(QColor("#2a3f7e"), 1.0))
+        grid_step_x = grid_rect.width() / 5
+        for i in range(1, 5):
+            x = grid_rect.x() + grid_step_x * i
+            painter.drawLine(QPointF(x, grid_rect.y()), QPointF(x, grid_rect.bottom()))
+        grid_step_y = grid_rect.height() / 5
+        for i in range(1, 5):
+            y = grid_rect.y() + grid_step_y * i
+            painter.drawLine(QPointF(grid_rect.x(), y), QPointF(grid_rect.right(), y))
+
+        # Border (on top: drawn last)
+        border_col = QColor("#64b5f6") if self._is_pressed else QColor("#90a4ae")
+        painter.setPen(QPen(border_col, 2.5))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(pad_rect, 6, 6)
+
+        # Crosshair / cursor dot at current position
+        # Note: y is inverted (0 at bottom, 1 at top)
+        cursor_x = pad_rect.x() + self._x_value * pad_rect.width()
+        cursor_y = pad_rect.bottom() - self._y_value * pad_rect.height()
+
+        # Crosshair lines
+        cross_len = 8.0
+        painter.setPen(QPen(QColor("#4fc3f7"), 1.0))
+        painter.drawLine(QPointF(cursor_x - cross_len, cursor_y), QPointF(cursor_x + cross_len, cursor_y))
+        painter.drawLine(QPointF(cursor_x, cursor_y - cross_len), QPointF(cursor_x, cursor_y + cross_len))
+
+        # Cursor circle
+        painter.setPen(QPen(QColor("#81d4fa"), 1.5))
+        painter.setBrush(QBrush(QColor("#e1f5fe")))
+        painter.drawEllipse(QPointF(cursor_x, cursor_y), 5.0, 5.0)
+
+        # Coordinate labels (bottom-left and bottom-right)
+        painter.setPen(QColor("#4fc3f7"))
+        painter.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
+
+        x_label_rect = QRectF(pad_rect.x() + 2, pad_rect.bottom() + 2, 40, 10)
+        painter.drawText(x_label_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, f"X:{self._x_value:.2f}")
+
+        y_label_rect = QRectF(pad_rect.right() - 42, pad_rect.bottom() + 2, 40, 10)
+        painter.drawText(y_label_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, f"Y:{self._y_value:.2f}")
+
+        # Mode indicator (tiny, top-right)
+        if self._mode == "hold":
+            painter.setPen(QColor("#90a4ae"))
+            painter.setFont(QFont("Segoe UI", 6))
+            painter.drawText(
+                QRectF(pad_rect.right() - 28, pad_rect.y() + 1, 26, 8),
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                "HOLD"
+            )
+
+    # ── state persistence ──────────────────────────────────────────────────────
+
+    def get_state(self) -> dict[str, Any]:
+        s = super().get_state()
+        s["__ctrl_x__"]    = self._x_value
+        s["__ctrl_y__"]    = self._y_value
+        s["__ctrl_mode__"] = self._mode
+        return s
+
+    def set_state(self, state: dict[str, Any]) -> None:
+        x    = state.pop("__ctrl_x__",    None)
+        y    = state.pop("__ctrl_y__",    None)
+        mode = state.pop("__ctrl_mode__", None)
+        super().set_state(state)
+        if x is not None:    self._x_value = float(x)
+        if y is not None:    self._y_value = float(y)
+        if mode is not None: self._mode    = str(mode)

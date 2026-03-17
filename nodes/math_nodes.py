@@ -237,6 +237,24 @@ class NegateNode(_UnaryMathNode):
         self.set_output("result", _apply_unary(lambda x: -x, self._a()))
 
 
+class ReciprocalNode(_UnaryMathNode):
+    """1 ÷ a  (component-wise for vectors/colors; returns 0 where a == 0)"""
+    NODE_NAME    = "Reciprocal"
+    PAINT_SYMBOL = "1 ÷ a"
+
+    def _compute(self) -> None:
+        self.set_output("result", _apply_unary(lambda x: 1.0 / x if x != 0.0 else 0.0, self._a()))
+
+
+class OneMinusNode(_UnaryMathNode):
+    """1 − a  (component-wise for vectors/colors)"""
+    NODE_NAME    = "One Minus"
+    PAINT_SYMBOL = "1 − a"
+
+    def _compute(self) -> None:
+        self.set_output("result", _apply_unary(lambda x: 1.0 - x, self._a()))
+
+
 class SinNode(_UnaryMathNode):
     """sin(a)  [radians, component-wise for vectors]"""
     NODE_NAME    = "Sin"

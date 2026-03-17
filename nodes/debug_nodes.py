@@ -12,6 +12,7 @@ TextDisplayNode    — shows live string/any value as wrapped text
 TimeDisplayNode    — converts seconds or milliseconds to HH:MM:SS
 StateIndicatorNode — coloured circle + TRUE/FALSE for a boolean input
 WaveformDisplayNode — scrolling oscilloscope-style waveform history
+TouchpadDisplayNode — displays x/y coordinates as a point on a touchpad grid
 """
 from __future__ import annotations
 
@@ -451,3 +452,123 @@ class WaveformDisplayNode(NodeBase):
             Qt.AlignmentFlag.AlignCenter,
             f"{cur_val:.4f}",
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOUCHPAD DISPLAY
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TouchpadDisplayNode(NodeBase):
+    """
+    Displays x and y coordinates as a point on a touchpad grid (display-only).
+
+    Coordinate system: 0,0 at bottom-left, 1,1 at top-right.
+    - x input: 0 at left, 1 at right
+    - y input: 0 at bottom, 1 at top
+
+    Updates instantly whenever upstream data is pushed — no tick required.
+    """
+    NODE_NAME  = "Touchpad Display"
+    NODE_GROUP = "Debug"
+    PINS = [
+        PinDescriptor("x", PinDirection.INPUT, PinType.FLOAT),
+        PinDescriptor("y", PinDirection.INPUT, PinType.FLOAT),
+    ]
+    MIN_WIDTH  = 300.0
+    MIN_HEIGHT = 300.0
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._x_value: float = 0.0
+        self._y_value: float = 0.0
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        if pin_name == "x":
+            try:
+                self._x_value = max(0.0, min(1.0, float(value)))
+            except (TypeError, ValueError):
+                pass
+            self.node_changed.emit()
+        elif pin_name == "y":
+            try:
+                self._y_value = max(0.0, min(1.0, float(value)))
+            except (TypeError, ValueError):
+                pass
+            self.node_changed.emit()
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+    def get_state(self) -> dict[str, Any]:
+        state = super().get_state()
+        state["_x_value"] = self._x_value
+        state["_y_value"] = self._y_value
+        return state
+
+    def set_state(self, state: dict[str, Any]) -> None:
+        super().set_state(state)
+        self._x_value = float(state.get("_x_value", 0.0))
+        self._y_value = float(state.get("_y_value", 0.0))
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        pad = 12.0
+        # Ensure square aspect ratio and center in node
+        side = min(rect.width(), rect.height()) - pad * 2
+        # Center horizontally and vertically
+        offset_x = (rect.width() - side) / 2
+        offset_y = (rect.height() - side) / 2
+        pad_rect = QRectF(
+            rect.x() + offset_x,
+            rect.y() + offset_y,
+            side,
+            side,
+        )
+
+        # Background (dark touchpad area)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(QColor("#0a0a0a")))
+        painter.drawRoundedRect(pad_rect, 6, 6)
+
+        # Grid (5x5, with inset to respect rounded corners)
+        inset = 4.0  # Inset from edges
+        grid_rect = pad_rect.adjusted(inset, inset, -inset, -inset)
+        painter.setPen(QPen(QColor("#2a3f7e"), 1.0))
+        grid_step_x = grid_rect.width() / 5
+        for i in range(1, 5):
+            x = grid_rect.x() + grid_step_x * i
+            painter.drawLine(QPointF(x, grid_rect.y()), QPointF(x, grid_rect.bottom()))
+        grid_step_y = grid_rect.height() / 5
+        for i in range(1, 5):
+            y = grid_rect.y() + grid_step_y * i
+            painter.drawLine(QPointF(grid_rect.x(), y), QPointF(grid_rect.right(), y))
+
+        # Border
+        painter.setPen(QPen(QColor("#90a4ae"), 2.5))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(pad_rect, 6, 6)
+
+        # Crosshair / cursor dot at current position
+        # Note: y is inverted (0 at bottom, 1 at top)
+        cursor_x = pad_rect.x() + self._x_value * pad_rect.width()
+        cursor_y = pad_rect.bottom() - self._y_value * pad_rect.height()
+
+        # Crosshair lines
+        cross_len = 8.0
+        painter.setPen(QPen(QColor("#4fc3f7"), 1.0))
+        painter.drawLine(QPointF(cursor_x - cross_len, cursor_y), QPointF(cursor_x + cross_len, cursor_y))
+        painter.drawLine(QPointF(cursor_x, cursor_y - cross_len), QPointF(cursor_x, cursor_y + cross_len))
+
+        # Cursor circle
+        painter.setPen(QPen(QColor("#81d4fa"), 1.5))
+        painter.setBrush(QBrush(QColor("#e1f5fe")))
+        painter.drawEllipse(QPointF(cursor_x, cursor_y), 5.0, 5.0)
+
+        # Coordinate labels (bottom-left and bottom-right)
+        painter.setPen(QColor("#4fc3f7"))
+        painter.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
+
+        x_label_rect = QRectF(pad_rect.x() + 2, pad_rect.bottom() + 2, 40, 10)
+        painter.drawText(x_label_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, f"X:{self._x_value:.2f}")
+
+        y_label_rect = QRectF(pad_rect.right() - 42, pad_rect.bottom() + 2, 40, 10)
+        painter.drawText(y_label_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, f"Y:{self._y_value:.2f}")

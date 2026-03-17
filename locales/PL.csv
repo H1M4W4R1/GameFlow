@@ -36,12 +36,14 @@ node.color.name,Kolor
 node.slider.name,Suwak
 node.button.name,Przycisk
 node.toggle.name,Przełącznik
+node.touchpad.name,Touchpad
 node.time_selector.name,Wybór Czasu
 node.log_debug.name,Log / Debug
 node.numeric_display.name,Wyświetlacz Liczb
 node.text_display.name,Wyświetlacz Tekstu
 node.time_display.name,Wyświetlacz Czasu
 node.state_indicator.name,Wskaźnik Stanu
+node.touchpad_display.name,Wyświetlacz Touchpadu
 node.group.constants,Stałe
 node.group.controls,Kontrolki
 node.group.debug,Debug
@@ -157,6 +159,8 @@ node.min.name,Min
 node.max.name,Max
 node.abs.name,Abs
 node.negate.name,Neguj
+node.reciprocal.name,Odwrotność
+node.one_minus.name,Jeden minus
 node.sin.name,Sin
 node.cos.name,Cos
 node.tan.name,Tan

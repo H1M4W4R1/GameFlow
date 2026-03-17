@@ -413,6 +413,12 @@ class NodeBase(QObject):
     def on_ctrl_release(self) -> None:
         """Called on LMB release after on_ctrl_press returned True."""
 
+    def should_select_on_ctrl_press(self) -> bool:
+        """Return False to prevent node selection when a control is clicked.
+        Override in control nodes that handle their own interaction.
+        Default: True (node will be selected on control press)."""
+        return True
+
     # ── Internal helpers ─────────────────────────────────────────────────────
 
     def _attach_runtime(

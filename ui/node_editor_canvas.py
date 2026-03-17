@@ -1130,10 +1130,11 @@ class NodeEditorCanvas(QWidget):
                     if node and node.on_ctrl_press(scene, rect):
                         self._ctrl_node_id   = nid
                         self._ctrl_rect      = rect
-                        self._selected_node  = nid
-                        self._selected_nodes = {nid}
-                        self._selected_wire  = None
-                        self.node_selected.emit(nid)
+                        if node.should_select_on_ctrl_press():
+                            self._selected_node  = nid
+                            self._selected_nodes = {nid}
+                            self._selected_wire  = None
+                            self.node_selected.emit(nid)
                         self.update()
                         return
 
@@ -2175,6 +2176,23 @@ class NodeEditorCanvas(QWidget):
                 sample_menu.addAction(act)
             ctrl_actions.append(sample_menu)
 
+        if hasattr(node, "get_touchpad_mode") and hasattr(node, "set_touchpad_mode"):
+            mode_menu = QMenu(tr("ui.canvas.menu.touchpad_mode", default="Release Mode"), menu)
+            mode_menu.setStyleSheet(_MENU_STYLE)
+            current_mode = node.get_touchpad_mode()
+            for mode, label in [
+                ("reset", "Reset to 0,0"),
+                ("hold",  "Keep Last Value"),
+            ]:
+                act = QAction(label, mode_menu)
+                act.setCheckable(True)
+                act.setChecked(current_mode == mode)
+                act.triggered.connect(
+                    lambda _checked, m=mode: self._set_touchpad_mode(node_id, m)
+                )
+                mode_menu.addAction(act)
+            ctrl_actions.append(mode_menu)
+
         if ctrl_actions:
             menu.addSeparator()
             for item in ctrl_actions:
@@ -2366,6 +2384,20 @@ class NodeEditorCanvas(QWidget):
         self._history.push(CtrlPropCmd(
             self._runtime, node_id,
             "set_ctrl_scale", old_mode, mode, "Scale mode",
+        ))
+        self.update()
+
+    def _set_touchpad_mode(self, node_id: str, mode: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "set_touchpad_mode"):
+            return
+        old_mode = node.get_touchpad_mode()
+        if old_mode == mode:
+            return
+        node.set_touchpad_mode(mode)
+        self._history.push(CtrlPropCmd(
+            self._runtime, node_id,
+            "set_touchpad_mode", old_mode, mode, "Touchpad mode",
         ))
         self.update()
 
