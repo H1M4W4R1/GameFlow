@@ -426,6 +426,22 @@ class WaveformDisplayNode(NodeBase):
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(path)
 
+        # Min / max labels inside scope corners
+        lbl_font = QFont("Courier New", 7)
+        painter.setFont(lbl_font)
+        painter.setPen(QColor("#3a7a72"))
+        lbl_w = w - 4
+        painter.drawText(
+            QRectF(x0 + 2, y0 + 1,      lbl_w, 12),
+            Qt.AlignmentFlag.AlignRight,
+            f"{v_max:.3g}",
+        )
+        painter.drawText(
+            QRectF(x0 + 2, y0 + h - 12, lbl_w, 12),
+            Qt.AlignmentFlag.AlignRight,
+            f"{v_min:.3g}",
+        )
+
         # Current value label
         cur_val = samples[-1]
         painter.setPen(QColor("#80cbc4"))

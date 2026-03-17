@@ -434,3 +434,91 @@ class NoiseWaveformNode(_WaveformBase):
         )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Ramp Waveform
+# ─────────────────────────────────────────────────────────────────────────────
+
+class RampWaveformNode(_WaveformBase):
+    """
+    One-shot linear ramp from start_val to end_val over duration_s, then holds.
+    Fires exec_out once when the ramp completes.
+    'reset' TICK restarts the ramp from the beginning.
+
+    The ramp begins automatically when the graph starts.
+    Pause/resume preserves exact ramp position without drift.
+    """
+    NODE_NAME  = "Ramp Waveform"
+    NODE_GROUP = "Time/Waveforms"
+    PINS = [
+        PinDescriptor("reset",      PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("start_val",  PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("end_val",    PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("duration_s", PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("exec_out",   PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",      PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    VARIABLE_INPUTS = {
+        "start_val":  (float, 0.0),
+        "end_val":    (float, 1.0),
+        "duration_s": (float, 1.0),
+    }
+    MIN_WIDTH  = 190.0
+    MIN_HEIGHT = 110.0
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._ramp_offset: float = 0.0   # _phase_t() value when ramp last started
+        self._fired:       bool  = False  # True after exec_out has fired
+
+    def on_start(self) -> None:
+        super().on_start()           # initialises _wf_start; _phase_t() → 0
+        self._ramp_offset = 0.0
+        self._fired       = False
+
+    def execute(self, trigger_pin: str) -> None:
+        if trigger_pin == "reset":
+            self._ramp_offset = self._phase_t()
+            self._fired       = False
+            self.node_changed.emit()
+
+    def on_tick_check(self) -> None:
+        dur = max(1e-4, self._vf("duration_s", 1.0))
+        s   = self._vf("start_val", 0.0)
+        e   = self._vf("end_val",   1.0)
+        elapsed = self._phase_t() - self._ramp_offset
+        t = min(1.0, elapsed / dur)
+        self.set_output("value", s + (e - s) * t)
+        if t >= 1.0 and not self._fired:
+            self.fire_tick("exec_out")
+            self._fired = True
+            self.node_changed.emit()
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        dur     = max(1e-4, self._vf("duration_s", 1.0))
+        s       = self._vf("start_val", 0.0)
+        e       = self._vf("end_val",   1.0)
+        elapsed = self._phase_t() - self._ramp_offset
+        pct     = min(1.0, elapsed / dur)
+
+        bar_w    = (rect.width() - 8) * pct
+        bar_rect = QRectF(rect.x() + 4, rect.y() + 4, bar_w, 8)
+        painter.setPen(Qt.PenStyle.NoPen)
+        color = QColor("#888888") if self._fired else QColor(_WAVE_COLOR)
+        painter.setBrush(QBrush(color))
+        painter.drawRoundedRect(bar_rect, 3, 3)
+
+        cur_val = s + (e - s) * pct
+        painter.setPen(QColor(_VAL_COLOR))
+        painter.setFont(QFont("Courier New", 8))
+        status = "done" if self._fired else f"{elapsed:.2f} / {dur:.2f} s"
+        painter.drawText(
+            QRectF(rect.x(), rect.y() + 14, rect.width(), 18),
+            Qt.AlignmentFlag.AlignCenter,
+            status,
+        )
+        painter.drawText(
+            QRectF(rect.x(), rect.y() + 30, rect.width(), 18),
+            Qt.AlignmentFlag.AlignCenter,
+            f"{cur_val:.4f}  ({s:.3g} → {e:.3g})",
+        )
+

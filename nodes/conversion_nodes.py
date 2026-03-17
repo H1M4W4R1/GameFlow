@@ -105,12 +105,11 @@ class TimeFrequencyNode(NodeBase):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class IntToFloatNode(NodeBase):
-    """Converts an INT pin to a FLOAT pin.  Useful when wiring integer
-    sources (counters, constants) into float-expecting inputs."""
-    NODE_NAME  = "Int → Float"
+    """Converts any value to FLOAT."""
+    NODE_NAME  = "Any → Float"
     NODE_GROUP = "Conversion"
     PINS = [
-        PinDescriptor("input",  PinDirection.INPUT,  PinType.INT,   default=0),
+        PinDescriptor("input",  PinDirection.INPUT,  PinType.ANY,   default=0),
         PinDescriptor("output", PinDirection.OUTPUT, PinType.FLOAT),
     ]
     MIN_WIDTH  = 150.0
@@ -127,20 +126,23 @@ class IntToFloatNode(NodeBase):
 
     def _convert(self) -> None:
         v = self.get_input("input")
-        self.set_output("output", float(v) if v is not None else 0.0)
+        try:
+            self.set_output("output", float(v) if v is not None else 0.0)
+        except (TypeError, ValueError):
+            self.set_output("output", 0.0)
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#90a4ae"))
         painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "int → float")
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "any → float")
 
 
 class FloatToIntNode(NodeBase):
-    """Converts a FLOAT pin to an INT pin (rounds to nearest integer)."""
-    NODE_NAME  = "Float → Int"
+    """Converts any value to INT (rounds to nearest integer)."""
+    NODE_NAME  = "Any → Int"
     NODE_GROUP = "Conversion"
     PINS = [
-        PinDescriptor("input",  PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("input",  PinDirection.INPUT,  PinType.ANY, default=0),
         PinDescriptor("output", PinDirection.OUTPUT, PinType.INT),
     ]
     MIN_WIDTH  = 150.0
@@ -157,21 +159,24 @@ class FloatToIntNode(NodeBase):
 
     def _convert(self) -> None:
         v = self.get_input("input")
-        self.set_output("output", int(round(float(v))) if v is not None else 0)
+        try:
+            self.set_output("output", int(round(float(v))) if v is not None else 0)
+        except (TypeError, ValueError):
+            self.set_output("output", 0)
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#90a4ae"))
         painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "float → int")
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "any → int")
 
 
 class BoolToFloatNode(NodeBase):
-    """Converts BOOL → FLOAT  (False=0.0, True=1.0)."""
-    NODE_NAME  = "Bool → Float"
+    """Converts any value to BOOL (truthy/falsy)."""
+    NODE_NAME  = "Any → Bool"
     NODE_GROUP = "Conversion"
     PINS = [
-        PinDescriptor("input",  PinDirection.INPUT,  PinType.BOOL,  default=False),
-        PinDescriptor("output", PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("input",  PinDirection.INPUT,  PinType.ANY,  default=False),
+        PinDescriptor("output", PinDirection.OUTPUT, PinType.BOOL),
     ]
     MIN_WIDTH  = 155.0
     MIN_HEIGHT = 60.0
@@ -187,12 +192,12 @@ class BoolToFloatNode(NodeBase):
 
     def _convert(self) -> None:
         v = self.get_input("input")
-        self.set_output("output", 1.0 if v else 0.0)
+        self.set_output("output", bool(v))
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#90a4ae"))
         painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "bool → float")
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "any → bool")
 
 
 class AnyToStringNode(NodeBase):
@@ -226,11 +231,11 @@ class AnyToStringNode(NodeBase):
 
 
 class StringToFloatNode(NodeBase):
-    """Parses a string to float (outputs 0.0 if parse fails)."""
-    NODE_NAME  = "String → Float"
+    """Parses any value as a string then to float (outputs 0.0 if parse fails)."""
+    NODE_NAME  = "Any → String → Float"
     NODE_GROUP = "Conversion"
     PINS = [
-        PinDescriptor("input",  PinDirection.INPUT,  PinType.STRING, default="0"),
+        PinDescriptor("input",  PinDirection.INPUT,  PinType.ANY, default=0),
         PinDescriptor("output", PinDirection.OUTPUT, PinType.FLOAT),
         PinDescriptor("valid",  PinDirection.OUTPUT, PinType.BOOL),
     ]
@@ -258,4 +263,4 @@ class StringToFloatNode(NodeBase):
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#90a4ae"))
         painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "str → float")
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "any → str → float")
