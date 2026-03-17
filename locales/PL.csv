@@ -8,117 +8,117 @@ ui.status.save_failed,Zapis nieudany: {exc}
 ui.status.graph_loaded,Wczytano ← {path}
 ui.status.load_failed,Wczytywanie nieudane: {exc}
 ui.status.connecting,Łączenie z {name} @ {addr}…
-ui.button.new_graph,New Graph  (Ctrl+N)
-ui.button.save_graph,Save Graph  (Ctrl+S)
-ui.button.load_graph,Load Graph  (Ctrl+O)
-ui.button.run_graph,Run Graph  (F5)
-ui.button.pause_graph,Pause Graph  (F7)
-ui.button.resume_graph,Resume Graph  (F7)
-ui.button.stop_graph,Stop Graph  (F6)
-ui.button.save,Save
-ui.button.discard,Discard
-ui.button.cancel,Cancel
-ui.dialog.unsaved_changes.title,Unsaved Changes
-ui.dialog.unsaved_changes.message,The current graph has unsaved changes.
-ui.dialog.save_graph.title,Save Graph
+ui.button.new_graph,Nowy Flow  (Ctrl+N)
+ui.button.save_graph,Zapisz Flow  (Ctrl+S)
+ui.button.load_graph,Wczytaj Flow  (Ctrl+O)
+ui.button.run_graph,Uruchom  (F5)
+ui.button.pause_graph,Pauza  (F7)
+ui.button.resume_graph,Wznów  (F7)
+ui.button.stop_graph,Zatrzymaj  (F6)
+ui.button.save,Zapisz
+ui.button.discard,Odrzuć
+ui.button.cancel,Anuluj
+ui.dialog.unsaved_changes.title,Niezapisane zmiany
+ui.dialog.unsaved_changes.message,Bieżący flow ma niezapisane zmiany.
+ui.dialog.save_graph.title,Zapisz Flow
 ui.dialog.save_graph.filter,SensoryFlow Graph (*.sfgraph);;JSON (*.json)
-ui.dialog.load_graph.title,Load Graph
-ui.untitled,Untitled
+ui.dialog.load_graph.title,Wczytaj Flow
+ui.untitled,Bez tytułu
 node.float.name,Float
 node.integer.name,Integer
 node.string.name,String
 node.boolean.name,Boolean
 node.pi.name,Pi (π)
 node.euler.name,Euler (e)
-node.golden_ratio.name,Golden Ratio (φ)
+node.golden_ratio.name,Złota Proporcja (φ)
 node.tau.name,Tau (τ = 2π)
-node.color.name,Color
-node.slider.name,Slider
-node.button.name,Button
-node.toggle.name,Toggle
-node.time_selector.name,Time Selector
+node.color.name,Kolor
+node.slider.name,Suwak
+node.button.name,Przycisk
+node.toggle.name,Przełącznik
+node.time_selector.name,Wybór Czasu
 node.log_debug.name,Log / Debug
-node.numeric_display.name,Numeric Display
-node.text_display.name,Text Display
-node.time_display.name,Time Display
-node.state_indicator.name,State Indicator
-node.group.constants,Constants
-node.group.controls,Controls
+node.numeric_display.name,Wyświetlacz Liczb
+node.text_display.name,Wyświetlacz Tekstu
+node.time_display.name,Wyświetlacz Czasu
+node.state_indicator.name,Wskaźnik Stanu
+node.group.constants,Stałe
+node.group.controls,Kontrolki
 node.group.debug,Debug
 device.lovense.manufacturer,Lovense
 device.lovense.lush.name,Lush
-device.lovense.lush.description,Insertable wearable vibrator
+device.lovense.lush.description,Wibrator wewnętrzny do noszenia
 device.lovense.lush.url,https://www.lovense.com/lush-4-best-bluetooth-remote-controlled-g-spot-vibrator
 device.lovense.hush.name,Hush
-device.lovense.hush.description,Vibrating butt plug
+device.lovense.hush.description,Wibrujący korek analny
 device.lovense.domi.name,Domi
-device.lovense.domi.description,Powerful wand vibrator
+device.lovense.domi.description,Mocna różdżka wibracyjna
 device.lovense.ambi.name,Ambi
-device.lovense.ambi.description,Clitoral bullet vibrator
+device.lovense.ambi.description,Wibrujący pocisk łechtaczkowy
 device.lovense.ferri.name,Ferri
-device.lovense.ferri.description,Magnetic panty vibrator
+device.lovense.ferri.description,Magnetyczny wibrator do stringów
 device.lovense.osci.name,Osci
-device.lovense.osci.description,Oscillating G-spot vibrator
+device.lovense.osci.description,Oscylujący wibrator punktu G
 device.lovense.gush.name,Gush
-device.lovense.gush.description,Male masturbator with vibration
+device.lovense.gush.description,Masturbator męski z wibracją
 device.lovense.gemini.name,Gemini
-device.lovense.gemini.description,Couples vibrator — 2 independent motors
+device.lovense.gemini.description,Wibrator dla par — 2 niezależne silniki
 device.lovense.edge.name,Edge
-device.lovense.edge.description,Dual-motor prostate massager
+device.lovense.edge.description,Masażer prostaty z dwoma silnikami
 device.lovense.edge.url,https://www.lovense.com/adjustable-prostate-massager
 device.lovense.diamo.name,Diamo
-device.lovense.diamo.description,Vibrating cock ring
+device.lovense.diamo.description,Wibrujący pierścień na penisa
 device.lovense.max.name,Max
-device.lovense.max.description,Male masturbator — vibration + air pump
+device.lovense.max.description,Masturbator męski — wibracja + pompka powietrzna
 device.lovense.nora.name,Nora
-device.lovense.nora.description,Rabbit vibrator — vibration + rotating head
+device.lovense.nora.description,Wibrator królik — wibracja + obracająca się główka
 device.lovense.nora.url,https://www.lovense.com/rabbit-vibrator
 device.dglab.manufacturer,DGLab
 device.dglab.coyote.name,Coyote
-device.dglab.coyote.description,Dual-channel estim pulse host (v3 BLE)
+device.dglab.coyote.description,Dwukanałowy host impulsów estim (v3 BLE)
 device.dglab.coyote.url,https://dungeon-lab.com/e-stim-unit3.0.php
 device.h1m4w4r1.manufacturer,H1M4W4R1
 device.h1m4w4r1.pump.name,Remote Pump
-device.h1m4w4r1.pump.description,BLE pump with valve; session and pumping timers
+device.h1m4w4r1.pump.description,Pompa BLE z zaworem; timery sesji i pompowania
 device.h1m4w4r1.pump.url,https://github.com/H1M4W4R1/RemoteVacuumPump
-core.ble.no_bleak,bleak is not installed. Run: pip install bleak
-core.graph.tick_cycle,Tick cycle detected
-core.graph.infinite_loop,Infinite tick loop: {src}:{pin} already firing
-ui.panel.devices.title,DEVICES
-ui.panel.devices.add_tooltip,Add device
-ui.panel.devices.empty,No devices.\nClick + to add.
-ui.panel.devices.no_ble,⚠ No Bluetooth adapter found
-ui.panel.devices.no_ble_detail,⚠ No Bluetooth adapter found — BLE devices unavailable
-ui.panel.devices.no_bleak,⚠ bleak not installed — run: pip install bleak
-ui.panel.devices.battery_unknown,Battery level unknown
-ui.panel.devices.battery,Battery: {level}%
-ui.panel.devices.battery_unknown_short,Battery: unknown
-ui.panel.devices.select_continue,Select a device above to continue
-ui.panel.devices.turn_on_ble,Turn on your device. Click Search & Connect to scan via Bluetooth.
-ui.panel.devices.alias_placeholder,e.g. Domi Wand Left
-ui.panel.devices.alias_label,Device name / alias:
-ui.panel.devices.website_tooltip,Open device webpage
-ui.panel.devices.address_label,Address: {address}
+core.ble.no_bleak,bleak nie jest zainstalowany. Uruchom: pip install bleak
+core.graph.tick_cycle,Wykryto cykl taktowania
+core.graph.infinite_loop,Nieskończona pętla taktowania: {src}:{pin} już aktywny
+ui.panel.devices.title,URZĄDZENIA
+ui.panel.devices.add_tooltip,Dodaj urządzenie
+ui.panel.devices.empty,Brak urządzeń.\nKliknij +, aby dodać.
+ui.panel.devices.no_ble,⚠ Nie znaleziono adaptera Bluetooth
+ui.panel.devices.no_ble_detail,⚠ Nie znaleziono adaptera Bluetooth — urządzenia BLE niedostępne
+ui.panel.devices.no_bleak,⚠ bleak nie jest zainstalowany — uruchom: pip install bleak
+ui.panel.devices.battery_unknown,Poziom baterii nieznany
+ui.panel.devices.battery,Bateria: {level}%
+ui.panel.devices.battery_unknown_short,Bateria: nieznany
+ui.panel.devices.select_continue,Wybierz urządzenie powyżej, aby kontynuować
+ui.panel.devices.turn_on_ble,Włącz urządzenie. Kliknij Szukaj i Połącz, aby skanować przez Bluetooth.
+ui.panel.devices.alias_placeholder,np. Domi Różdżka Lewa
+ui.panel.devices.alias_label,Nazwa / alias urządzenia:
+ui.panel.devices.website_tooltip,Otwórz stronę urządzenia
+ui.panel.devices.address_label,Adres: {address}
 ui.panel.devices.id_label,ID: {id}…
-ui.panel.devices.battery_label,Battery:
+ui.panel.devices.battery_label,Bateria:
 ui.panel.devices.status_label,Status: {status}
-ui.button.website,Website ↗
-ui.button.search_connect,Search & Connect →
-ui.button.connect,Connect →
-ui.button.remove,Remove
-ui.button.close,Close
-ui.dialog.add_device.title,Add Device
-ui.dialog.device_detail.title,Device: {name}
-node.add.name,Add
-node.subtract.name,Subtract
-node.multiply.name,Multiply
-node.divide.name,Divide
+ui.button.website,Strona ↗
+ui.button.search_connect,Szukaj i Połącz →
+ui.button.connect,Połącz →
+ui.button.remove,Usuń
+ui.button.close,Zamknij
+ui.dialog.add_device.title,Dodaj Urządzenie
+ui.dialog.device_detail.title,Urządzenie: {name}
+node.add.name,Dodaj
+node.subtract.name,Odejmij
+node.multiply.name,Mnóż
+node.divide.name,Dziel
 node.modulo.name,Modulo
-node.power.name,Power
+node.power.name,Potęga
 node.min.name,Min
 node.max.name,Max
 node.abs.name,Abs
-node.negate.name,Negate
+node.negate.name,Neguj
 node.sin.name,Sin
 node.cos.name,Cos
 node.tan.name,Tan
@@ -127,69 +127,69 @@ node.exp.name,Exp
 node.log.name,Log
 node.log10.name,Log10
 node.logn.name,LogN
-node.sign.name,Sign
+node.sign.name,Znak
 node.floor.name,Floor
 node.ceil.name,Ceil
 node.round.name,Round
-node.clamp.name,Clamp
+node.clamp.name,Ogranicz
 node.lerp.name,Lerp
-node.map_range.name,Map Range
+node.map_range.name,Mapuj Zakres
 node.vector2d.name,Vector2D
 node.vector3d.name,Vector3D
-node.group.math_arithmetic,Math / Arithmetic
-node.group.math_trigonometric,Math / Trigonometric
-node.group.math_logarithm,Math / Logarithm
-node.group.math_min_max,Math / Min-Max
-node.group.math_rounding,Math / Rounding
-node.group.math_interpolation,Math / Interpolation
-node.group.math_vector,Math / Vector
-node.time_since_start.name,Time Since Start
-node.epoch_seconds.name,Epoch Seconds
-node.current_datetime.name,Current DateTime
-node.specified_datetime.name,Specified DateTime
-node.delay.name,Delay
+node.group.math_arithmetic,Matematyka / Arytmetyka
+node.group.math_trigonometric,Matematyka / Trygonometria
+node.group.math_logarithm,Matematyka / Logarytmy
+node.group.math_min_max,Matematyka / Min-Max
+node.group.math_rounding,Matematyka / Zaokrąglenie
+node.group.math_interpolation,Matematyka / Interpolacja
+node.group.math_vector,Matematyka / Wektor
+node.time_since_start.name,Czas od Startu
+node.epoch_seconds.name,Sekundy Epoki
+node.current_datetime.name,Bieżąca Data i Czas
+node.specified_datetime.name,Podana Data i Czas
+node.delay.name,Opóźnienie
 node.timer.name,Timer
-node.after_x_seconds.name,After X Seconds
-node.counter.name,Counter
+node.after_x_seconds.name,Po X Sekundach
+node.counter.name,Licznik
 node.randomizer.name,Randomizer
-node.random_data.name,Random Data
-node.beep.name,Beep
+node.random_data.name,Losowe Dane
+node.beep.name,Dźwięk
 node.d_flip_flop.name,D Flip-Flop
 node.t_flip_flop.name,T Flip-Flop
 node.jk_flip_flop.name,JK Flip-Flop
 node.sr_flip_flop.name,SR Flip-Flop
-node.group.time,Time
-node.group.utility,Utility
-node.group.logic_gates,Logic/Gates
-ui.canvas.menu.rename,Rename…
-ui.canvas.menu.rename_label,Rename label…
-ui.canvas.menu.button_color,Button color…
-ui.canvas.menu.set_range,Set range…
-ui.canvas.menu.scale_mode,Scale mode
-ui.canvas.menu.channel_count,Channel count
-ui.canvas.menu.duplicate,Duplicate
-ui.canvas.menu.remove_connections,Remove connections
-ui.canvas.menu.delete,Delete
-ui.canvas.menu.search_nodes,Search nodes…
-ui.canvas.menu.add_group,Add Group
-ui.dialog.slider_range.title,Slider Range
-node.on_tick.name,On Tick
-node.on_tick_custom.name,On Tick (Custom)
-node.on_start.name,On Start
-node.on_pause.name,On Pause
-node.on_resume.name,On Resume
-node.on_stop.name,On Stop
-node.is_running.name,Is Running
+node.group.time,Czas
+node.group.utility,Narzędzia
+node.group.logic_gates,Logika/Bramki
+ui.canvas.menu.rename,Zmień nazwę…
+ui.canvas.menu.rename_label,Zmień etykietę…
+ui.canvas.menu.button_color,Kolor przycisku…
+ui.canvas.menu.set_range,Ustaw zakres…
+ui.canvas.menu.scale_mode,Tryb skalowania
+ui.canvas.menu.channel_count,Liczba kanałów
+ui.canvas.menu.duplicate,Duplikuj
+ui.canvas.menu.remove_connections,Usuń połączenia
+ui.canvas.menu.delete,Usuń
+ui.canvas.menu.search_nodes,Szukaj węzłów…
+ui.canvas.menu.add_group,Dodaj Grupę
+ui.dialog.slider_range.title,Zakres Suwaka
+node.on_tick.name,Na Takt
+node.on_tick_custom.name,Na Takt (Własny)
+node.on_start.name,Na Start
+node.on_pause.name,Na Pauzę
+node.on_resume.name,Na Wznowienie
+node.on_stop.name,Na Zatrzymanie
+node.is_running.name,Czy Działa
 node.router.name,Router
-node.loop.name,Loop
-node.loop_while.name,Loop While
-node.equal.name,Equal
-node.not_equal.name,Not Equal
-node.greater.name,Greater
-node.greater_or_equal.name,Greater or Equal
-node.less.name,Less
-node.less_or_equal.name,Less or Equal
-node.select.name,Select
+node.loop.name,Pętla
+node.loop_while.name,Pętla Dopóki
+node.equal.name,Równy
+node.not_equal.name,Nierówny
+node.greater.name,Większy
+node.greater_or_equal.name,Większy lub Równy
+node.less.name,Mniejszy
+node.less_or_equal.name,Mniejszy lub Równy
+node.select.name,Wybierz
 node.and.name,AND
 node.or.name,OR
 node.not.name,NOT
@@ -197,27 +197,179 @@ node.nand.name,NAND
 node.nor.name,NOR
 node.xor.name,XOR
 node.xnor.name,XNOR
-node.multiplexer.name,Multiplexer
-node.demultiplexer.name,Demultiplexer
-node.group.flow_events,Flow/Events
+node.multiplexer.name,Multiplekser
+node.demultiplexer.name,Demultiplekser
+node.group.flow_events,Flow/Zdarzenia
 node.group.flow_status,Flow/Status
-node.group.flow_redirect,Flow/Redirect
-node.group.logic_comparison,Logic/Comparison
-node.group.logic_combination,Logic/Combination
-node.group.logic_routing,Logic/Routing
-ui.ble_scan.title,Searching for Devices…
-ui.ble_scan.searching_named,Searching for {name}…
-ui.ble_scan.scanning,Scanning for nearby BLE devices…
-ui.ble_scan.found_header,FOUND DEVICES
-ui.ble_scan.no_devices_yet,No devices found yet…
-ui.ble_scan.no_devices_found,No devices found.
-ui.ble_scan.device_hint,Make sure your device is turned on and not connected to another app.
-ui.ble_scan.retry_hint,"Ensure the device is on, in range, and not paired to another app. Click Scan Again to retry."
-ui.ble_scan.found_named,Found: {name} — select and click Connect
-ui.ble_scan.found_count,Found {count} device(s) — select one
-ui.ble_scan.scan_failed,Scan failed
-ui.ble_scan.error,Error: {msg}
-ui.ble_scan.selected,Selected: {name} ({address})
+node.group.flow_redirect,Flow/Przekierowanie
+node.group.logic_comparison,Logika/Porównanie
+node.group.logic_combination,Logika/Kombinacja
+node.group.logic_routing,Logika/Routing
+ui.ble_scan.title,Szukanie urządzeń…
+ui.ble_scan.searching_named,Szukanie {name}…
+ui.ble_scan.scanning,Skanowanie pobliskich urządzeń BLE…
+ui.ble_scan.found_header,ZNALEZIONE URZĄDZENIA
+ui.ble_scan.no_devices_yet,Nie znaleziono jeszcze urządzeń…
+ui.ble_scan.no_devices_found,Nie znaleziono urządzeń.
+ui.ble_scan.device_hint,Upewnij się, że urządzenie jest włączone i nie połączone z inną aplikacją.
+ui.ble_scan.retry_hint,"Upewnij się, że urządzenie jest włączone, w zasięgu i nie sparowane z inną aplikacją. Kliknij Skanuj Ponownie, aby spróbować jeszcze raz."
+ui.ble_scan.found_named,Znaleziono: {name} — zaznacz i kliknij Połącz
+ui.ble_scan.found_count,Znaleziono {count} urządzenie(a) — wybierz jedno
+ui.ble_scan.scan_failed,Skanowanie nieudane
+ui.ble_scan.error,Błąd: {msg}
+ui.ble_scan.selected,Wybrano: {name} ({address})
 ui.ble_scan.rssi,{rssi} dBm
-ui.button.scan_again,Scan Again
-ui.button.connect_plain,Connect
+ui.button.scan_again,Skanuj Ponownie
+ui.button.connect_plain,Połącz
+node.waveform_display.name,Wyświetlacz Przebiegu
+node.vector4d.name,Vector4D
+node.split_vector2d.name,Rozdziel Vector2D
+node.split_vector3d.name,Rozdziel Vector3D
+node.split_vector4d.name,Rozdziel Vector4D
+node.dot_product.name,Iloczyn Skalarny
+node.cross_product.name,Iloczyn Wektorowy
+node.color_add.name,Dodaj Kolor
+node.color_blend.name,Mieszaj Kolory
+node.datetime_difference.name,Różnica Dat i Czasu
+node.datetime_add_seconds.name,Dodaj Sekundy do Daty
+node.low_pass_filter.name,Filtr Dolnoprzepustowy
+node.high_pass_filter.name,Filtr Górnoprzepustowy
+node.band_pass_filter.name,Filtr Pasmowy
+node.random.name,Losowy
+node.beep_pc.name,Dźwięk (PC)
+node.frequency_generator.name,Generator Częstotliwości
+node.sample_hold.name,Próbkuj i Trzymaj
+node.sine_waveform.name,Przebieg Sinusoidalny
+node.square_waveform.name,Przebieg Prostokątny
+node.sawtooth_waveform.name,Przebieg Piłokształtny
+node.triangle_waveform.name,Przebieg Trójkątny
+node.trapezoidal_waveform.name,Przebieg Trapezoidalny
+node.noise_waveform.name,Przebieg Szumowy
+node.ramp_waveform.name,Przebieg Narastający
+node.delta_time.name,Czas Delty
+node.countdown.name,Odliczanie
+node.time_frequency.name,Czas ↔ Częstotliwość
+node.any_float.name,Dowolny → Float
+node.any_int.name,Dowolny → Int
+node.any_bool.name,Dowolny → Bool
+node.any_string.name,Dowolny → String
+node.any_string_float.name,Dowolny → String → Float
+node.group.conversion,Konwersja
+node.group.math_color,Matematyka / Kolor
+node.group.math_datetime,Matematyka / Data i Czas
+node.group.math_filters,Matematyka / Filtry
+node.group.time_waveforms,Czas/Przebiegi
+node.group.time_acquire,Czas/Odczyt
+node.group.time_waiting,Czas/Oczekiwanie
+node.group.devices_lovense_lush,Urządzenia/Lovense/Lush
+node.group.devices_lovense_hush,Urządzenia/Lovense/Hush
+node.group.devices_lovense_domi,Urządzenia/Lovense/Domi
+node.group.devices_lovense_ambi,Urządzenia/Lovense/Ambi
+node.group.devices_lovense_ferri,Urządzenia/Lovense/Ferri
+node.group.devices_lovense_osci,Urządzenia/Lovense/Osci
+node.group.devices_lovense_gush,Urządzenia/Lovense/Gush
+node.group.devices_lovense_gemini,Urządzenia/Lovense/Gemini
+node.group.devices_lovense_edge,Urządzenia/Lovense/Edge
+node.group.devices_lovense_diamo,Urządzenia/Lovense/Diamo
+node.group.devices_lovense_max,Urządzenia/Lovense/Max
+node.group.devices_lovense_nora,Urządzenia/Lovense/Nora
+node.group.devices_h1m4w4r1_pump,Urządzenia/H1M4W4R1/Pompa
+node.group.devices_dglab_coyote,Urządzenia/DGLab/Coyote
+node.group.devices_dglab_coyote_waveforms,Urządzenia/DGLab/Coyote/Przebiegi
+node.lush_vibrate.name,Lush: Wibruj
+node.lush_get_battery.name,Lush: Pobierz baterię
+node.lush_red_light_on.name,Lush: Czerwone światło wł.
+node.lush_red_light_off.name,Lush: Czerwone światło wył.
+node.hush_vibrate.name,Hush: Wibruj
+node.hush_get_battery.name,Hush: Pobierz baterię
+node.hush_red_light_on.name,Hush: Czerwone światło wł.
+node.hush_red_light_off.name,Hush: Czerwone światło wył.
+node.domi_vibrate.name,Domi: Wibruj
+node.domi_ambient_light_on.name,Domi: Światło otoczenia wł.
+node.domi_ambient_light_off.name,Domi: Światło otoczenia wył.
+node.domi_get_battery.name,Domi: Pobierz baterię
+node.domi_red_light_on.name,Domi: Czerwone światło wł.
+node.domi_red_light_off.name,Domi: Czerwone światło wył.
+node.ambi_vibrate.name,Ambi: Wibruj
+node.ambi_get_battery.name,Ambi: Pobierz baterię
+node.ambi_red_light_on.name,Ambi: Czerwone światło wł.
+node.ambi_red_light_off.name,Ambi: Czerwone światło wył.
+node.ferri_vibrate.name,Ferri: Wibruj
+node.ferri_get_battery.name,Ferri: Pobierz baterię
+node.ferri_red_light_on.name,Ferri: Czerwone światło wł.
+node.ferri_red_light_off.name,Ferri: Czerwone światło wył.
+node.osci_oscillate.name,Osci: Oscyluj
+node.osci_get_battery.name,Osci: Pobierz baterię
+node.osci_red_light_on.name,Osci: Czerwone światło wł.
+node.osci_red_light_off.name,Osci: Czerwone światło wył.
+node.gush_vibrate.name,Gush: Wibruj
+node.gush_get_battery.name,Gush: Pobierz baterię
+node.gush_red_light_on.name,Gush: Czerwone światło wł.
+node.gush_red_light_off.name,Gush: Czerwone światło wył.
+node.gemini_vibrate_left.name,Gemini: Wibruj Lewy
+node.gemini_vibrate_right.name,Gemini: Wibruj Prawy
+node.gemini_get_battery.name,Gemini: Pobierz baterię
+node.gemini_red_light_on.name,Gemini: Czerwone światło wł.
+node.gemini_red_light_off.name,Gemini: Czerwone światło wył.
+node.edge_vibrate_internal.name,Edge: Wibruj Wewnętrzny
+node.edge_vibrate_perineum.name,Edge: Wibruj Krocze
+node.edge_vibrate_both.name,Edge: Wibruj Oba
+node.edge_get_battery.name,Edge: Pobierz baterię
+node.edge_red_light_on.name,Edge: Czerwone światło wł.
+node.edge_red_light_off.name,Edge: Czerwone światło wył.
+node.diamo_vibrate.name,Diamo: Wibruj
+node.diamo_get_battery.name,Diamo: Pobierz baterię
+node.diamo_red_light_on.name,Diamo: Czerwone światło wł.
+node.diamo_red_light_off.name,Diamo: Czerwone światło wył.
+node.max_vibrate.name,Max: Wibruj
+node.max_air_level.name,Max: Poziom powietrza
+node.max_inflate.name,Max: Nadmuchaj
+node.max_deflate.name,Max: Spuść powietrze
+node.max_accelerometer_enable.name,Max: Włącz akcelerometr
+node.max_accelerometer_disable.name,Max: Wyłącz akcelerometr
+node.max_accelerometer.name,Max: Akcelerometr
+node.max_get_battery.name,Max: Pobierz baterię
+node.max_red_light_on.name,Max: Czerwone światło wł.
+node.max_red_light_off.name,Max: Czerwone światło wył.
+node.nora_vibrate.name,Nora: Wibruj
+node.nora_rotate.name,Nora: Obracaj
+node.nora_reverse_rotation.name,Nora: Odwróć obrót
+node.nora_get_battery.name,Nora: Pobierz baterię
+node.nora_red_light_on.name,Nora: Czerwone światło wł.
+node.nora_red_light_off.name,Nora: Czerwone światło wył.
+node.pump_set_session_duration.name,Pompa: Ustaw czas sesji
+node.pump_set_pump_on_off.name,Pompa: Ustaw pompę wł/wył
+node.pump_set_valve_on_off.name,Pompa: Ustaw zawór wł/wył
+node.pump_set_expected_pumping_time.name,Pompa: Ustaw oczekiwany czas pompowania
+node.pump_lock_valve_remote.name,Pompa: Zablokuj zawór (zdalnie)
+node.pump_get_current_session_time.name,Pompa: Pobierz czas bieżącej sesji
+node.pump_get_current_pumping_time.name,Pompa: Pobierz bieżący czas pompowania
+node.pump_stop_pump_off_valve_open.name,Pompa: Zatrzymaj (pompa wył, zawór otwarty)
+node.coyote_build_waveform.name,Coyote: Zbuduj przebieg
+node.coyote_set_waveform_a.name,Coyote: Ustaw przebieg A
+node.coyote_set_waveform_b.name,Coyote: Ustaw przebieg B
+node.coyote_set_strength_a.name,Coyote: Ustaw siłę A
+node.coyote_set_strength_b.name,Coyote: Ustaw siłę B
+node.coyote_set_strength_a_and_b.name,Coyote: Ustaw siłę A i B
+node.coyote_set_soft_limit_bf.name,Coyote: Ustaw miękki limit (BF)
+node.coyote_stop.name,Coyote: Zatrzymaj
+node.coyote_get_battery.name,Coyote: Pobierz baterię
+node.coyote_get_strength.name,Coyote: Pobierz siłę
+node.coyote_enable_disable.name,Coyote: Włącz/Wyłącz
+node.coyote_waveform_split.name,Coyote: Podziel przebieg
+node.coyote_waveform_breath.name,Coyote: Przebieg Oddech
+node.coyote_waveform_compress.name,Coyote: Przebieg Ucisk
+node.coyote_waveform_flirt_1.name,Coyote: Przebieg Flirt 1
+node.coyote_waveform_flirt_2.name,Coyote: Przebieg Flirt 2
+node.coyote_waveform_grain_touch.name,Coyote: Przebieg Delikatny dotyk
+node.coyote_waveform_heartbeat.name,Coyote: Przebieg Bicie serca
+node.coyote_waveform_knock.name,Coyote: Przebieg Pukanie
+node.coyote_waveform_kreep_click.name,Coyote: Przebieg Kreep Click
+node.coyote_waveform_quick_press.name,Coyote: Przebieg Szybkie naciśnięcie
+node.coyote_waveform_rain_swept.name,Coyote: Przebieg Deszczowa fala
+node.coyote_waveform_rhythmic.name,Coyote: Przebieg Rytmiczny
+node.coyote_waveform_signal.name,Coyote: Przebieg Sygnał
+node.coyote_waveform_spring.name,Coyote: Przebieg Sprężyna
+node.coyote_waveform_stronger.name,Coyote: Przebieg Mocniejszy
+node.coyote_waveform_tide.name,Coyote: Przebieg Przypływ
+node.coyote_waveform_wave_ripple.name,Coyote: Przebieg Falowanie

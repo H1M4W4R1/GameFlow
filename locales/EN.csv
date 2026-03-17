@@ -221,3 +221,155 @@ ui.ble_scan.selected,Selected: {name} ({address})
 ui.ble_scan.rssi,{rssi} dBm
 ui.button.scan_again,Scan Again
 ui.button.connect_plain,Connect
+node.waveform_display.name,Waveform Display
+node.vector4d.name,Vector4D
+node.split_vector2d.name,Split Vector2D
+node.split_vector3d.name,Split Vector3D
+node.split_vector4d.name,Split Vector4D
+node.dot_product.name,Dot Product
+node.cross_product.name,Cross Product
+node.color_add.name,Color Add
+node.color_blend.name,Color Blend
+node.datetime_difference.name,DateTime Difference
+node.datetime_add_seconds.name,DateTime Add Seconds
+node.low_pass_filter.name,Low Pass Filter
+node.high_pass_filter.name,High Pass Filter
+node.band_pass_filter.name,Band Pass Filter
+node.random.name,Random
+node.beep_pc.name,Beep (PC)
+node.frequency_generator.name,Frequency Generator
+node.sample_hold.name,Sample & Hold
+node.sine_waveform.name,Sine Waveform
+node.square_waveform.name,Square Waveform
+node.sawtooth_waveform.name,Sawtooth Waveform
+node.triangle_waveform.name,Triangle Waveform
+node.trapezoidal_waveform.name,Trapezoidal Waveform
+node.noise_waveform.name,Noise Waveform
+node.ramp_waveform.name,Ramp Waveform
+node.delta_time.name,Delta Time
+node.countdown.name,Countdown
+node.time_frequency.name,Time ↔ Frequency
+node.any_float.name,Any → Float
+node.any_int.name,Any → Int
+node.any_bool.name,Any → Bool
+node.any_string.name,Any → String
+node.any_string_float.name,Any → String → Float
+node.group.conversion,Conversion
+node.group.math_color,Math / Color
+node.group.math_datetime,Math / DateTime
+node.group.math_filters,Math / Filters
+node.group.time_waveforms,Time/Waveforms
+node.group.time_acquire,Time/Acquire
+node.group.time_waiting,Time/Waiting
+node.group.devices_lovense_lush,Devices/Lovense/Lush
+node.group.devices_lovense_hush,Devices/Lovense/Hush
+node.group.devices_lovense_domi,Devices/Lovense/Domi
+node.group.devices_lovense_ambi,Devices/Lovense/Ambi
+node.group.devices_lovense_ferri,Devices/Lovense/Ferri
+node.group.devices_lovense_osci,Devices/Lovense/Osci
+node.group.devices_lovense_gush,Devices/Lovense/Gush
+node.group.devices_lovense_gemini,Devices/Lovense/Gemini
+node.group.devices_lovense_edge,Devices/Lovense/Edge
+node.group.devices_lovense_diamo,Devices/Lovense/Diamo
+node.group.devices_lovense_max,Devices/Lovense/Max
+node.group.devices_lovense_nora,Devices/Lovense/Nora
+node.group.devices_h1m4w4r1_pump,Devices/H1M4W4R1/Pump
+node.group.devices_dglab_coyote,Devices/DGLab/Coyote
+node.group.devices_dglab_coyote_waveforms,Devices/DGLab/Coyote/Waveforms
+node.lush_vibrate.name,Lush: Vibrate
+node.lush_get_battery.name,Lush: Get Battery
+node.lush_red_light_on.name,Lush: Red Light On
+node.lush_red_light_off.name,Lush: Red Light Off
+node.hush_vibrate.name,Hush: Vibrate
+node.hush_get_battery.name,Hush: Get Battery
+node.hush_red_light_on.name,Hush: Red Light On
+node.hush_red_light_off.name,Hush: Red Light Off
+node.domi_vibrate.name,Domi: Vibrate
+node.domi_ambient_light_on.name,Domi: Ambient Light On
+node.domi_ambient_light_off.name,Domi: Ambient Light Off
+node.domi_get_battery.name,Domi: Get Battery
+node.domi_red_light_on.name,Domi: Red Light On
+node.domi_red_light_off.name,Domi: Red Light Off
+node.ambi_vibrate.name,Ambi: Vibrate
+node.ambi_get_battery.name,Ambi: Get Battery
+node.ambi_red_light_on.name,Ambi: Red Light On
+node.ambi_red_light_off.name,Ambi: Red Light Off
+node.ferri_vibrate.name,Ferri: Vibrate
+node.ferri_get_battery.name,Ferri: Get Battery
+node.ferri_red_light_on.name,Ferri: Red Light On
+node.ferri_red_light_off.name,Ferri: Red Light Off
+node.osci_oscillate.name,Osci: Oscillate
+node.osci_get_battery.name,Osci: Get Battery
+node.osci_red_light_on.name,Osci: Red Light On
+node.osci_red_light_off.name,Osci: Red Light Off
+node.gush_vibrate.name,Gush: Vibrate
+node.gush_get_battery.name,Gush: Get Battery
+node.gush_red_light_on.name,Gush: Red Light On
+node.gush_red_light_off.name,Gush: Red Light Off
+node.gemini_vibrate_left.name,Gemini: Vibrate Left
+node.gemini_vibrate_right.name,Gemini: Vibrate Right
+node.gemini_get_battery.name,Gemini: Get Battery
+node.gemini_red_light_on.name,Gemini: Red Light On
+node.gemini_red_light_off.name,Gemini: Red Light Off
+node.edge_vibrate_internal.name,Edge: Vibrate Internal
+node.edge_vibrate_perineum.name,Edge: Vibrate Perineum
+node.edge_vibrate_both.name,Edge: Vibrate Both
+node.edge_get_battery.name,Edge: Get Battery
+node.edge_red_light_on.name,Edge: Red Light On
+node.edge_red_light_off.name,Edge: Red Light Off
+node.diamo_vibrate.name,Diamo: Vibrate
+node.diamo_get_battery.name,Diamo: Get Battery
+node.diamo_red_light_on.name,Diamo: Red Light On
+node.diamo_red_light_off.name,Diamo: Red Light Off
+node.max_vibrate.name,Max: Vibrate
+node.max_air_level.name,Max: Air Level
+node.max_inflate.name,Max: Inflate
+node.max_deflate.name,Max: Deflate
+node.max_accelerometer_enable.name,Max: Accelerometer Enable
+node.max_accelerometer_disable.name,Max: Accelerometer Disable
+node.max_accelerometer.name,Max: Accelerometer
+node.max_get_battery.name,Max: Get Battery
+node.max_red_light_on.name,Max: Red Light On
+node.max_red_light_off.name,Max: Red Light Off
+node.nora_vibrate.name,Nora: Vibrate
+node.nora_rotate.name,Nora: Rotate
+node.nora_reverse_rotation.name,Nora: Reverse Rotation
+node.nora_get_battery.name,Nora: Get Battery
+node.nora_red_light_on.name,Nora: Red Light On
+node.nora_red_light_off.name,Nora: Red Light Off
+node.pump_set_session_duration.name,Pump: Set session duration
+node.pump_set_pump_on_off.name,Pump: Set pump on/off
+node.pump_set_valve_on_off.name,Pump: Set valve on/off
+node.pump_set_expected_pumping_time.name,Pump: Set expected pumping time
+node.pump_lock_valve_remote.name,Pump: Lock valve (remote)
+node.pump_get_current_session_time.name,Pump: Get current session time
+node.pump_get_current_pumping_time.name,Pump: Get current pumping time
+node.pump_stop_pump_off_valve_open.name,Pump: Stop (pump off, valve open)
+node.coyote_build_waveform.name,Coyote: Build Waveform
+node.coyote_set_waveform_a.name,Coyote: Set waveform A
+node.coyote_set_waveform_b.name,Coyote: Set waveform B
+node.coyote_set_strength_a.name,Coyote: Set strength A
+node.coyote_set_strength_b.name,Coyote: Set strength B
+node.coyote_set_strength_a_and_b.name,Coyote: Set strength A and B
+node.coyote_set_soft_limit_bf.name,Coyote: Set soft limit (BF)
+node.coyote_stop.name,Coyote: Stop
+node.coyote_get_battery.name,Coyote: Get battery
+node.coyote_get_strength.name,Coyote: Get strength
+node.coyote_enable_disable.name,Coyote: Enable/Disable
+node.coyote_waveform_split.name,Coyote: Waveform Split
+node.coyote_waveform_breath.name,Coyote: Waveform Breath
+node.coyote_waveform_compress.name,Coyote: Waveform Compress
+node.coyote_waveform_flirt_1.name,Coyote: Waveform Flirt 1
+node.coyote_waveform_flirt_2.name,Coyote: Waveform Flirt 2
+node.coyote_waveform_grain_touch.name,Coyote: Waveform Grain Touch
+node.coyote_waveform_heartbeat.name,Coyote: Waveform Heartbeat
+node.coyote_waveform_knock.name,Coyote: Waveform Knock
+node.coyote_waveform_kreep_click.name,Coyote: Waveform Kreep Click
+node.coyote_waveform_quick_press.name,Coyote: Waveform Quick Press
+node.coyote_waveform_rain_swept.name,Coyote: Waveform Rain Swept
+node.coyote_waveform_rhythmic.name,Coyote: Waveform Rhythmic
+node.coyote_waveform_signal.name,Coyote: Waveform Signal
+node.coyote_waveform_spring.name,Coyote: Waveform Spring
+node.coyote_waveform_stronger.name,Coyote: Waveform Stronger
+node.coyote_waveform_tide.name,Coyote: Waveform Tide
+node.coyote_waveform_wave_ripple.name,Coyote: Waveform Wave Ripple

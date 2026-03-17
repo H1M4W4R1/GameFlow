@@ -1,0 +1,1 @@
+Only English language is officially supported.
