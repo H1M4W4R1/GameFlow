@@ -316,18 +316,37 @@ class MaxAccelerometerEvent(DeviceNodeBase):
         PinDescriptor("z",        PinDirection.OUTPUT, PinType.FLOAT),
     ]
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._connected_dev = None
+
     def on_start(self) -> None:
+        self._connected_dev = None
+        self._sync_device_signal()
+
+    def on_stop(self) -> None:
+        self._disconnect_signal()
+
+    def on_tick_check(self) -> None:
+        # Re-wire if device becomes available after graph start or changes.
+        self._sync_device_signal()
+
+    def _sync_device_signal(self) -> None:
         dev = self.get_device()
+        if dev is self._connected_dev:
+            return
+        self._disconnect_signal()
+        self._connected_dev = dev
         if dev:
             dev.data_received.connect(self._on_data)
 
-    def on_stop(self) -> None:
-        dev = self.get_device()
-        if dev:
+    def _disconnect_signal(self) -> None:
+        if self._connected_dev is not None:
             try:
-                dev.data_received.disconnect(self._on_data)
+                self._connected_dev.data_received.disconnect(self._on_data)
             except Exception:
                 pass
+            self._connected_dev = None
 
     def _on_data(self, payload: dict) -> None:
         if payload.get("type") != "accelerometer":

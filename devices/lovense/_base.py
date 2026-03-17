@@ -166,14 +166,34 @@ class _LovenseBLEBase(DeviceBase):
         self._client = BleakClient(self.descriptor.address)
         await self._client.connect()
         await self._detect_gatt_profile()
-        if self._rx_char:
-            await self._client.start_notify(self._rx_char, self._on_notification)
+        # Subscribe to every notify-capable characteristic in the matched service.
+        # Devices like Max send accelerometer data on a separate notify characteristic
+        # that is not the primary RX char, so subscribing to only _rx_char misses it.
+        await self._subscribe_all_notify_chars()
         # Identify device via DeviceType; command
         resp = await self._send_command_async("DeviceType", timeout=2.0)
         if resp:
             self._handle_device_type_response(resp)
         # Initial battery read
         await self._read_battery_async()
+
+    async def _subscribe_all_notify_chars(self) -> None:
+        """Subscribe _on_notification to every NOTIFY char in the matched service."""
+        if not self._tx_char:
+            return
+        tx_lower = self._tx_char.lower()
+        for svc in self._client.services:
+            if not any(c.uuid.lower() == tx_lower for c in svc.characteristics):
+                continue
+            for char in svc.characteristics:
+                if "notify" in char.properties:
+                    try:
+                        await self._client.start_notify(char.uuid, self._on_notification)
+                        log.info("[%s] Subscribed notify: %s", self.DEVICE_NAME, char.uuid)
+                    except Exception as exc:
+                        log.debug("[%s] Could not subscribe to %s: %s",
+                                  self.DEVICE_NAME, char.uuid, exc)
+            return
 
     def _handle_device_type_response(self, resp: str) -> None:
         """
