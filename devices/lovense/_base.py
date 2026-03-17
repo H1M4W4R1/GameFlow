@@ -57,6 +57,7 @@ _GATT_PROFILES = [
 ]
 
 # Generation 3 — variable service UUID: XY300001-002Z-4bd4-bbd5-a6920e4c5653
+# Single-char identifiers: byte1=ord(X), byte2=0x30 ('0'), e.g. P→50300001
 _GEN3_PROFILES: list[tuple[str, str, str]] = []
 for _x in (4, 5):
     for _y in range(16):
@@ -65,6 +66,22 @@ for _x in (4, 5):
             _tx  = f"{_x:x}{_y:x}300002-002{_z}-4bd4-bbd5-a6920e4c5653"
             _rx  = f"{_x:x}{_y:x}300003-002{_z}-4bd4-bbd5-a6920e4c5653"
             _GEN3_PROFILES.append((_svc, _tx, _rx))
+
+# Generation 3 — multi-char identifier devices: service UUID encodes the
+# identifier as ASCII hex, e.g. "EL" → 0x45 0x4c → 454c0001-002Z-...
+# These are NOT covered by the XY300001 generator above.
+_MULTI_CHAR_IDENTIFIERS = [
+    "AN", "OC", "ED", "EZ", "EB", "CA", "SD", "BA",
+    "EL", "EA", "WD", "EI", "FS",
+]
+for _ident in _MULTI_CHAR_IDENTIFIERS:
+    _b1, _b2 = ord(_ident[0]), ord(_ident[1])
+    _prefix   = f"{_b1:02x}{_b2:02x}"
+    for _z in (3, 4):
+        _svc = f"{_prefix}0001-002{_z}-4bd4-bbd5-a6920e4c5653"
+        _tx  = f"{_prefix}0002-002{_z}-4bd4-bbd5-a6920e4c5653"
+        _rx  = f"{_prefix}0003-002{_z}-4bd4-bbd5-a6920e4c5653"
+        _GEN3_PROFILES.append((_svc, _tx, _rx))
 
 # Vibration level scale: 0-20 (0=off, 20=max)
 VIBRATE_MAX = 20
