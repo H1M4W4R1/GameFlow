@@ -239,6 +239,13 @@ class MainWindow(QWidget):
         self._device_panel.add_device_requested.connect(self._on_add_device)
         self._device_panel.remove_device_requested.connect(self._on_remove_device)
         self._device_panel.rename_device_requested.connect(self._on_rename_device)
+        self._device_panel.language_changed.connect(
+            lambda code: self._status_bar.setText(
+                tr("ui.status.language_changed").format(code=code)
+                if tr("ui.status.language_changed") != "ui.status.language_changed"
+                else f"Language changed to {code} — restart to apply fully"
+            )
+        )
 
         self._canvas.status_message.connect(self._handle_canvas_message)
         self._canvas.device_highlighted.connect(self._device_panel.highlight_device)

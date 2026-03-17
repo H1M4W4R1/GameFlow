@@ -31,14 +31,33 @@ from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QScrollArea, QFrame, QDialog, QLineEdit, QSizePolicy, QGridLayout, QTabWidget,
+    QComboBox,
 )
 
 from core.device_base import DeviceBase
 from core.device_registry import DeviceRegistry
-from core.localization import tr
+from core.localization import tr, get_current_language, load_language, save_language_pref
 from core.types import DeviceStatus, ConnectionDescriptor, PortKind
 
 log = logging.getLogger(__name__)
+
+# Maps language code → (flag emoji, native name)
+_LANG_INFO: dict[str, tuple[str, str]] = {
+    "EN": ("🇬🇧", "English"),
+    "DE": ("🇩🇪", "Deutsch"),
+    "FR": ("🇫🇷", "Français"),
+    "ES": ("🇪🇸", "Español"),
+    "IT": ("🇮🇹", "Italiano"),
+    "PT": ("🇵🇹", "Português"),
+    "RU": ("🇷🇺", "Русский"),
+    "ZH": ("🇨🇳", "中文"),
+    "JA": ("🇯🇵", "日本語"),
+    "KO": ("🇰🇷", "한국어"),
+    "PL": ("🇵🇱", "Polski"),
+    "NL": ("🇳🇱", "Nederlands"),
+    "SV": ("🇸🇪", "Svenska"),
+    "UK": ("🇺🇦", "Українська"),
+}
 
 STATUS_COLORS = {
     DeviceStatus.CONNECTED:    "#4caf50",
@@ -319,6 +338,7 @@ class DevicePanel(QWidget):
     add_device_requested    = pyqtSignal(str, object)   # class_key, descriptor
     remove_device_requested = pyqtSignal(str)
     rename_device_requested = pyqtSignal(str, str)       # device_id, new_alias
+    language_changed        = pyqtSignal(str)            # lang_code
 
     def __init__(self, registry: DeviceRegistry,
                  parent: Optional[QWidget] = None) -> None:
@@ -388,6 +408,80 @@ class DevicePanel(QWidget):
         self._list_lay.insertWidget(0, self._empty_lbl)
         self._scroll.setWidget(self._list_w)
         root.addWidget(self._scroll)
+
+        # Language selector footer
+        root.addWidget(self._make_lang_footer())
+
+    def _make_lang_footer(self) -> QFrame:
+        """Full-width language combobox at the bottom of the panel."""
+        footer = QFrame()
+        footer.setStyleSheet(
+            "QFrame { background:#150809; border-top:1px solid #2d1020; }"
+        )
+        fl = QHBoxLayout(footer)
+        fl.setContentsMargins(8, 6, 8, 6)
+
+        self._lang_combo = QComboBox()
+        self._lang_combo.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self._lang_combo.setIconSize(QSize(20, 14))
+        self._lang_combo.setStyleSheet("""
+            QComboBox {
+                background: #220d14;
+                color: #c8889a;
+                border: 1px solid #45072f;
+                border-radius: 4px;
+                padding: 3px 8px;
+                font-size: 9pt;
+            }
+            QComboBox:hover { border: 1px solid #c90084; color: #ffd0de; }
+            QComboBox::drop-down { border: none; width: 18px; }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #c8889a;
+                width: 0; height: 0;
+            }
+            QComboBox QAbstractItemView {
+                background: #220d14;
+                color: #ffd0de;
+                selection-background-color: #45072f;
+                border: 1px solid #c90084;
+                outline: none;
+            }
+        """)
+
+        # Populate with available locale files
+        _icons_dir = Path(__file__).parent.parent / "assets" / "icons" / "lang"
+        locales_dir = Path(__file__).parent.parent / "locales"
+        available = sorted(p.stem.upper() for p in locales_dir.glob("*.csv"))
+        current = get_current_language().upper()
+        for code in available:
+            _, name = _LANG_INFO.get(code, ("🌐", code))
+            svg_path = _icons_dir / f"{code}.svg"
+            icon = QIcon(str(svg_path)) if svg_path.exists() else QIcon()
+            self._lang_combo.addItem(icon, name, userData=code)
+
+        # Select current language
+        for i in range(self._lang_combo.count()):
+            if self._lang_combo.itemData(i) == current:
+                self._lang_combo.setCurrentIndex(i)
+                break
+
+        self._lang_combo.currentIndexChanged.connect(self._on_lang_changed)
+
+        fl.addWidget(self._lang_combo)
+        return footer
+
+    def _on_lang_changed(self, index: int) -> None:
+        code = self._lang_combo.itemData(index)
+        if not code or code == get_current_language():
+            return
+        load_language(code)
+        save_language_pref(code)
+        self.language_changed.emit(code)
 
     def _check_ble_adapter(self) -> None:
         """Check for a BLE adapter in a background thread; show banner if absent."""
