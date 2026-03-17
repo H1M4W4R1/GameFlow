@@ -401,6 +401,12 @@ node.pump_set_expected_pumping_time.name,Pompa: Ustaw oczekiwany czas pompowania
 node.pump_lock_valve_remote.name,Pompa: Zablokuj zawór (zdalnie)
 node.pump_get_current_session_time.name,Pompa: Pobierz czas bieżącej sesji
 node.pump_get_current_pumping_time.name,Pompa: Pobierz bieżący czas pompowania
+node.pump_get_pump_state.name,Pompa: Pobierz stan pompy
+node.pump_get_valve_state.name,Pompa: Pobierz stan zaworu
+node.pump_on_pump_status_notification.name,Pompa: Na powiadomienie o stanie pompy
+node.pump_on_valve_status_notification.name,Pompa: Na powiadomienie o stanie zaworu
+node.pump_on_current_session_time.name,Pompa: Na bieżący czas sesji
+node.pump_on_current_pumping_time.name,Pompa: Na bieżący czas pompowania
 node.pump_stop_pump_off_valve_open.name,Pompa: Zatrzymaj (pompa wył, zawór otwarty)
 node.coyote_build_waveform.name,Coyote: Zbuduj przebieg
 node.coyote_set_waveform_a.name,Coyote: Ustaw przebieg A

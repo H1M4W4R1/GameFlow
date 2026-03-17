@@ -17,6 +17,9 @@ import logging
 import sys
 from pathlib import Path
 
+from bleak.backends.winrt.util import allow_sta
+allow_sta()
+
 # Ensure project root is in path
 PROJECT_ROOT = Path(__file__).parent
 if str(PROJECT_ROOT) not in sys.path:

@@ -96,15 +96,26 @@ class H1M4W4R1Pump(DeviceBase):
         from bleak import BleakClient  # type: ignore
         self._client = BleakClient(self.descriptor.address)
         await self._client.connect()
-        # Optional: subscribe to notify on current session / current pump if device supports it
+
+        await asyncio.sleep(0.1)
+
         try:
             await self._client.start_notify(CHAR_CURRENT_SESSION, self._on_session_notify)
-        except Exception:
-            pass
+        except Exception as e0:
+            log.warning("Notification setup for current session time failed.")
         try:
             await self._client.start_notify(CHAR_CURRENT_PUMP, self._on_pump_notify)
-        except Exception:
-            pass
+        except Exception as e1:
+            log.warning("Notification setup for current pumping time failed.")
+
+        try:
+            await self._client.start_notify(CHAR_PUMP_STATUS, self._on_pump_status_notify)
+        except Exception as e2:
+            log.warning("Notification setup for current pump status failed.")
+        try:
+            await self._client.start_notify(CHAR_VALVE_STATUS, self._on_valve_status_notify)
+        except Exception as e3:
+            log.warning("Notification setup for current valve status failed.")
         # Initial read of read-only values
         await self._read_times_async()
 
@@ -120,6 +131,20 @@ class H1M4W4R1Pump(DeviceBase):
         self.data_received.emit({
             "type": "current_pump",
             "seconds": self._current_pump_sec,
+        })
+
+    def _on_pump_status_notify(self, _sender: Any, data: bytes) -> None:
+        value = _unpack_bool(data)
+        self.data_received.emit({
+            "type": "pump_status",
+            "value": value,
+        })
+
+    def _on_valve_status_notify(self, _sender: Any, data: bytes) -> None:
+        value = _unpack_bool(data)
+        self.data_received.emit({
+            "type": "valve_status",
+            "value": value,
         })
 
     async def _read_times_async(self) -> None:
@@ -216,6 +241,14 @@ class H1M4W4R1Pump(DeviceBase):
             self._current_pump_sec = _unpack_uint32(data)
             return self._current_pump_sec
 
+        if name == "get_pump_state":
+            data = await self._read_char(CHAR_PUMP_STATUS)
+            return _unpack_bool(data)
+
+        if name == "get_valve_state":
+            data = await self._read_char(CHAR_VALVE_STATUS)
+            return _unpack_bool(data)
+
         if name == "stop":
             await self._write_char(CHAR_PUMP_STATUS, _pack_bool(False))
             await self._write_char(CHAR_VALVE_STATUS, _pack_bool(True))
@@ -235,6 +268,12 @@ class H1M4W4R1Pump(DeviceBase):
             f"{__name__}.PumpSetValveLockNode",
             f"{__name__}.PumpGetCurrentSessionNode",
             f"{__name__}.PumpGetCurrentPumpNode",
+            f"{__name__}.PumpGetPumpStateNode",
+            f"{__name__}.PumpGetValveStateNode",
+            f"{__name__}.PumpStatusNotificationNode",
+            f"{__name__}.PumpValveStatusNotificationNode",
+            f"{__name__}.PumpCurrentSessionTimeNode",
+            f"{__name__}.PumpCurrentPumpingTimeNode",
             f"{__name__}.PumpStopNode",
         ]
 
@@ -415,6 +454,266 @@ class PumpStopNode(_PumpNodeBase):
             self.fire_tick("exec_out")
 
 
+class PumpGetPumpStateNode(_PumpNodeBase):
+    NODE_NAME = "Pump: Get pump state"
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",     PinDirection.OUTPUT, PinType.BOOL),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if not dev:
+            self.set_output("value", False)
+            self.fire_tick("exec_out")
+            return
+
+        def done(state: bool) -> None:
+            self.set_output("value", state)
+            self.fire_tick("exec_out")
+
+        def fail(_: Exception) -> None:
+            self.set_output("value", False)
+            self.fire_tick("exec_out")
+
+        dev.send_command("get_pump_state", {}, on_success=done, on_failure=fail)
+
+
+class PumpGetValveStateNode(_PumpNodeBase):
+    NODE_NAME = "Pump: Get valve state"
+    PINS = [
+        PinDescriptor("exec_in",   PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("exec_out",  PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",     PinDirection.OUTPUT, PinType.BOOL),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        dev = self.get_device()
+        if not dev:
+            self.set_output("value", False)
+            self.fire_tick("exec_out")
+            return
+
+        def done(state: bool) -> None:
+            self.set_output("value", state)
+            self.fire_tick("exec_out")
+
+        def fail(_: Exception) -> None:
+            self.set_output("value", False)
+            self.fire_tick("exec_out")
+
+        dev.send_command("get_valve_state", {}, on_success=done, on_failure=fail)
+
+
+class PumpStatusNotificationNode(_PumpNodeBase):
+    NODE_NAME = "Pump: On pump status notification"
+    PINS = [
+        PinDescriptor("pump_on",   PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("pump_off",  PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",     PinDirection.OUTPUT, PinType.BOOL),
+    ]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._connected_dev = None
+
+    def on_start(self) -> None:
+        self._connected_dev = None
+        self._sync_device_signal()
+
+    def on_stop(self) -> None:
+        self._disconnect_signal()
+
+    def on_tick_check(self) -> None:
+        # Re-wire if device becomes available after graph start or changes.
+        self._sync_device_signal()
+
+    def _sync_device_signal(self) -> None:
+        dev = self.get_device()
+        if dev is self._connected_dev:
+            return
+        self._disconnect_signal()
+        self._connected_dev = dev
+        if dev:
+            dev.data_received.connect(self._on_data)
+
+    def _disconnect_signal(self) -> None:
+        if self._connected_dev is not None:
+            try:
+                self._connected_dev.data_received.disconnect(self._on_data)
+            except Exception:
+                pass
+            self._connected_dev = None
+
+    def _on_data(self, payload: dict) -> None:
+        if payload.get("type") != "pump_status":
+            return
+        value = payload.get("value", False)
+        self.set_output("value", value)
+        if value:
+            self.fire_tick("pump_on")
+        else:
+            self.fire_tick("pump_off")
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
+class PumpValveStatusNotificationNode(_PumpNodeBase):
+    NODE_NAME = "Pump: On valve status notification"
+    PINS = [
+        PinDescriptor("valve_on",  PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("valve_off", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",     PinDirection.OUTPUT, PinType.BOOL),
+    ]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._connected_dev = None
+
+    def on_start(self) -> None:
+        self._connected_dev = None
+        self._sync_device_signal()
+
+    def on_stop(self) -> None:
+        self._disconnect_signal()
+
+    def on_tick_check(self) -> None:
+        # Re-wire if device becomes available after graph start or changes.
+        self._sync_device_signal()
+
+    def _sync_device_signal(self) -> None:
+        dev = self.get_device()
+        if dev is self._connected_dev:
+            return
+        self._disconnect_signal()
+        self._connected_dev = dev
+        if dev:
+            dev.data_received.connect(self._on_data)
+
+    def _disconnect_signal(self) -> None:
+        if self._connected_dev is not None:
+            try:
+                self._connected_dev.data_received.disconnect(self._on_data)
+            except Exception:
+                pass
+            self._connected_dev = None
+
+    def _on_data(self, payload: dict) -> None:
+        if payload.get("type") != "valve_status":
+            return
+        value = payload.get("value", False)
+        self.set_output("value", value)
+        if value:
+            self.fire_tick("valve_on")
+        else:
+            self.fire_tick("valve_off")
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
+class PumpCurrentSessionTimeNode(_PumpNodeBase):
+    NODE_NAME = "Pump: On current session time"
+    PINS = [
+        PinDescriptor("on_received",  PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("seconds",      PinDirection.OUTPUT, PinType.INT),
+    ]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._connected_dev = None
+
+    def on_start(self) -> None:
+        self._connected_dev = None
+        self._sync_device_signal()
+
+    def on_stop(self) -> None:
+        self._disconnect_signal()
+
+    def on_tick_check(self) -> None:
+        # Re-wire if device becomes available after graph start or changes.
+        self._sync_device_signal()
+
+    def _sync_device_signal(self) -> None:
+        dev = self.get_device()
+        if dev is self._connected_dev:
+            return
+        self._disconnect_signal()
+        self._connected_dev = dev
+        if dev:
+            dev.data_received.connect(self._on_data)
+
+    def _disconnect_signal(self) -> None:
+        if self._connected_dev is not None:
+            try:
+                self._connected_dev.data_received.disconnect(self._on_data)
+            except Exception:
+                pass
+            self._connected_dev = None
+
+    def _on_data(self, payload: dict) -> None:
+        if payload.get("type") != "current_session":
+            return
+        seconds = payload.get("seconds", 0)
+        self.set_output("seconds", seconds)
+        self.fire_tick("on_received")
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
+class PumpCurrentPumpingTimeNode(_PumpNodeBase):
+    NODE_NAME = "Pump: On current pumping time"
+    PINS = [
+        PinDescriptor("on_received",  PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("seconds",      PinDirection.OUTPUT, PinType.INT),
+    ]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._connected_dev = None
+
+    def on_start(self) -> None:
+        self._connected_dev = None
+        self._sync_device_signal()
+
+    def on_stop(self) -> None:
+        self._disconnect_signal()
+
+    def on_tick_check(self) -> None:
+        # Re-wire if device becomes available after graph start or changes.
+        self._sync_device_signal()
+
+    def _sync_device_signal(self) -> None:
+        dev = self.get_device()
+        if dev is self._connected_dev:
+            return
+        self._disconnect_signal()
+        self._connected_dev = dev
+        if dev:
+            dev.data_received.connect(self._on_data)
+
+    def _disconnect_signal(self) -> None:
+        if self._connected_dev is not None:
+            try:
+                self._connected_dev.data_received.disconnect(self._on_data)
+            except Exception:
+                pass
+            self._connected_dev = None
+
+    def _on_data(self, payload: dict) -> None:
+        if payload.get("type") != "current_pump":
+            return
+        seconds = payload.get("seconds", 0)
+        self.set_output("seconds", seconds)
+        self.fire_tick("on_received")
+
+    def execute(self, trigger_pin: str) -> None:
+        pass
+
+
 # ── Exports for registry ─────────────────────────────────────────────────────
 
 ALL_DEVICE_CLASSES = [H1M4W4R1Pump]
@@ -427,5 +726,11 @@ ALL_NODE_CLASSES = [
     PumpSetValveLockNode,
     PumpGetCurrentSessionNode,
     PumpGetCurrentPumpNode,
+    PumpGetPumpStateNode,
+    PumpGetValveStateNode,
+    PumpStatusNotificationNode,
+    PumpValveStatusNotificationNode,
+    PumpCurrentSessionTimeNode,
+    PumpCurrentPumpingTimeNode,
     PumpStopNode,
 ]

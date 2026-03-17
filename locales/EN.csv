@@ -401,6 +401,12 @@ node.pump_set_expected_pumping_time.name,Pump: Set expected pumping time
 node.pump_lock_valve_remote.name,Pump: Lock valve (remote)
 node.pump_get_current_session_time.name,Pump: Get current session time
 node.pump_get_current_pumping_time.name,Pump: Get current pumping time
+node.pump_get_pump_state.name,Pump: Get pump state
+node.pump_get_valve_state.name,Pump: Get valve state
+node.pump_on_pump_status_notification.name,Pump: On pump status notification
+node.pump_on_valve_status_notification.name,Pump: On valve status notification
+node.pump_on_current_session_time.name,Pump: On current session time
+node.pump_on_current_pumping_time.name,Pump: On current pumping time
 node.pump_stop_pump_off_valve_open.name,Pump: Stop (pump off, valve open)
 node.coyote_build_waveform.name,Coyote: Build Waveform
 node.coyote_set_waveform_a.name,Coyote: Set waveform A

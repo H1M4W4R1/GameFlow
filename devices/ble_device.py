@@ -78,8 +78,8 @@ class BLEDevice(DeviceBase):
         if not self._client:
             raise ConnectionError("Not connected")
         # Check bleak internal connected state
-        if not self._client.is_connected:
-            raise ConnectionError("BLE disconnected")
+        # if not self._client.is_connected: C/O because bleak sucks
+        #    raise ConnectionError("BLE disconnected")
         return True
 
     def _execute_command(self, command: DeviceCommand) -> Any:
