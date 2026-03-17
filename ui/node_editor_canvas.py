@@ -1245,18 +1245,25 @@ class NodeEditorCanvas(QWidget):
                 dx = scene.x() - self._resize_mouse_start.x()
                 dy = scene.y() - self._resize_mouse_start.y()
                 sr = self._resize_group_start
+                snap = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
                 if "e" in self._resize_corner:
-                    grp.width  = max(GROUP_MIN_W, sr.width()  + dx)
+                    raw = sr.width() + dx
+                    if snap: raw = round(raw / GRID_MINOR) * GRID_MINOR
+                    grp.width  = max(GROUP_MIN_W, raw)
                 if "s" in self._resize_corner:
-                    grp.height = max(GROUP_MIN_H, sr.height() + dy)
+                    raw = sr.height() + dy
+                    if snap: raw = round(raw / GRID_MINOR) * GRID_MINOR
+                    grp.height = max(GROUP_MIN_H, raw)
                 if "w" in self._resize_corner:
                     nw = sr.width() - dx
+                    if snap: nw = round(nw / GRID_MINOR) * GRID_MINOR
                     if nw >= GROUP_MIN_W:
-                        grp.x = sr.x() + dx; grp.width = nw
+                        grp.x = sr.right() - nw; grp.width = nw
                 if "n" in self._resize_corner:
                     nh = sr.height() - dy
+                    if snap: nh = round(nh / GRID_MINOR) * GRID_MINOR
                     if nh >= GROUP_MIN_H:
-                        grp.y = sr.y() + dy; grp.height = nh
+                        grp.y = sr.bottom() - nh; grp.height = nh
             self.update(); return
 
         if self._dragging_group:
@@ -1265,13 +1272,20 @@ class NodeEditorCanvas(QWidget):
             if grp:
                 dx = scene.x() - self._drag_group_start.x()
                 dy = scene.y() - self._drag_group_start.y()
-                grp.x = self._drag_group_pos_start.x() + dx
-                grp.y = self._drag_group_pos_start.y() + dy
+                raw_x = self._drag_group_pos_start.x() + dx
+                raw_y = self._drag_group_pos_start.y() + dy
+                if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                    raw_x = round(raw_x / GRID_MINOR) * GRID_MINOR
+                    raw_y = round(raw_y / GRID_MINOR) * GRID_MINOR
+                snap_dx = raw_x - self._drag_group_pos_start.x()
+                snap_dy = raw_y - self._drag_group_pos_start.y()
+                grp.x = raw_x
+                grp.y = raw_y
                 for nid, sp in self._drag_group_nodes_start.items():
                     n = self._runtime.get_node(nid)
                     if n:
-                        n.x = sp.x() + dx
-                        n.y = sp.y() + dy
+                        n.x = sp.x() + snap_dx
+                        n.y = sp.y() + snap_dy
             self.update(); return
 
         if self._rubber_band_active:
@@ -1305,17 +1319,28 @@ class NodeEditorCanvas(QWidget):
             scene = self._v2s(event.position())
             dx = scene.x() - self._drag_start_scene.x()
             dy = scene.y() - self._drag_start_scene.y()
+            snap = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
             if len(self._drag_nodes_start) > 1:
                 for sid, sp in self._drag_nodes_start.items():
                     sn = self._runtime.get_node(sid)
                     if sn:
-                        sn.x = sp.x() + dx
-                        sn.y = sp.y() + dy
+                        raw_x = sp.x() + dx
+                        raw_y = sp.y() + dy
+                        if snap:
+                            raw_x = round(raw_x / GRID_MINOR) * GRID_MINOR
+                            raw_y = round(raw_y / GRID_MINOR) * GRID_MINOR
+                        sn.x = raw_x
+                        sn.y = raw_y
             else:
                 node = self._runtime.get_node(self._dragging_node)
                 if node:
-                    node.x = self._drag_node_start.x() + dx
-                    node.y = self._drag_node_start.y() + dy
+                    raw_x = self._drag_node_start.x() + dx
+                    raw_y = self._drag_node_start.y() + dy
+                    if snap:
+                        raw_x = round(raw_x / GRID_MINOR) * GRID_MINOR
+                        raw_y = round(raw_y / GRID_MINOR) * GRID_MINOR
+                    node.x = raw_x
+                    node.y = raw_y
             self.update(); return
         if self._wire_src:
             self._wire_mouse = self._v2s(event.position()); self.update()

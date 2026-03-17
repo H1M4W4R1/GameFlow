@@ -44,10 +44,11 @@ class CounterNode(NodeBase):
         PinDescriptor("step",       PinDirection.INPUT,  PinType.INT, optional=True),
         PinDescriptor("min_val",    PinDirection.INPUT,  PinType.INT, optional=True),
         PinDescriptor("max_val",    PinDirection.INPUT,  PinType.INT, optional=True),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("on_min", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("on_max", PinDirection.OUTPUT, PinType.TICK),
         PinDescriptor("count",      PinDirection.OUTPUT, PinType.INT),
-        PinDescriptor("exec_out",   PinDirection.OUTPUT, PinType.TICK),
-        PinDescriptor("on_min",     PinDirection.OUTPUT, PinType.TICK),
-        PinDescriptor("on_max",     PinDirection.OUTPUT, PinType.TICK),
+
     ]
     # step/min/max: editable inline AND overridable by wiring an INT to the pin
     VARIABLE_INPUTS = {

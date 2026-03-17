@@ -45,12 +45,12 @@ class DFlipFlopNode(NodeBase):
                       tooltip="Data input"),
         PinDescriptor("rst_n", PinDirection.INPUT,  PinType.BOOL, default=True,
                       tooltip="Async reset, active-low (False = reset Q to 0)"),
+        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
+                      tooltip="Fires when Q changes value"),
         PinDescriptor("q",     PinDirection.OUTPUT, PinType.BOOL, default=False,
                       tooltip="Output Q"),
         PinDescriptor("q_not", PinDirection.OUTPUT, PinType.BOOL, default=True,
                       tooltip="Inverted output Q̄"),
-        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
-                      tooltip="Fires when Q changes value"),
     ]
 
     VARIABLE_INPUTS = {
@@ -134,12 +134,12 @@ class TFlipFlopNode(NodeBase):
                       tooltip="Toggle enable (True = toggle Q on CLK)"),
         PinDescriptor("rst_n", PinDirection.INPUT,  PinType.BOOL, default=True,
                       tooltip="Async reset, active-low (False = reset Q to 0)"),
+        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
+                      tooltip="Fires when Q changes value"),
         PinDescriptor("q",     PinDirection.OUTPUT, PinType.BOOL, default=False,
                       tooltip="Output Q"),
         PinDescriptor("q_not", PinDirection.OUTPUT, PinType.BOOL, default=True,
                       tooltip="Inverted output Q̄"),
-        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
-                      tooltip="Fires when Q changes value"),
     ]
 
     VARIABLE_INPUTS = {
@@ -227,12 +227,12 @@ class JKFlipFlopNode(NodeBase):
                       tooltip="K (Reset) input"),
         PinDescriptor("rst_n", PinDirection.INPUT,  PinType.BOOL, default=True,
                       tooltip="Async reset, active-low (False = reset Q to 0)"),
+        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
+                      tooltip="Fires when Q changes value"),
         PinDescriptor("q",     PinDirection.OUTPUT, PinType.BOOL, default=False,
                       tooltip="Output Q"),
         PinDescriptor("q_not", PinDirection.OUTPUT, PinType.BOOL, default=True,
                       tooltip="Inverted output Q̄"),
-        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
-                      tooltip="Fires when Q changes value"),
     ]
 
     VARIABLE_INPUTS = {
@@ -329,12 +329,12 @@ class SRFlipFlopNode(NodeBase):
                       tooltip="R (Reset) input — forces Q = 0"),
         PinDescriptor("rst_n", PinDirection.INPUT,  PinType.BOOL, default=True,
                       tooltip="Async reset, active-low (False = reset Q to 0)"),
+        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
+                      tooltip="Fires when Q changes value"),
         PinDescriptor("q",     PinDirection.OUTPUT, PinType.BOOL, default=False,
                       tooltip="Output Q"),
         PinDescriptor("q_not", PinDirection.OUTPUT, PinType.BOOL, default=True,
                       tooltip="Inverted output Q̄"),
-        PinDescriptor("changed", PinDirection.OUTPUT, PinType.TICK,
-                      tooltip="Fires when Q changes value"),
     ]
 
     VARIABLE_INPUTS = {

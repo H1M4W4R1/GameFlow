@@ -23,7 +23,7 @@ from core.types     import PinDescriptor, PinDirection, PinType
 class TimeSinceStartNode(NodeBase):
     """Outputs seconds (float) since the graph started. Updates every tick check."""
     NODE_NAME  = "Time Since Start"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Acquire"
     PINS = [
         PinDescriptor("seconds", PinDirection.OUTPUT, PinType.FLOAT),
     ]
@@ -59,7 +59,7 @@ class TimeSinceStartNode(NodeBase):
 class EpochSecondsNode(NodeBase):
     """Outputs current time as seconds since Unix epoch. Updates every tick check."""
     NODE_NAME  = "Epoch Seconds"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Acquire"
     PINS = [
         PinDescriptor("seconds", PinDirection.OUTPUT, PinType.FLOAT),
     ]
@@ -83,7 +83,7 @@ class EpochSecondsNode(NodeBase):
 class CurrentDateTimeNode(NodeBase):
     """Outputs current time as DATETIME (epoch seconds, float). Updates every tick check."""
     NODE_NAME  = "Current DateTime"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Acquire"
     PINS = [
         PinDescriptor("datetime", PinDirection.OUTPUT, PinType.DATETIME),
     ]
@@ -107,7 +107,7 @@ class SpecifiedDateTimeNode(NodeBase):
     Editable field: epoch seconds (float). Or connect a float to override.
     """
     NODE_NAME  = "Specified DateTime"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Acquire"
     PINS = [
         PinDescriptor("epoch_seconds", PinDirection.INPUT, PinType.FLOAT, optional=True),
         PinDescriptor("datetime",     PinDirection.OUTPUT, PinType.DATETIME),
@@ -149,7 +149,7 @@ class DelayNode(NodeBase):
     'hold' (bool) pauses the countdown while True.
     """
     NODE_NAME  = "Delay"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Waiting"
     PINS = [
         PinDescriptor("start",      PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("stop",       PinDirection.INPUT,  PinType.TICK),
@@ -251,7 +251,7 @@ class TimerNode(NodeBase):
     'hold' (bool) pauses firing while True.
     """
     NODE_NAME  = "Timer"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Waiting"
     PINS = [
         PinDescriptor("start",      PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("stop",       PinDirection.INPUT,  PinType.TICK),
@@ -353,7 +353,7 @@ class DeltaTimeNode(NodeBase):
     On the first exec_in, outputs time since graph start.
     """
     NODE_NAME  = "Delta Time"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Acquire"
     PINS = [
         PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("delta_s",  PinDirection.OUTPUT, PinType.FLOAT),
@@ -412,7 +412,7 @@ class CountdownNode(NodeBase):
     the next 'reset' or 'start'.  'hold' (bool) pauses the countdown while True.
     """
     NODE_NAME  = "Countdown"
-    NODE_GROUP = "Time"
+    NODE_GROUP = "Time/Waiting"
     PINS = [
         PinDescriptor("start",       PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("reset",       PinDirection.INPUT,  PinType.TICK),
