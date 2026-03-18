@@ -450,3 +450,7 @@ node.rising_trigger.name,Rising Trigger
 node.falling_trigger.name,Falling Trigger
 node.ddr_trigger.name,DDR Trigger
 node.group.triggers,Triggers
+node.async_sr_flip_flop.name,Async SR Flip-Flop
+node.async_jk_flip_flop.name,Async JK Flip-Flop
+node.async_t_flip_flop.name,Async T Flip-Flop
+node.async_memory_cell.name,Async Memory Cell

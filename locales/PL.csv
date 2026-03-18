@@ -450,3 +450,7 @@ node.rising_trigger.name,Wyzwalacz Rosnący
 node.falling_trigger.name,Wyzwalacz Malejący
 node.ddr_trigger.name,Wyzwalacz DDR
 node.group.triggers,Wyzwalacze
+node.async_sr_flip_flop.name,Asynchroniczny Flip-Flop SR
+node.async_jk_flip_flop.name,Asynchroniczny Flip-Flop JK
+node.async_t_flip_flop.name,Asynchroniczny Flip-Flop T
+node.async_memory_cell.name,Asynchroniczna Komórka Pamięci
