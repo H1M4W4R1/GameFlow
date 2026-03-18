@@ -120,7 +120,7 @@ class RandomNode(NodeBase):
     FLOAT pin directly (same VARIABLE_INPUTS pattern as CounterNode).
     """
     NODE_NAME  = "Randomizer"
-    NODE_GROUP = "Utility"
+    NODE_GROUP = "Math/Random"
     PINS = [
         PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
         PinDescriptor("min_val",  PinDirection.INPUT,  PinType.FLOAT, optional=True),
@@ -154,7 +154,7 @@ class RandomDataNode(NodeBase):
     FLOAT pin directly.
     """
     NODE_NAME  = "Random"
-    NODE_GROUP = "Utility"
+    NODE_GROUP = "Math/Random"
     _TR_KEY    = "random_data"
     PINS = [
         PinDescriptor("min_val", PinDirection.INPUT,  PinType.FLOAT, optional=True),
@@ -247,7 +247,7 @@ class FrequencyGeneratorNode(NodeBase):
     Frequency is read on every tick so changes take effect immediately.
     """
     NODE_NAME  = "Frequency Generator"
-    NODE_GROUP = "Utility"
+    NODE_GROUP = "Time/Waveforms"
     PINS = [
         PinDescriptor("frequency", PinDirection.INPUT,  PinType.FLOAT, optional=True),
         PinDescriptor("enable",    PinDirection.INPUT,  PinType.BOOL,  optional=True),
@@ -354,7 +354,7 @@ class ValuePortalInput(NodeBase):
     The portal name is the node's custom_name (set by renaming the node).
     """
     NODE_NAME  = "Value Portal Input"
-    NODE_GROUP = "Utility"
+    NODE_GROUP = "Portals"
     _TR_KEY    = "value_portal_input"
     PINS = [
         PinDescriptor("input", PinDirection.INPUT, PinType.ANY),
@@ -386,7 +386,7 @@ class ValuePortalOutput(NodeBase):
     The portal name is the node's custom_name (set by renaming the node).
     """
     NODE_NAME  = "Value Portal Output"
-    NODE_GROUP = "Utility"
+    NODE_GROUP = "Portals"
     _TR_KEY    = "value_portal_output"
     PINS = [
         PinDescriptor("value", PinDirection.OUTPUT, PinType.ANY),
@@ -423,7 +423,7 @@ class TickPortalInput(NodeBase):
     Matching is done dynamically at fire-time so renames take effect immediately.
     """
     NODE_NAME  = "Tick Portal Input"
-    NODE_GROUP = "Utility"
+    NODE_GROUP = "Portals"
     _TR_KEY    = "tick_portal_input"
     PINS = [
         PinDescriptor("exec_in",  PinDirection.INPUT,  PinType.TICK),
@@ -455,7 +455,7 @@ class TickPortalOutput(NodeBase):
     The portal name is the node's custom_name (set by renaming the node).
     """
     NODE_NAME  = "Tick Portal Output"
-    NODE_GROUP = "Utility"
+    NODE_GROUP = "Portals"
     _TR_KEY    = "tick_portal_output"
     PINS = [
         PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),

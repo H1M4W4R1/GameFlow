@@ -185,6 +185,7 @@ node.group.math_min_max,Math / Min-Max
 node.group.math_rounding,Math / Rounding
 node.group.math_interpolation,Math / Interpolation
 node.group.math_vector,Math / Vector
+node.group.math_random,Math / Random
 node.time_since_start.name,Time Since Start
 node.epoch_seconds.name,Epoch Seconds
 node.current_datetime.name,Current DateTime
@@ -309,6 +310,7 @@ node.group.math_filters,Math / Filters
 node.group.time_waveforms,Time/Waveforms
 node.group.time_acquire,Time/Acquire
 node.group.time_waiting,Time/Waiting
+node.group.portals,Portals
 node.group.devices_lovense_lush,Devices/Lovense/Lush
 node.group.devices_lovense_hush,Devices/Lovense/Hush
 node.group.devices_lovense_domi,Devices/Lovense/Domi

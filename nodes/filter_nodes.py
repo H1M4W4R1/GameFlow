@@ -35,7 +35,7 @@ class _FilterBase(NodeBase):
     Subclasses must implement _filter(x: float) -> float and
     _reset_state() to clear any internal filter memory.
     """
-    NODE_GROUP = "Math / Filters"
+    NODE_GROUP = "Math/Filters"
     PINS = [
         PinDescriptor("value",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("cutoff_hz",  PinDirection.INPUT,  PinType.FLOAT, default=1.0),
@@ -199,7 +199,7 @@ class BandPassFilterNode(NodeBase):
     Pure data node — no TICK I/O.
     """
     NODE_NAME  = "Band Pass Filter"
-    NODE_GROUP = "Math / Filters"
+    NODE_GROUP = "Math/Filters"
     PINS = [
         PinDescriptor("value",    PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("fc_low",   PinDirection.INPUT,  PinType.FLOAT, default=0.5),

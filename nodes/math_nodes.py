@@ -63,7 +63,7 @@ class _BinaryMathNode(NodeBase):
     Operations are applied component-wise to vectors/colors, or as scalars.
     Subclasses implement _compute().
     """
-    NODE_GROUP = "Math / Arithmetic"
+    NODE_GROUP = "Math/Arithmetic"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY, default=0.0),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.ANY, default=0.0),
@@ -102,7 +102,7 @@ class _BinaryMathNode(NodeBase):
 
 class _UnaryMathNode(NodeBase):
     """Internal base for single-input math nodes. Operates component-wise on vectors/colors."""
-    NODE_GROUP = "Math / Arithmetic"
+    NODE_GROUP = "Math/Arithmetic"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY, default=0.0),
         PinDescriptor("result", PinDirection.OUTPUT, PinType.ANY),
@@ -198,7 +198,7 @@ class PowerNode(_BinaryMathNode):
 class MinNode(_BinaryMathNode):
     """min(a, b)  (component-wise for vectors/colors)"""
     NODE_NAME    = "Min"
-    NODE_GROUP   = "Math / Min-Max"
+    NODE_GROUP   = "Math/Min-Max"
     PAINT_SYMBOL = "min(a,b)"
 
     def _compute(self) -> None:
@@ -208,7 +208,7 @@ class MinNode(_BinaryMathNode):
 class MaxNode(_BinaryMathNode):
     """max(a, b)  (component-wise for vectors/colors)"""
     NODE_NAME    = "Max"
-    NODE_GROUP   = "Math / Min-Max"
+    NODE_GROUP   = "Math/Min-Max"
     PAINT_SYMBOL = "max(a,b)"
 
     def _compute(self) -> None:
@@ -258,7 +258,7 @@ class OneMinusNode(_UnaryMathNode):
 class SinNode(_UnaryMathNode):
     """sin(a)  [radians, component-wise for vectors]"""
     NODE_NAME    = "Sin"
-    NODE_GROUP   = "Math / Trigonometric"
+    NODE_GROUP   = "Math/Trigonometric"
     PAINT_SYMBOL = "sin(a)"
 
     def _compute(self) -> None:
@@ -268,7 +268,7 @@ class SinNode(_UnaryMathNode):
 class CosNode(_UnaryMathNode):
     """cos(a)  [radians, component-wise for vectors]"""
     NODE_NAME    = "Cos"
-    NODE_GROUP   = "Math / Trigonometric"
+    NODE_GROUP   = "Math/Trigonometric"
     PAINT_SYMBOL = "cos(a)"
 
     def _compute(self) -> None:
@@ -278,7 +278,7 @@ class CosNode(_UnaryMathNode):
 class TanNode(_UnaryMathNode):
     """tan(a)  [radians, component-wise for vectors]"""
     NODE_NAME    = "Tan"
-    NODE_GROUP   = "Math / Trigonometric"
+    NODE_GROUP   = "Math/Trigonometric"
     PAINT_SYMBOL = "tan(a)"
 
     def _compute(self) -> None:
@@ -297,7 +297,7 @@ class SqrtNode(_UnaryMathNode):
 class ExpNode(_UnaryMathNode):
     """e^a  (component-wise for vectors; clamps at overflow)"""
     NODE_NAME    = "Exp"
-    NODE_GROUP   = "Math / Logarithm"
+    NODE_GROUP   = "Math/Logarithm"
     PAINT_SYMBOL = "e^a"
 
     def _compute(self) -> None:
@@ -312,7 +312,7 @@ class ExpNode(_UnaryMathNode):
 class LogNode(_UnaryMathNode):
     """ln(a)  — natural logarithm; returns 0 for a ≤ 0 (component-wise for vectors)"""
     NODE_NAME    = "Log"
-    NODE_GROUP   = "Math / Logarithm"
+    NODE_GROUP   = "Math/Logarithm"
     PAINT_SYMBOL = "ln(a)"
 
     def _compute(self) -> None:
@@ -324,7 +324,7 @@ class LogNode(_UnaryMathNode):
 class Log10Node(_UnaryMathNode):
     """log₁₀(a)  — common logarithm; returns 0 for a ≤ 0 (component-wise for vectors)"""
     NODE_NAME    = "Log10"
-    NODE_GROUP   = "Math / Logarithm"
+    NODE_GROUP   = "Math/Logarithm"
     PAINT_SYMBOL = "log₁₀(a)"
 
     def _compute(self) -> None:
@@ -336,7 +336,7 @@ class Log10Node(_UnaryMathNode):
 class LogNNode(_BinaryMathNode):
     """log_b(a)  — logarithm of a in base b; returns 0 for invalid domain (component-wise)"""
     NODE_NAME    = "LogN"
-    NODE_GROUP   = "Math / Logarithm"
+    NODE_GROUP   = "Math/Logarithm"
     PAINT_SYMBOL = "log_b(a)"
 
     def _compute(self) -> None:
@@ -365,7 +365,7 @@ class SignNode(_UnaryMathNode):
 class FloorNode(_UnaryMathNode):
     """⌊ a ⌋  (component-wise for vectors/colors)"""
     NODE_NAME    = "Floor"
-    NODE_GROUP   = "Math / Rounding"
+    NODE_GROUP   = "Math/Rounding"
     PAINT_SYMBOL = "⌊ a ⌋"
 
     def _compute(self) -> None:
@@ -375,7 +375,7 @@ class FloorNode(_UnaryMathNode):
 class CeilNode(_UnaryMathNode):
     """⌈ a ⌉  (component-wise for vectors/colors)"""
     NODE_NAME    = "Ceil"
-    NODE_GROUP   = "Math / Rounding"
+    NODE_GROUP   = "Math/Rounding"
     PAINT_SYMBOL = "⌈ a ⌉"
 
     def _compute(self) -> None:
@@ -385,7 +385,7 @@ class CeilNode(_UnaryMathNode):
 class RoundNode(_UnaryMathNode):
     """round(a)  (component-wise for vectors/colors)"""
     NODE_NAME    = "Round"
-    NODE_GROUP   = "Math / Rounding"
+    NODE_GROUP   = "Math/Rounding"
     PAINT_SYMBOL = "round(a)"
 
     def _compute(self) -> None:
@@ -403,7 +403,7 @@ class ClampNode(NodeBase):
     Pure data — reacts instantly on any input change.
     """
     NODE_NAME  = "Clamp"
-    NODE_GROUP = "Math / Min-Max"
+    NODE_GROUP = "Math/Min-Max"
     PINS = [
         PinDescriptor("value",   PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("min_val", PinDirection.INPUT,  PinType.FLOAT, default=0.0),
@@ -461,7 +461,7 @@ class LerpNode(NodeBase):
     Pure data node.
     """
     NODE_NAME  = "Lerp"
-    NODE_GROUP = "Math / Interpolation"
+    NODE_GROUP = "Math/Interpolation"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.FLOAT, default=1.0),
@@ -504,7 +504,7 @@ class MapRangeNode(NodeBase):
     Pure data node; range limits settable via editable fields.
     """
     NODE_NAME  = "Map Range"
-    NODE_GROUP = "Math / Interpolation"
+    NODE_GROUP = "Math/Interpolation"
     PINS = [
         PinDescriptor("value",   PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("result",  PinDirection.OUTPUT, PinType.FLOAT),
@@ -573,7 +573,7 @@ def _f(v, i):
 class Vector2DConstructorNode(NodeBase):
     """Build a Vector2D from x, y components."""
     NODE_NAME  = "Vector2D"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("x",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("y",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
@@ -602,7 +602,7 @@ class Vector2DConstructorNode(NodeBase):
 class Vector3DConstructorNode(NodeBase):
     """Build a Vector3D from x, y, z components."""
     NODE_NAME  = "Vector3D"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("x",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("y",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
@@ -633,7 +633,7 @@ class Vector3DConstructorNode(NodeBase):
 class Vector4DConstructorNode(NodeBase):
     """Build a Vector4D from x, y, z, w components."""
     NODE_NAME  = "Vector4D"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("x",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
         PinDescriptor("y",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
@@ -666,7 +666,7 @@ class Vector4DConstructorNode(NodeBase):
 class Vector2DSplitNode(NodeBase):
     """Split Vector2D into x, y components."""
     NODE_NAME  = "Split Vector2D"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR2D),
         PinDescriptor("x",      PinDirection.OUTPUT, PinType.FLOAT),
@@ -699,7 +699,7 @@ class Vector2DSplitNode(NodeBase):
 class Vector3DSplitNode(NodeBase):
     """Split Vector3D into x, y, z components."""
     NODE_NAME  = "Split Vector3D"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR3D),
         PinDescriptor("x",      PinDirection.OUTPUT, PinType.FLOAT),
@@ -735,7 +735,7 @@ class Vector3DSplitNode(NodeBase):
 class Vector4DSplitNode(NodeBase):
     """Split Vector4D into x, y, z, w components."""
     NODE_NAME  = "Split Vector4D"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("vector", PinDirection.INPUT,  PinType.VECTOR4D),
         PinDescriptor("x",      PinDirection.OUTPUT, PinType.FLOAT),
@@ -778,7 +778,7 @@ class DotProductNode(NodeBase):
     Always outputs Float.
     """
     NODE_NAME  = "Dot Product"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.ANY),
@@ -817,7 +817,7 @@ class CrossProductNode(NodeBase):
     Vec3+ inputs → Vec3 (standard 3D cross, using first 3 components).
     """
     NODE_NAME  = "Cross Product"
-    NODE_GROUP = "Math / Vector"
+    NODE_GROUP = "Math/Vector"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.ANY),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.ANY),
@@ -888,7 +888,7 @@ def _parse_color(s: Any) -> tuple[float, float, float, float]:
 class ColorAddNode(NodeBase):
     """Component-wise color add (clamped 0-1)."""
     NODE_NAME  = "Color Add"
-    NODE_GROUP = "Math / Color"
+    NODE_GROUP = "Math/Color"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.COLOR),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.COLOR),
@@ -921,7 +921,7 @@ class ColorAddNode(NodeBase):
 class ColorBlendNode(NodeBase):
     """Linear blend between two colors: result = a + (b - a) * t, t in [0,1]."""
     NODE_NAME  = "Color Blend"
-    NODE_GROUP = "Math / Color"
+    NODE_GROUP = "Math/Color"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.COLOR),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.COLOR),
@@ -960,7 +960,7 @@ class ColorBlendNode(NodeBase):
 class DateTimeDifferenceNode(NodeBase):
     """Outputs a - b in seconds (float)."""
     NODE_NAME  = "DateTime Difference"
-    NODE_GROUP = "Math / DateTime"
+    NODE_GROUP = "Math/DateTime"
     PINS = [
         PinDescriptor("a",      PinDirection.INPUT,  PinType.DATETIME),
         PinDescriptor("b",      PinDirection.INPUT,  PinType.DATETIME),
@@ -989,7 +989,7 @@ class DateTimeDifferenceNode(NodeBase):
 class DateTimeAddSecondsNode(NodeBase):
     """Add seconds to a DateTime; outputs new DateTime (epoch seconds)."""
     NODE_NAME  = "DateTime Add Seconds"
-    NODE_GROUP = "Math / DateTime"
+    NODE_GROUP = "Math/DateTime"
     PINS = [
         PinDescriptor("datetime", PinDirection.INPUT,  PinType.DATETIME),
         PinDescriptor("seconds",  PinDirection.INPUT,  PinType.FLOAT, default=0.0),
