@@ -45,7 +45,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtWidgets import (
     QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QFrame, QLineEdit, QListWidget, QListWidgetItem,
-    QMenu, QVBoxLayout, QWidget, QToolTip, QColorDialog,
+    QMenu, QVBoxLayout, QWidget, QToolTip, QColorDialog, QSpinBox,
 )
 
 from core.localization import tr
@@ -2174,7 +2174,44 @@ class NodeEditorCanvas(QWidget):
                     lambda _checked, s=n_s: self._set_sample_count(node_id, s)
                 )
                 sample_menu.addAction(act)
+
+            # Add custom sample count option
+            if hasattr(node, "get_custom_sample_count") and hasattr(node, "set_custom_sample_count"):
+                sample_menu.addSeparator()
+                custom_act = QAction(tr("ui.canvas.menu.custom_sample_count", default="Custom…"), sample_menu)
+                custom_act.triggered.connect(
+                    lambda: self._open_sample_count_dialog(node_id)
+                )
+                sample_menu.addAction(custom_act)
+
             ctrl_actions.append(sample_menu)
+
+        if hasattr(node, "get_waveform_range") and hasattr(node, "set_waveform_range"):
+            range_menu = QMenu(tr("ui.canvas.menu.waveform_range", default="Y-axis range"), menu)
+            range_menu.setStyleSheet(_MENU_STYLE)
+            current_range = node.get_waveform_range()
+            range_options = getattr(node, "_RANGE_PRESETS", {}).keys()
+            for range_mode in range_options:
+                act = QAction(range_mode, range_menu)
+                act.setCheckable(True)
+                act.setChecked(current_range == range_mode)
+                act.triggered.connect(
+                    lambda _checked, m=range_mode: self._set_waveform_range(node_id, m)
+                )
+                range_menu.addAction(act)
+
+            # Add custom range option
+            if hasattr(node, "get_custom_range") and hasattr(node, "set_custom_range"):
+                range_menu.addSeparator()
+                custom_act = QAction(tr("ui.canvas.menu.custom_range", default="Custom…"), range_menu)
+                custom_act.setCheckable(True)
+                custom_act.setChecked(current_range == "Custom")
+                custom_act.triggered.connect(
+                    lambda: self._open_waveform_custom_range_dialog(node_id)
+                )
+                range_menu.addAction(custom_act)
+
+            ctrl_actions.append(range_menu)
 
         if hasattr(node, "get_touchpad_mode") and hasattr(node, "set_touchpad_mode"):
             mode_menu = QMenu(tr("ui.canvas.menu.touchpad_mode", default="Release Mode"), menu)
@@ -2273,6 +2310,128 @@ class NodeEditorCanvas(QWidget):
             return
         node.set_sample_count(count)
         self.update()
+
+    def _set_waveform_range(self, node_id: str, mode: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "set_waveform_range"):
+            return
+        node.set_waveform_range(mode)
+        self.update()
+
+    def _open_waveform_custom_range_dialog(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_custom_range"):
+            return
+        old_min, old_max = node.get_custom_range()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("ui.dialog.waveform_range.title", default="Waveform Y-Axis Range"))
+        dlg.setStyleSheet("""
+            QDialog      { background: #220d14; color: #ffd0de; }
+            QLabel        { color: #ffd0de; font-family: 'Segoe UI'; font-size: 9pt; }
+            QDoubleSpinBox {
+                background: #2a0e1a; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 3px 6px; font-family: 'Courier New'; font-size: 9pt;
+            }
+            QDoubleSpinBox:focus { border-color: #c90084; }
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                background: #3a0d22; border: none; width: 16px;
+            }
+            QPushButton {
+                background: #3a0d22; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt;
+            }
+            QPushButton:hover   { background: #c90084; border-color: #c90084; }
+            QPushButton:default { border-color: #c90084; }
+        """)
+
+        layout = QFormLayout(dlg)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
+
+        min_spin = QDoubleSpinBox()
+        min_spin.setRange(-1e9, 1e9)
+        min_spin.setDecimals(4)
+        min_spin.setSingleStep(0.1)
+        min_spin.setValue(old_min)
+
+        max_spin = QDoubleSpinBox()
+        max_spin.setRange(-1e9, 1e9)
+        max_spin.setDecimals(4)
+        max_spin.setSingleStep(0.1)
+        max_spin.setValue(old_max)
+
+        layout.addRow("Min:", min_spin)
+        layout.addRow("Max:", max_spin)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            new_min = min_spin.value()
+            new_max = max_spin.value()
+            if new_min != old_min or new_max != old_max:
+                node.set_custom_range(new_min, new_max)
+            self.update()
+
+    def _open_sample_count_dialog(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_custom_sample_count"):
+            return
+        old_count = node.get_custom_sample_count()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("ui.dialog.sample_count.title", default="Sample Count"))
+        dlg.setStyleSheet("""
+            QDialog      { background: #220d14; color: #ffd0de; }
+            QLabel        { color: #ffd0de; font-family: 'Segoe UI'; font-size: 9pt; }
+            QSpinBox {
+                background: #2a0e1a; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 3px 6px; font-family: 'Courier New'; font-size: 9pt;
+            }
+            QSpinBox:focus { border-color: #c90084; }
+            QSpinBox::up-button, QSpinBox::down-button {
+                background: #3a0d22; border: none; width: 16px;
+            }
+            QPushButton {
+                background: #3a0d22; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt;
+            }
+            QPushButton:hover   { background: #c90084; border-color: #c90084; }
+            QPushButton:default { border-color: #c90084; }
+        """)
+
+        layout = QFormLayout(dlg)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
+
+        count_spin = QSpinBox()
+        count_spin.setRange(10, 500)
+        count_spin.setSingleStep(10)
+        count_spin.setValue(old_count)
+
+        layout.addRow("Count:", count_spin)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            new_count = count_spin.value()
+            if new_count != old_count:
+                node.set_custom_sample_count(new_count)
+            self.update()
 
     def _delete_node(self, node_id: str) -> None:
         self._selected_nodes = {node_id}

@@ -257,14 +257,15 @@ class TimeDisplayNode(NodeBase):
 
 class StateIndicatorNode(NodeBase):
     """
-    Displays a coloured indicator circle and TRUE/FALSE label for a boolean input.
+    Displays a coloured indicator circle and TRUE/FALSE label for a boolean or float input.
     Green = True, Red = False.
+    For float input, value is floored to int before converting to bool.
     Updates instantly on every data push — no tick required.
     """
     NODE_NAME  = "State Indicator"
     NODE_GROUP = "Debug"
     PINS = [
-        PinDescriptor("state", PinDirection.INPUT, PinType.BOOL, default=False),
+        PinDescriptor("state", PinDirection.INPUT, PinType.ANY, default=False),
     ]
     MIN_WIDTH  = 160.0
     MIN_HEIGHT = 110.0
@@ -275,7 +276,12 @@ class StateIndicatorNode(NodeBase):
 
     def on_data_received(self, pin_name: str, value: Any) -> None:
         if pin_name == "state":
-            self._state = bool(value)
+            if isinstance(value, float):
+                # Floor float to int, then convert to bool
+                self._state = bool(int(value))
+            else:
+                # For bool and other types, convert directly to bool
+                self._state = bool(value)
             self.node_changed.emit()
 
     def execute(self, trigger_pin: str) -> None:
@@ -319,8 +325,8 @@ class WaveformDisplayNode(NodeBase):
     Scrolling oscilloscope-style waveform display.
 
     Buffers incoming float values and draws them as a continuous trace.
-    The Y axis auto-scales to the visible samples.  The sample count is
-    configured via the right-click context menu (50 / 100 / 200 / 300 / 500).
+    The Y axis can auto-scale to the visible samples or be set to a fixed range.
+    The sample count and range mode are configured via the right-click context menu.
     Updates instantly whenever upstream data is pushed — no tick required.
     """
     NODE_NAME  = "Waveform Display"
@@ -332,11 +338,23 @@ class WaveformDisplayNode(NodeBase):
     MIN_HEIGHT = 130.0
 
     _MAX_SAMPLES = 500
+    _RANGE_PRESETS = {
+        "Auto":     (None, None),
+        "0 - 1":    (0.0, 1.0),
+        "0 - 100":  (0.0, 100.0),
+        "0 - 255":  (0.0, 255.0),
+        "-1 - 1":   (-1.0, 1.0),
+        "-100 - 100": (-100.0, 100.0),
+    }
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._buf:          deque[float] = deque(maxlen=self._MAX_SAMPLES)
-        self._sample_count: int          = 200
+        self._buf:               deque[float] = deque(maxlen=self._MAX_SAMPLES)
+        self._sample_count:      int          = 200
+        self._sample_count_mode: str          = "Preset"
+        self._range_mode:        str          = "Auto"
+        self._custom_min:        float        = 0.0
+        self._custom_max:        float        = 100.0
 
     def on_start(self) -> None:
         self._buf.clear()
@@ -348,6 +366,32 @@ class WaveformDisplayNode(NodeBase):
 
     def set_sample_count(self, n: int) -> None:
         self._sample_count = max(10, min(int(n), self._MAX_SAMPLES))
+        self._sample_count_mode = "Preset"
+        self.node_changed.emit()
+
+    def get_custom_sample_count(self) -> int:
+        return self._sample_count
+
+    def set_custom_sample_count(self, n: int) -> None:
+        self._sample_count = max(10, min(int(n), self._MAX_SAMPLES))
+        self._sample_count_mode = "Custom"
+        self.node_changed.emit()
+
+    def get_waveform_range(self) -> str:
+        return self._range_mode
+
+    def set_waveform_range(self, mode: str) -> None:
+        if mode in self._RANGE_PRESETS or mode == "Custom":
+            self._range_mode = mode
+            self.node_changed.emit()
+
+    def get_custom_range(self) -> tuple[float, float]:
+        return (self._custom_min, self._custom_max)
+
+    def set_custom_range(self, min_val: float, max_val: float) -> None:
+        self._custom_min = float(min_val)
+        self._custom_max = float(max_val)
+        self._range_mode = "Custom"
         self.node_changed.emit()
 
     # ── data / state ──────────────────────────────────────────────────────────
@@ -365,8 +409,12 @@ class WaveformDisplayNode(NodeBase):
 
     def get_state(self) -> dict[str, Any]:
         state = super().get_state()
-        state["_buf"]          = list(self._buf)
-        state["_sample_count"] = self._sample_count
+        state["_buf"]                = list(self._buf)
+        state["_sample_count"]       = self._sample_count
+        state["_sample_count_mode"]  = self._sample_count_mode
+        state["_range_mode"]         = self._range_mode
+        state["_custom_min"]         = self._custom_min
+        state["_custom_max"]         = self._custom_max
         return state
 
     def set_state(self, state: dict[str, Any]) -> None:
@@ -377,6 +425,10 @@ class WaveformDisplayNode(NodeBase):
             maxlen=self._MAX_SAMPLES,
         )
         self._sample_count = int(state.get("_sample_count", 200))
+        self._sample_count_mode = str(state.get("_sample_count_mode", "Preset"))
+        self._range_mode = str(state.get("_range_mode", "Auto"))
+        self._custom_min = float(state.get("_custom_min", 0.0))
+        self._custom_max = float(state.get("_custom_max", 100.0))
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         margin = 4
@@ -403,8 +455,19 @@ class WaveformDisplayNode(NodeBase):
             )
             return
 
-        v_min   = min(samples)
-        v_max   = max(samples)
+        # Apply range mode: Auto, preset, or custom
+        if self._range_mode == "Auto":
+            v_min   = min(samples)
+            v_max   = max(samples)
+        elif self._range_mode == "Custom":
+            v_min = self._custom_min
+            v_max = self._custom_max
+        else:
+            preset = self._RANGE_PRESETS.get(self._range_mode, (None, None))
+            v_min, v_max = preset
+            if v_min is None or v_max is None:
+                v_min   = min(samples)
+                v_max   = max(samples)
         v_range = max(1e-6, v_max - v_min)
 
         # Centre gridline

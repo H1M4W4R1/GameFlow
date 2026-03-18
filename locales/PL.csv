@@ -209,12 +209,18 @@ ui.canvas.menu.button_color,Kolor przycisku…
 ui.canvas.menu.set_range,Ustaw zakres…
 ui.canvas.menu.scale_mode,Tryb skalowania
 ui.canvas.menu.channel_count,Liczba kanałów
+ui.canvas.menu.sample_count,Liczba próbek
+ui.canvas.menu.custom_sample_count,Niestandardowo…
+ui.canvas.menu.waveform_range,Zakres osi Y
+ui.canvas.menu.custom_range,Niestandardowo…
 ui.canvas.menu.duplicate,Duplikuj
 ui.canvas.menu.remove_connections,Usuń połączenia
 ui.canvas.menu.delete,Usuń
 ui.canvas.menu.search_nodes,Szukaj węzłów…
 ui.canvas.menu.add_group,Dodaj Grupę
 ui.dialog.slider_range.title,Zakres Suwaka
+ui.dialog.sample_count.title,Liczba próbek
+ui.dialog.waveform_range.title,Zakres osi Y Fali
 node.on_tick.name,Na Takt
 node.on_tick_custom.name,Na Takt (Własny)
 node.on_start.name,Na Start
@@ -440,3 +446,7 @@ node.coyote_waveform_spring.name,Coyote: Przebieg Sprężyna
 node.coyote_waveform_stronger.name,Coyote: Przebieg Mocniejszy
 node.coyote_waveform_tide.name,Coyote: Przebieg Przypływ
 node.coyote_waveform_wave_ripple.name,Coyote: Przebieg Falowanie
+node.rising_trigger.name,Wyzwalacz Rosnący
+node.falling_trigger.name,Wyzwalacz Malejący
+node.ddr_trigger.name,Wyzwalacz DDR
+node.group.triggers,Wyzwalacze

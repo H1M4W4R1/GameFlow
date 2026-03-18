@@ -186,14 +186,16 @@ class SliderNode(NodeBase):
 # ── Button ─────────────────────────────────────────────────────────────────────
 
 class ButtonNode(NodeBase):
-    """Monostable push button: fires a Tick when pressed."""
+    """Monostable push button: fires Tick events on press and release."""
 
     NODE_NAME        = "Button"
     NODE_GROUP       = "Controls"
     NODE_TITLE_COLOR = "#3a1a5f"
 
     PINS = [
-        PinDescriptor("output", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("on_pressed", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("on_released", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("pressed", PinDirection.OUTPUT, PinType.BOOL),
     ]
 
     MIN_WIDTH  = 180.0
@@ -212,27 +214,32 @@ class ButtonNode(NodeBase):
 
     def on_start(self) -> None:
         self._pressed = False
+        self.set_output("pressed", False)
 
     def execute(self, trigger_pin: str) -> None:
         pass
 
     def on_stop(self) -> None:
         self._pressed = False
+        self.set_output("pressed", False)
         self.node_changed.emit()
 
     def on_output_wire_connected(self, pin_name: str) -> None:
-        pass
+        self.set_output("pressed", self._pressed)
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
     def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
         self._pressed = True
-        self.fire_tick("output")
+        self.fire_tick("on_pressed")
+        self.set_output("pressed", True)
         self.node_changed.emit()
         return True
 
     def on_ctrl_release(self) -> None:
         self._pressed = False
+        self.fire_tick("on_released")
+        self.set_output("pressed", False)
         self.node_changed.emit()
 
     # ── label-editing protocol (duck-typed by the canvas on double-click) ──────

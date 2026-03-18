@@ -209,12 +209,18 @@ ui.canvas.menu.button_color,Button color…
 ui.canvas.menu.set_range,Set range…
 ui.canvas.menu.scale_mode,Scale mode
 ui.canvas.menu.channel_count,Channel count
+ui.canvas.menu.sample_count,Sample count
+ui.canvas.menu.custom_sample_count,Custom…
+ui.canvas.menu.waveform_range,Y-axis range
+ui.canvas.menu.custom_range,Custom…
 ui.canvas.menu.duplicate,Duplicate
 ui.canvas.menu.remove_connections,Remove connections
 ui.canvas.menu.delete,Delete
 ui.canvas.menu.search_nodes,Search nodes…
 ui.canvas.menu.add_group,Add Group
 ui.dialog.slider_range.title,Slider Range
+ui.dialog.sample_count.title,Sample Count
+ui.dialog.waveform_range.title,Waveform Y-Axis Range
 node.on_tick.name,On Tick
 node.on_tick_custom.name,On Tick (Custom)
 node.on_start.name,On Start
@@ -440,3 +446,7 @@ node.coyote_waveform_spring.name,Coyote: Waveform Spring
 node.coyote_waveform_stronger.name,Coyote: Waveform Stronger
 node.coyote_waveform_tide.name,Coyote: Waveform Tide
 node.coyote_waveform_wave_ripple.name,Coyote: Waveform Wave Ripple
+node.rising_trigger.name,Rising Trigger
+node.falling_trigger.name,Falling Trigger
+node.ddr_trigger.name,DDR Trigger
+node.group.triggers,Triggers

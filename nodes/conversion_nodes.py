@@ -171,7 +171,7 @@ class FloatToIntNode(NodeBase):
 
 
 class BoolToFloatNode(NodeBase):
-    """Converts any value to BOOL (truthy/falsy)."""
+    """Converts any value to BOOL (truthy/falsy). For float input, value is floored to int first."""
     NODE_NAME  = "Any → Bool"
     NODE_GROUP = "Conversion"
     PINS = [
@@ -192,7 +192,12 @@ class BoolToFloatNode(NodeBase):
 
     def _convert(self) -> None:
         v = self.get_input("input")
-        self.set_output("output", bool(v))
+        if isinstance(v, float):
+            # Floor float to int, then convert to bool
+            self.set_output("output", bool(int(v)))
+        else:
+            # For bool and other types, convert directly to bool
+            self.set_output("output", bool(v))
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#90a4ae"))
