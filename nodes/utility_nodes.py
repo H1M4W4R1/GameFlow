@@ -347,16 +347,11 @@ class SampleAndHoldNode(NodeBase):
 # VALUE PORTAL INPUT / OUTPUT
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Global registry: node_title → ValuePortalInput instance
-_value_portal_inputs: dict[str, "ValuePortalInput"] = {}
-
-
 class ValuePortalInput(NodeBase):
     """
-    Input side of a value portal. Data arriving on 'input' is stored and made
-    available to all ValuePortalOutput nodes with the same title.
-    Multiple ValuePortalInput nodes can have the same title; the last one to
-    receive data takes precedence.
+    Input side of a value portal. Stores the most recent value received on
+    'input'. ValuePortalOutput nodes with the same name read it directly.
+    The portal name is the node's custom_name (set by renaming the node).
     """
     NODE_NAME  = "Value Portal Input"
     NODE_GROUP = "Utility"
@@ -370,52 +365,25 @@ class ValuePortalInput(NodeBase):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._stored_value: Any = None
-        self.title: str = "Portal"
 
-    def _get_portal_key(self) -> str:
-        """Return the portal key (the node's title)."""
-        return self.title
-
-    def on_start(self) -> None:
-        """Register this portal input by its title."""
-        key = self._get_portal_key()
-        _value_portal_inputs[key] = self
-
-    def on_stop(self) -> None:
-        """Unregister this portal input."""
-        key = self._get_portal_key()
-        if key in _value_portal_inputs and _value_portal_inputs[key] is self:
-            del _value_portal_inputs[key]
+    @property
+    def _portal_name(self) -> str:
+        return self.custom_name or "Portal"
 
     def execute(self, trigger_pin: str) -> None:
         pass
 
     def on_data_received(self, pin_name: str, value: Any) -> None:
-        """Store incoming data."""
         if pin_name == "input":
             self._stored_value = value
             self.node_changed.emit()
 
-    def get_state(self) -> dict[str, Any]:
-        state = super().get_state()
-        state["title"] = self.title
-        return state
-
-    def set_state(self, state: dict[str, Any]) -> None:
-        super().set_state(state)
-        self.title = state.get("title", "Portal")
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#ff9800"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.title)
-
 
 class ValuePortalOutput(NodeBase):
     """
-    Output side of a value portal. Reads data from ValuePortalInput with the
-    same title and pushes it to 'value' every tick. If no matching input exists,
-    outputs None.
+    Output side of a value portal. Scans the runtime each tick for a
+    ValuePortalInput with the same name and pushes its stored value.
+    The portal name is the node's custom_name (set by renaming the node).
     """
     NODE_NAME  = "Value Portal Output"
     NODE_GROUP = "Utility"
@@ -426,52 +394,33 @@ class ValuePortalOutput(NodeBase):
     MIN_WIDTH  = 160.0
     MIN_HEIGHT = 80.0
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.title: str = "Portal"
-
-    def _get_portal_key(self) -> str:
-        """Return the portal key (the node's title)."""
-        return self.title
+    @property
+    def _portal_name(self) -> str:
+        return self.custom_name or "Portal"
 
     def execute(self, trigger_pin: str) -> None:
         pass
 
     def on_tick_check(self) -> None:
-        """Read from the matching portal input and push to output."""
-        key = self._get_portal_key()
-        if key in _value_portal_inputs:
-            value = _value_portal_inputs[key]._stored_value
-            self.set_output("value", value)
-
-    def get_state(self) -> dict[str, Any]:
-        state = super().get_state()
-        state["title"] = self.title
-        return state
-
-    def set_state(self, state: dict[str, Any]) -> None:
-        super().set_state(state)
-        self.title = state.get("title", "Portal")
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#ff9800"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.title)
+        if self._runtime is None:
+            return
+        name = self._portal_name
+        for node in self._runtime.nodes.values():
+            if isinstance(node, ValuePortalInput) and node._portal_name == name:
+                self.set_output("value", node._stored_value)
+                break
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TICK PORTAL INPUT / OUTPUT
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Global registries: node_title → input instance / node_title → list of output instances
-_tick_portal_inputs: dict[str, "TickPortalInput"] = {}
-_tick_portal_outputs: dict[str, list["TickPortalOutput"]] = {}
-
-
 class TickPortalInput(NodeBase):
     """
     Input side of a tick portal. When a TICK arrives on 'exec_in', fires all
-    TickPortalOutput nodes with the same title, then fires 'exec_out'.
+    TickPortalOutput nodes with the same name, then fires 'exec_out'.
+    The portal name is the node's custom_name (set by renaming the node).
+    Matching is done dynamically at fire-time so renames take effect immediately.
     """
     NODE_NAME  = "Tick Portal Input"
     NODE_GROUP = "Utility"
@@ -483,56 +432,27 @@ class TickPortalInput(NodeBase):
     MIN_WIDTH  = 160.0
     MIN_HEIGHT = 80.0
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.title: str = "Portal"
-
-    def _get_portal_key(self) -> str:
-        """Return the portal key (the node's title)."""
-        return self.title
-
-    def on_start(self) -> None:
-        """Register this portal input by its title."""
-        key = self._get_portal_key()
-        _tick_portal_inputs[key] = self
-        if key not in _tick_portal_outputs:
-            _tick_portal_outputs[key] = []
-
-    def on_stop(self) -> None:
-        """Unregister this portal input."""
-        key = self._get_portal_key()
-        if key in _tick_portal_inputs and _tick_portal_inputs[key] is self:
-            del _tick_portal_inputs[key]
+    @property
+    def _portal_name(self) -> str:
+        return self.custom_name or "Portal"
 
     def execute(self, trigger_pin: str) -> None:
         """Fire all matching tick portal outputs, then fire exec_out."""
         if trigger_pin == "exec_in":
-            key = self._get_portal_key()
-            if key in _tick_portal_outputs:
-                for output_node in _tick_portal_outputs[key]:
-                    output_node.fire_tick("exec_out")
+            if self._runtime is not None:
+                name = self._portal_name
+                for node in self._runtime.nodes.values():
+                    if isinstance(node, TickPortalOutput) and node._portal_name == name:
+                        node.fire_tick("exec_out")
             self.fire_tick("exec_out")
             self.node_changed.emit()
-
-    def get_state(self) -> dict[str, Any]:
-        state = super().get_state()
-        state["title"] = self.title
-        return state
-
-    def set_state(self, state: dict[str, Any]) -> None:
-        super().set_state(state)
-        self.title = state.get("title", "Portal")
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#ff9800"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.title)
 
 
 class TickPortalOutput(NodeBase):
     """
-    Output side of a tick portal. Fires 'exec_out' when a matching TickPortalInput
-    receives a tick.
+    Output side of a tick portal. Fires 'exec_out' whenever a matching
+    TickPortalInput (with the same name) receives a tick.
+    The portal name is the node's custom_name (set by renaming the node).
     """
     NODE_NAME  = "Tick Portal Output"
     NODE_GROUP = "Utility"
@@ -543,44 +463,9 @@ class TickPortalOutput(NodeBase):
     MIN_WIDTH  = 160.0
     MIN_HEIGHT = 80.0
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.title: str = "Portal"
-
-    def _get_portal_key(self) -> str:
-        """Return the portal key (the node's title)."""
-        return self.title
-
-    def on_start(self) -> None:
-        """Register this portal output by its title."""
-        key = self._get_portal_key()
-        if key not in _tick_portal_outputs:
-            _tick_portal_outputs[key] = []
-        _tick_portal_outputs[key].append(self)
-
-    def on_stop(self) -> None:
-        """Unregister this portal output."""
-        key = self._get_portal_key()
-        if key in _tick_portal_outputs:
-            try:
-                _tick_portal_outputs[key].remove(self)
-            except ValueError:
-                pass
+    @property
+    def _portal_name(self) -> str:
+        return self.custom_name or "Portal"
 
     def execute(self, trigger_pin: str) -> None:
         pass
-
-    def get_state(self) -> dict[str, Any]:
-        state = super().get_state()
-        state["title"] = self.title
-        return state
-
-    def set_state(self, state: dict[str, Any]) -> None:
-        super().set_state(state)
-        self.title = state.get("title", "Portal")
-
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#ff9800"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self.title)
-

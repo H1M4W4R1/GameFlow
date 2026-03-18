@@ -1127,7 +1127,7 @@ class NodeEditorCanvas(QWidget):
                 if ctrl_hit:
                     nid, rect = ctrl_hit
                     node = self._runtime.get_node(nid)
-                    if node and node.on_ctrl_press(scene, rect):
+                    if node and node.on_ctrl_press(scene, rect, event.modifiers()):
                         self._ctrl_node_id   = nid
                         self._ctrl_rect      = rect
                         if node.should_select_on_ctrl_press():

@@ -458,3 +458,4 @@ node.value_portal_input.name,Portal Wartości Wejście
 node.value_portal_output.name,Portal Wartości Wyjście
 node.tick_portal_input.name,Portal Taktu Wejście
 node.tick_portal_output.name,Portal Taktu Wyjście
+node.connection.name,Połączenie

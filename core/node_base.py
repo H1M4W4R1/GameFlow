@@ -36,7 +36,7 @@ import logging
 import uuid
 from typing import Any, Callable, Optional, TYPE_CHECKING
 
-from PyQt6.QtCore import QObject, pyqtSignal, QRectF, QPointF
+from PyQt6.QtCore import QObject, pyqtSignal, QRectF, QPointF, Qt
 from PyQt6.QtGui import QPainter, QColor
 
 import re as _re
@@ -400,10 +400,11 @@ class NodeBase(QObject):
 
     # ── Control panel interaction ─────────────────────────────────────────
 
-    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         """Called when LMB is pressed inside the CUSTOM row area.
         *scene_pos* is the click in scene coordinates.
         *ctrl_rect* is the CUSTOM row rectangle in scene coordinates.
+        *modifiers* is the state of keyboard modifiers (ShiftModifier, ControlModifier, AltModifier).
         Return True to consume the event (prevents node drag)."""
         return False
 

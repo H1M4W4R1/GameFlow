@@ -87,7 +87,7 @@ class SliderNode(NodeBase):
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
-    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         self._update_from_scene(scene_pos, ctrl_rect)
         return True
 
@@ -229,7 +229,7 @@ class ButtonNode(NodeBase):
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
-    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         self._pressed = True
         self.fire_tick("on_pressed")
         self.set_output("pressed", True)
@@ -353,7 +353,7 @@ class ToggleNode(NodeBase):
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
-    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         self._state = not self._state
         self.set_output("output", self._state)
         self.node_changed.emit()
@@ -466,11 +466,21 @@ class TimeSelectorNode(NodeBase):
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
-    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         col, up = self._hit_arrow(scene_pos, ctrl_rect)
         if col is None:
             return False
-        delta = 1 if up else -1
+
+        # Calculate delta based on modifier keys
+        if modifiers & Qt.KeyboardModifier.AltModifier:
+            base_delta = 10
+        elif modifiers & Qt.KeyboardModifier.ShiftModifier:
+            base_delta = 5
+        else:
+            base_delta = 1
+
+        delta = base_delta if up else -base_delta
+
         if col == 0:
             self._hours   = max(0, self._hours + delta)
         elif col == 1:
@@ -650,7 +660,7 @@ class TouchpadNode(NodeBase):
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 
-    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF) -> bool:
+    def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         self._is_pressed = True
         self._update_from_scene(scene_pos, ctrl_rect)
         return True

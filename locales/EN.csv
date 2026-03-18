@@ -458,3 +458,4 @@ node.value_portal_input.name,Value Portal Input
 node.value_portal_output.name,Value Portal Output
 node.tick_portal_input.name,Tick Portal Input
 node.tick_portal_output.name,Tick Portal Output
+node.connection.name,Connection
