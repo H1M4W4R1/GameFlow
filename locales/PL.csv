@@ -454,3 +454,7 @@ node.async_sr_flip_flop.name,Asynchroniczny Flip-Flop SR
 node.async_jk_flip_flop.name,Asynchroniczny Flip-Flop JK
 node.async_t_flip_flop.name,Asynchroniczny Flip-Flop T
 node.async_memory_cell.name,Asynchroniczna Komórka Pamięci
+node.value_portal_input.name,Portal Wartości Wejście
+node.value_portal_output.name,Portal Wartości Wyjście
+node.tick_portal_input.name,Portal Taktu Wejście
+node.tick_portal_output.name,Portal Taktu Wyjście

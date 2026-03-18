@@ -454,3 +454,7 @@ node.async_sr_flip_flop.name,Async SR Flip-Flop
 node.async_jk_flip_flop.name,Async JK Flip-Flop
 node.async_t_flip_flop.name,Async T Flip-Flop
 node.async_memory_cell.name,Async Memory Cell
+node.value_portal_input.name,Value Portal Input
+node.value_portal_output.name,Value Portal Output
+node.tick_portal_input.name,Tick Portal Input
+node.tick_portal_output.name,Tick Portal Output
