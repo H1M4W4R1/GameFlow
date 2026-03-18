@@ -146,29 +146,13 @@ class LovenseGush(_LovenseBLEBase):
     DEVICE_TR_PREFIX   = "lovense.gush"
     DEVICE_DESCRIPTION = "Male masturbator with vibration"
     DEVICE_IDENTIFIER  = "ED"
-    BLE_NAME_PREFIXES  = ("LVS-ED", "LOVE-ED", "LVS-Gush", "LOVE-Gush")
+    BLE_NAME_PREFIXES  = ("LVS-ED", "LOVE-ED", "LVS-EZ", "LOVE-EZ", "LVS-Gush", "LOVE-Gush")
     VIBRATOR_COUNT     = 1
     VIBRATOR_NAMES     = ["Vibrate"]
     ICON_PATH          = "assets/icons/lovense/gush.svg"
 
     def get_node_types(self) -> list[str]:
         return [_vib_key(self, 0)]
-
-
-class LovenseGush2(_LovenseBLEBase):
-    DEVICE_NAME        = "Gush 2"
-    DEVICE_TR_PREFIX   = "lovense.gush2"
-    DEVICE_DESCRIPTION = "Male masturbator v2 with vibration"
-    DEVICE_IDENTIFIER  = "EZ"
-    BLE_NAME_PREFIXES  = ("LVS-EZ", "LOVE-EZ", "LVS-Gush2", "LOVE-Gush2")
-    VIBRATOR_COUNT     = 1
-    VIBRATOR_NAMES     = ["Vibrate"]
-    ICON_PATH          = "assets/icons/lovense/gush.svg"
-    DEVICE_URL         = "https://www.lovense.com/gush-2-best-remote-controlled-vibrating-male-penis-massager"
-
-    def get_node_types(self) -> list[str]:
-        return [_vib_key(self, 0)]
-
 
 class LovenseCalor(_LovenseBLEBase):
     DEVICE_NAME        = "Calor"
@@ -394,7 +378,7 @@ def _make_stop_node(device_cls) -> type:
 _VIBRATOR_DEVICES = [
     # Single-motor
     LovenseLush, LovenseLushAnal, LovenseHush, LovenseDomi, LovenseAmbi,
-    LovenseFerri, LovenseOsci, LovenseGush, LovenseGush2,
+    LovenseFerri, LovenseOsci, LovenseGush,
     LovenseCalor, LovenseTenera, LovenseVulse, LovenseMission, LovenseMission2,
     # Dual-motor
     LovenseGemini, LovenseDolce, LovenseOsci3, LovenseHyphy,
