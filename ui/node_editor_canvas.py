@@ -115,6 +115,7 @@ class _RowKind(Enum):
     PIN        = auto()   # left pin, right pin (either may be None)
     VAR        = auto()   # variable-input pin row (pin circle + inline field)
     FIELD      = auto()   # editable field row (no pin circle)
+    DYN_FIELD  = auto()   # node-owned dynamic field row
     CUSTOM     = auto()   # paint_custom() zone
 
 
@@ -158,6 +159,8 @@ class RenderedField:
     field_type: type
     scene_rect: QRectF
     is_var:     bool = False   # True → call set_var_input; False → set_field
+    is_dynamic: bool = False
+    dynamic_index: int = -1
 
 
 # ── Group ─────────────────────────────────────────────────────────────────────
@@ -198,13 +201,26 @@ def _build_rows(node: NodeBase, body_top: float) -> list[_Row]:
       4. If paint_custom requests extra height: a CUSTOM row at the bottom.
     """
     var_names = set(node.VARIABLE_INPUTS.keys())
+    dynamic_pin_names: set[str] = set()
+    for method_name in ("get_dynamic_output_pin_names", "get_dynamic_input_pin_names"):
+        if hasattr(node, method_name):
+            try:
+                dynamic_pin_names.update(getattr(node, method_name)())
+            except Exception:
+                pass
+    if hasattr(node, "get_dynamic_output_pin_names"):
+        try:
+            dynamic_pin_names.update(node.get_dynamic_output_pin_names())
+        except Exception:
+            pass
 
     in_pins  = [p for p in node.PINS
                 if p.direction == PinDirection.INPUT  and p.pin_type != PinType.TICK
-                and p.name not in var_names]
+                and p.name not in var_names and p.name not in dynamic_pin_names]
     in_ticks = [p for p in node.PINS
                 if p.direction == PinDirection.INPUT  and p.pin_type == PinType.TICK]
-    out_pins = [p for p in node.PINS if p.direction == PinDirection.OUTPUT]
+    out_pins = [p for p in node.PINS
+                if p.direction == PinDirection.OUTPUT and p.name not in dynamic_pin_names]
 
     # Pair inputs and outputs on the same row where possible
     n_paired = max(len(in_pins) + len(in_ticks), len(out_pins))
@@ -232,6 +248,24 @@ def _build_rows(node: NodeBase, body_top: float) -> list[_Row]:
         r = _Row(kind=_RowKind.FIELD, y=y, field_name=fname, field_type=ftype)
         rows.append(r)
         y += ROW_H + ROW_PAD
+
+    if hasattr(node, "get_dynamic_field_specs"):
+        try:
+            specs = node.get_dynamic_field_specs()
+        except Exception:
+            specs = []
+        for spec in specs:
+            idx, _value, pin_name = spec[:3]
+            direction = spec[3] if len(spec) > 3 else PinDirection.OUTPUT
+            pin_desc = next((p for p in node.PINS if p.name == pin_name), None)
+            r = _Row(kind=_RowKind.DYN_FIELD, y=y, field_name=str(idx),
+                     field_type=str)
+            if direction == PinDirection.INPUT or str(direction).upper().endswith("INPUT"):
+                r.in_pin = pin_desc
+            else:
+                r.out_pin = pin_desc
+            rows.append(r)
+            y += ROW_H + ROW_PAD
 
     # CUSTOM zone — only if node requests extra MIN_HEIGHT
     custom_budget = node.MIN_HEIGHT - 60.0
@@ -567,6 +601,8 @@ class NodeEditorCanvas(QWidget):
                 self._draw_var_row(p, node, row, width)
             elif row.kind == _RowKind.FIELD:
                 self._draw_field_row(p, node, row, width)
+            elif row.kind == _RowKind.DYN_FIELD:
+                self._draw_dynamic_field_row(p, node, row, width)
             elif row.kind == _RowKind.CUSTOM:
                 custom_rect = QRectF(node.x + 4, row.y, width - 8, row.h)
                 try:
@@ -724,6 +760,77 @@ class NodeEditorCanvas(QWidget):
         self._rendered_fields.append(
             RenderedField(node.node_id, row.field_name, row.field_type, pill_rect, is_var=False)
         )
+
+    def _draw_dynamic_field_row(self, p: QPainter, node: NodeBase, row: _Row, width: float) -> None:
+        """Node-owned dynamic text field with one optional output pin on the right."""
+        try:
+            idx = int(row.field_name)
+            value = node.get_dynamic_field_value(idx)
+        except Exception:
+            idx = -1
+            value = ""
+
+        if row.in_pin:
+            cy    = row.y + row.h / 2
+            px    = node.x
+            color = _pin_color(row.in_pin.pin_type)
+            p.setPen(QPen(color.darker(140), 1.5))
+            p.setBrush(QBrush(color))
+            p.drawEllipse(QPointF(px, cy), PIN_RADIUS, PIN_RADIUS)
+            self._rendered_pins.append(
+                RenderedPin(node.node_id, row.in_pin.name, row.in_pin.pin_type,
+                            PinDirection.INPUT, QPointF(px, cy))
+            )
+
+        output_label_w = 78.0 if row.out_pin else 0.0
+        input_offset = PIN_RADIUS * 2 + 4 if row.in_pin else 0.0
+        pill_rect = QRectF(
+            node.x + FIELD_INSET + input_offset,
+            row.y + 1,
+            max(70.0, width - FIELD_INSET * 2 - input_offset - (PIN_RADIUS * 2) - output_label_w),
+            row.h - 2,
+        )
+
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(QColor("#2d1020")))
+        p.drawRoundedRect(pill_rect, 4, 4)
+        p.setPen(QPen(QColor("#6b3050"), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(pill_rect, 4, 4)
+
+        display = str(value or "")
+        p.setPen(QColor("#ffd0de" if display else "#7a4060"))
+        p.setFont(QFont("Courier New", 9, QFont.Weight.Bold))
+        p.drawText(
+            pill_rect.adjusted(6, 0, -6, 0),
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            display,
+        )
+
+        self._rendered_fields.append(
+            RenderedField(node.node_id, row.field_name, str, pill_rect,
+                          is_var=False, is_dynamic=True, dynamic_index=idx)
+        )
+
+        if row.out_pin:
+            cy    = row.y + row.h / 2
+            px    = node.x + width
+            color = _pin_color(row.out_pin.pin_type)
+            p.setPen(QPen(color.darker(140), 1.5))
+            p.setBrush(QBrush(color))
+            p.drawEllipse(QPointF(px, cy), PIN_RADIUS, PIN_RADIUS)
+            self._rendered_pins.append(
+                RenderedPin(node.node_id, row.out_pin.name, row.out_pin.pin_type,
+                            PinDirection.OUTPUT, QPointF(px, cy))
+            )
+            p.setPen(COL_PIN_TEXT)
+            p.setFont(QFont("Segoe UI", 8))
+            p.drawText(
+                QRectF(node.x + width - PIN_RADIUS - output_label_w, row.y,
+                       output_label_w - 6, row.h),
+                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
+                row.out_pin.name,
+            )
 
     def _draw_device_selector(self, p: QPainter, node: NodeBase, rect: QRectF) -> None:
         """Paint the device-selector pill row below the title bar."""
@@ -1218,9 +1325,10 @@ class NodeEditorCanvas(QWidget):
             self.update()
 
         if event.button() == Qt.MouseButton.RightButton:
+            rf = self._hit_field(scene)
             nid = self._hit_node(scene)
             if nid:
-                self._show_node_context_menu(nid, event.globalPosition().toPoint())
+                self._show_node_context_menu(nid, event.globalPosition().toPoint(), rf)
             else:
                 self._show_context_menu(event.globalPosition().toPoint(), scene)
 
@@ -1588,8 +1696,11 @@ class NodeEditorCanvas(QWidget):
                 padding: 0 4px; font-family: 'Courier New'; font-size: 9pt;
             }
         """)
-        old_val = (node.get_var_input(rf.field_name) if rf.is_var
-                   else node.get_field(rf.field_name))
+        if rf.is_dynamic and hasattr(node, "get_dynamic_field_value"):
+            old_val = node.get_dynamic_field_value(rf.dynamic_index)
+        else:
+            old_val = (node.get_var_input(rf.field_name) if rf.is_var
+                       else node.get_field(rf.field_name))
         editor.setText(str(old_val) if old_val is not None else "")
         editor.selectAll()
         editor.setGeometry(int(tl.x()), int(tl.y()),
@@ -1604,13 +1715,20 @@ class NodeEditorCanvas(QWidget):
                 return
             _field_committed[0] = True
             raw = editor.text()
-            if rf.is_var:
+            if rf.is_dynamic and hasattr(node, "set_dynamic_field_value"):
+                old_pins = self._dynamic_pin_names(node)
+                node.set_dynamic_field_value(rf.dynamic_index, raw)
+                self._remove_missing_dynamic_wires(rf.node_id, old_pins)
+            elif rf.is_var:
                 node.set_var_input(rf.field_name, raw)
             else:
                 node.set_field(rf.field_name, raw)
-            new_val = (node.get_var_input(rf.field_name) if rf.is_var
-                       else node.get_field(rf.field_name))
-            if str(old_val) != str(new_val):
+            if rf.is_dynamic and hasattr(node, "get_dynamic_field_value"):
+                new_val = node.get_dynamic_field_value(rf.dynamic_index)
+            else:
+                new_val = (node.get_var_input(rf.field_name) if rf.is_var
+                           else node.get_field(rf.field_name))
+            if not rf.is_dynamic and str(old_val) != str(new_val):
                 self._history.push(FieldEditCmd(
                     self._runtime, rf.node_id, rf.field_name, rf.is_var, old_val, new_val
                 ))
@@ -2101,7 +2219,8 @@ class NodeEditorCanvas(QWidget):
                 return QRectF(node.x + 4, row.y, width - 8, row.h)
         return None
 
-    def _show_node_context_menu(self, node_id: str, global_pos: QPoint) -> None:
+    def _show_node_context_menu(self, node_id: str, global_pos: QPoint,
+                                field_hit: Optional[RenderedField] = None) -> None:
         node = self._runtime.get_node(node_id)
         if not node:
             return
@@ -2161,6 +2280,25 @@ class NodeEditorCanvas(QWidget):
                 )
                 ch_menu.addAction(act)
             ctrl_actions.append(ch_menu)
+
+        if (field_hit and field_hit.node_id == node_id and field_hit.is_dynamic
+                and hasattr(node, "move_dynamic_field")):
+            idx = field_hit.dynamic_index
+            fields_menu = QMenu(tr("ui.canvas.menu.json_fields", default="JSON fields"), menu)
+            fields_menu.setStyleSheet(_MENU_STYLE)
+            up_act = QAction(tr("ui.canvas.menu.move_field_up", default="Move field up"), fields_menu)
+            up_act.setEnabled(idx > 0)
+            up_act.triggered.connect(lambda: self._move_dynamic_field(node_id, idx, -1))
+            fields_menu.addAction(up_act)
+            down_act = QAction(tr("ui.canvas.menu.move_field_down", default="Move field down"), fields_menu)
+            try:
+                field_count = len(node.get_dynamic_output_pin_names())
+            except Exception:
+                field_count = 0
+            down_act.setEnabled(0 <= idx < field_count - 1)
+            down_act.triggered.connect(lambda: self._move_dynamic_field(node_id, idx, 1))
+            fields_menu.addAction(down_act)
+            ctrl_actions.append(fields_menu)
 
         if hasattr(node, "get_sample_count") and hasattr(node, "set_sample_count"):
             sample_menu = QMenu(tr("ui.canvas.menu.sample_count", default="Sample count"), menu)
@@ -2272,6 +2410,36 @@ class NodeEditorCanvas(QWidget):
             self._runtime.remove_wire(wire.wire_id)
             self._history.push(WireDeleteCmd(self._runtime, wire))
         self._history.end_macro()
+        self.update()
+
+    def _remove_missing_dynamic_wires(self, node_id: str, old_pins: set[str]) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node:
+            return
+        new_pins = self._dynamic_pin_names(node)
+        removed_pins = old_pins - new_pins
+        if not removed_pins:
+            return
+        for wire in list(self._runtime.wires.values()):
+            if ((wire.src_node == node_id and wire.src_pin in removed_pins) or
+                    (wire.dst_node == node_id and wire.dst_pin in removed_pins)):
+                self._runtime.remove_wire(wire.wire_id)
+
+    def _dynamic_pin_names(self, node: NodeBase) -> set[str]:
+        names: set[str] = set()
+        for method_name in ("get_dynamic_output_pin_names", "get_dynamic_input_pin_names"):
+            if hasattr(node, method_name):
+                try:
+                    names.update(getattr(node, method_name)())
+                except Exception:
+                    pass
+        return names
+
+    def _move_dynamic_field(self, node_id: str, index: int, delta: int) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "move_dynamic_field"):
+            return
+        node.move_dynamic_field(index, delta)
         self.update()
 
     def _set_channel_count(self, node_id: str, count: int) -> None:

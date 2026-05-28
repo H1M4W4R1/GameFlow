@@ -41,6 +41,7 @@ node.time_selector.name,Time Selector
 node.log_debug.name,Log / Debug
 node.numeric_display.name,Numeric Display
 node.text_display.name,Text Display
+node.json_debug.name,JSON Debug
 node.time_display.name,Time Display
 node.state_indicator.name,State Indicator
 node.touchpad_display.name,Touchpad Display
@@ -214,6 +215,9 @@ ui.canvas.menu.sample_count,Sample count
 ui.canvas.menu.custom_sample_count,Custom…
 ui.canvas.menu.waveform_range,Y-axis range
 ui.canvas.menu.custom_range,Custom…
+ui.canvas.menu.json_fields,JSON fields
+ui.canvas.menu.move_field_up,Move field up
+ui.canvas.menu.move_field_down,Move field down
 ui.canvas.menu.duplicate,Duplicate
 ui.canvas.menu.remove_connections,Remove connections
 ui.canvas.menu.delete,Delete
@@ -303,6 +307,8 @@ node.any_int.name,Any → Int
 node.any_bool.name,Any → Bool
 node.any_string.name,Any → String
 node.any_string_float.name,Any → String → Float
+node.json_extract.name,JSON Extract
+node.build_json.name,Build JSON
 node.group.conversion,Conversion
 node.group.math_color,Math / Color
 node.group.math_datetime,Math / DateTime
