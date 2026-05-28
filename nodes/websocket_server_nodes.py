@@ -33,6 +33,7 @@ class _SharedWebSocketServer:
         self._host = "127.0.0.1"
         self._port = 8765
         self._is_serving = False
+        self._clients: set[Any] = set()
 
     @property
     def host(self) -> str:
@@ -50,7 +51,7 @@ class _SharedWebSocketServer:
     def startup_error(self) -> str | None:
         return self._startup_error
 
-    def subscribe(self, node: "WebSocketNodeBase", host: str, port: int) -> None:
+    def subscribe(self, node: Any, host: str, port: int) -> None:
         with self._lock:
             self._subscribers.add(node)
             if not self._is_serving:
@@ -61,13 +62,13 @@ class _SharedWebSocketServer:
                 )
             node.node_changed.emit()
 
-    def unsubscribe(self, node: "WebSocketNodeBase") -> None:
+    def unsubscribe(self, node: Any) -> None:
         with self._lock:
             self._subscribers.discard(node)
             if not self._subscribers:
                 self._stop_locked()
 
-    def reconfigure_from(self, node: "WebSocketNodeBase", host: str, port: int) -> None:
+    def reconfigure_from(self, node: Any, host: str, port: int) -> None:
         with self._lock:
             if node not in self._subscribers:
                 return
@@ -78,6 +79,19 @@ class _SharedWebSocketServer:
                 self._start_locked(host, port)
                 for subscriber in list(self._subscribers):
                     subscriber.node_changed.emit()
+
+    def send_json(self, data: Any) -> None:
+        try:
+            message = json.dumps(data, ensure_ascii=False)
+        except (TypeError, ValueError) as exc:
+            log.warning("Ignoring non-serializable WebSocket JSON data: %s", exc)
+            return
+
+        loop = self._loop
+        if loop and loop.is_running():
+            loop.call_soon_threadsafe(
+                lambda: asyncio.create_task(self._send_to_clients(message))
+            )
 
     def _start_locked(self, host: str, port: int) -> None:
         if self._thread and self._thread.is_alive():
@@ -107,6 +121,7 @@ class _SharedWebSocketServer:
         self._thread = None
         self._loop = None
         self._server = None
+        self._clients.clear()
         self._is_serving = False
 
     def _run_loop(self) -> None:
@@ -143,20 +158,40 @@ class _SharedWebSocketServer:
         if self._server is not None:
             self._server.close()
             await self._server.wait_closed()
+        clients = list(self._clients)
+        for websocket in clients:
+            await websocket.close()
+        self._clients.clear()
         self._is_serving = False
 
     async def _handle_client(self, websocket: Any) -> None:
-        async for message in websocket:
-            try:
-                data = json.loads(message)
-            except (TypeError, ValueError) as exc:
-                log.warning("Ignoring invalid WebSocket JSON message: %s", exc)
-                continue
+        self._clients.add(websocket)
+        try:
+            async for message in websocket:
+                try:
+                    data = json.loads(message)
+                except (TypeError, ValueError) as exc:
+                    log.warning("Ignoring invalid WebSocket JSON message: %s", exc)
+                    continue
 
-            with self._lock:
-                subscribers = list(self._subscribers)
-            for node in subscribers:
-                node.enqueue_message(data)
+                with self._lock:
+                    subscribers = list(self._subscribers)
+                for node in subscribers:
+                    if isinstance(node, WebSocketNodeBase):
+                        node.enqueue_message(data)
+        finally:
+            self._clients.discard(websocket)
+
+    async def _send_to_clients(self, message: str) -> None:
+        dead: list[Any] = []
+        for websocket in list(self._clients):
+            try:
+                await websocket.send(message)
+            except Exception as exc:
+                log.debug("WebSocket client send failed: %s", exc)
+                dead.append(websocket)
+        for websocket in dead:
+            self._clients.discard(websocket)
 
 
 _SHARED_SERVER = _SharedWebSocketServer()
@@ -292,7 +327,7 @@ class WebSocketMessageNode(WebSocketNodeBase):
     """Emit every JSON message received on the shared WebSocket server."""
 
     __abstractmethods__ = frozenset()
-    NODE_NAME = "WebSocket Message"
+    NODE_NAME = "On WebSocket Message"
     NODE_TITLE_COLOR = "#124a5f"
     TICK_OUTPUT_PIN = "on_message"
 
@@ -319,7 +354,7 @@ class WebSocketEventNode(WebSocketNodeBase):
     """Emit only WebSocket messages whose JSON event field matches this node."""
 
     __abstractmethods__ = frozenset()
-    NODE_NAME = "WebSocket Event"
+    NODE_NAME = "On WebSocket Event"
     NODE_TITLE_COLOR = "#16423a"
     TICK_OUTPUT_PIN = "on_event"
 
@@ -367,3 +402,57 @@ class WebSocketEventNode(WebSocketNodeBase):
     def set_state(self, state: dict[str, Any]) -> None:
         self._event_name = str(state.pop("__event_name__", ""))
         super().set_state(state)
+
+
+class WebSocketSendJsonNode(WebSocketNodeBase):
+    """Send JSON data to all clients connected to the shared WebSocket server."""
+
+    __abstractmethods__ = frozenset()
+    NODE_NAME = "WebSocket Send JSON"
+    NODE_TITLE_COLOR = "#5b3f24"
+    MIN_WIDTH = 220.0
+    VARIABLE_INPUTS = {"data": (str, "{}")}
+
+    PINS = [
+        PinDescriptor(
+            "exec_in",
+            PinDirection.INPUT,
+            PinType.TICK,
+            tooltip="Send the JSON data when this tick fires.",
+        ),
+        PinDescriptor(
+            "exec_out",
+            PinDirection.OUTPUT,
+            PinType.TICK,
+            tooltip="Fires after the send request is queued.",
+        ),
+        PinDescriptor(
+            "data",
+            PinDirection.INPUT,
+            PinType.ANY,
+            default={},
+            tooltip="JSON-serializable data to send to connected WebSocket clients.",
+        ),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        try:
+            data = self._coerce_json_data(self.get_var_input("data"))
+        except ValueError as exc:
+            self.log_message.emit(f"WebSocket Send JSON ignored invalid JSON: {exc}")
+            self.fire_tick("exec_out")
+            return
+
+        _SHARED_SERVER.send_json(data)
+        self.fire_tick("exec_out")
+
+    def should_execute_for_message(self, data: Any) -> bool:
+        return False
+
+    def _coerce_json_data(self, value: Any) -> Any:
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return {}
+            return json.loads(text)
+        return value

@@ -246,8 +246,13 @@ node.on_tick.name,On Tick
 node.on_tick_custom.name,On Tick (Custom)
 node.websocket_message.name,WebSocket Message
 node.websocket_event.name,WebSocket Event
+node.on_websocket_message.name,On WebSocket Message
+node.on_websocket_event.name,On WebSocket Event
+node.websocket_send_json.name,WebSocket Send JSON
 node.mqtt_message.name,MQTT Message
 node.mqtt_topic.name,MQTT Topic
+node.on_mqtt_message.name,On MQTT Message
+node.on_mqtt_topic.name,On MQTT Topic
 node.mqtt_send.name,MQTT Send
 node.on_start.name,On Start
 node.on_pause.name,On Pause

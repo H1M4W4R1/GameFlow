@@ -246,8 +246,13 @@ node.on_tick.name,Na Takt
 node.on_tick_custom.name,Na Takt (Własny)
 node.websocket_message.name,Wiadomość WebSocket
 node.websocket_event.name,Zdarzenie WebSocket
+node.on_websocket_message.name,Na wiadomość WebSocket
+node.on_websocket_event.name,Na zdarzenie WebSocket
+node.websocket_send_json.name,Wyślij JSON WebSocket
 node.mqtt_message.name,Wiadomość MQTT
 node.mqtt_topic.name,Temat MQTT
+node.on_mqtt_message.name,Na wiadomość MQTT
+node.on_mqtt_topic.name,Na temat MQTT
 node.mqtt_send.name,Wyślij MQTT
 node.on_start.name,Na Start
 node.on_pause.name,Na Pauzę

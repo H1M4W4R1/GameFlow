@@ -511,7 +511,7 @@ class MqttMessageNode(MqttNodeBase):
     """Emit every message received on the shared MQTT broker."""
 
     __abstractmethods__ = frozenset()
-    NODE_NAME = "MQTT Message"
+    NODE_NAME = "On MQTT Message"
     NODE_TITLE_COLOR = "#28465f"
     TICK_OUTPUT_PIN = "on_message"
 
@@ -536,7 +536,7 @@ class MqttTopicNode(MqttNodeBase):
     """Emit MQTT messages whose topic matches this node's topic filter."""
 
     __abstractmethods__ = frozenset()
-    NODE_NAME = "MQTT Topic"
+    NODE_NAME = "On MQTT Topic"
     NODE_TITLE_COLOR = "#254f3f"
     TICK_OUTPUT_PIN = "on_message"
     EDITABLE_FIELDS = {"topic_filter": (str, "#")}
