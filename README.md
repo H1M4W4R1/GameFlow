@@ -1,8 +1,8 @@
 # SensoryFlow
 
-A visual node-graph application for creating automated experiences with connected hardware devices — vibrators, e-stim devices, pumps, and other BLE/Serial/TCP/WebSocket/REST hardware.
+SensoryFlow is a visual node-graph application for creating automated experiences with connected hardware devices: BLE, Serial, TCP, WebSocket, REST, and device-specific integrations.
 
-You build experiences by connecting nodes together on a canvas. Each node does something — generates a waveform, controls a device, waits for a timer, checks a condition — and nodes talk to each other through wires. No coding required.
+You build experiences by connecting nodes together on a canvas. Each node does something: generates a waveform, controls a device, waits for a timer, checks a condition, parses JSON, reacts to a WebSocket message, or routes execution flow. Nodes talk to each other through wires, so most graphs can be built without writing code.
 
 ---
 
@@ -15,31 +15,25 @@ pip install -r requirements.txt
 python main.py
 ```
 
-That's it. On first launch the app opens an empty graph canvas.
+On first launch the app opens an empty graph canvas.
 
 ---
 
-## Supported Devices
+## Devices
 
-| Device | Connection |
-|---|---|
-| **Lovense** — Lush, Hush, Domi, Ambi, Ferri, Osci, Gush, Gemini, Edge, Diamo, Max, Nora | BLE |
-| **DG-Lab Coyote** (e-stim) | BLE |
-| **H1M4W4R1 Pump** | BLE / Serial |
-| **Generic Serial / COM** | Serial |
-| **Generic TCP** | TCP |
-| **Generic WebSocket** | WebSocket |
-| **Generic REST API** | HTTP |
+Devices appear in the left panel when they are added or discovered. SensoryFlow includes specific integrations for devices such as Lovense toys, DG-Lab Coyote, and the H1M4W4R1 pump, plus generic Serial, TCP, WebSocket, REST, and BLE-style device bases.
 
-Devices appear in the left panel when they are discovered. A coloured dot shows their connection status:
+A colored dot shows device connection status:
 
 | Dot | Meaning |
 |---|---|
 | Green | Connected and responding |
-| Yellow | Last command failed — retrying |
+| Yellow | Last command failed and the app is retrying |
 | Gray | Disconnected |
 
-The app retries failed commands automatically (up to 3 times, 0.5 s apart). After that it polls every 5 seconds until the device comes back.
+Device commands run asynchronously through `DeviceBase`. Failed commands are retried automatically, and disconnected devices are polled until they come back.
+
+If more than one device of the same type is connected, compatible device nodes show a selector pill under the title bar. You can choose the target device there, or drag a device from the left panel onto a compatible node.
 
 ---
 
@@ -58,6 +52,7 @@ The main area of the window is the node canvas. This is where you build your gra
 | Connect two pins | **Left-click drag** from an output pin to an input pin |
 | Disconnect a wire | **Left-click** on the wire |
 | Add a node | **Right-click** on empty canvas |
+| Search for a node | Use the node search from the canvas menu |
 | Delete selected node | **Delete** key |
 | Cancel / deselect | **Escape** |
 
@@ -65,157 +60,116 @@ The main area of the window is the node canvas. This is where you build your gra
 
 | Action | How |
 |---|---|
-| Run | **F5** or the ▶ button in the toolbar |
-| Pause | **F7** |
-| Stop | **F6** or the ■ button |
+| Run | **F5** or the play button in the toolbar |
+| Pause / Resume | **F7** |
+| Stop | **F6** or the stop button |
 
 ### Saving and Loading
 
 | Action | How |
 |---|---|
 | New graph | **Ctrl+N** |
-| Save | **Ctrl+S** or the 💾 button |
-| Open | **Ctrl+O** or the 📂 button |
+| Save | **Ctrl+S** |
+| Open | **Ctrl+O** |
 
-Graphs are saved as `.sfgraph` files (JSON).
+Graphs are saved as `.sfgraph` files.
 
 ---
 
 ## Nodes
 
-Nodes are the building blocks of your graph. Each node has **input pins** on the left and **output pins** on the right. Pink/red pins carry execution flow (ticks); coloured pins carry data.
+Nodes are the building blocks of a graph. Each node has input pins on the left and output pins on the right. TICK pins carry execution flow; data pins carry values.
+
+The full node list is intentionally not maintained here because SensoryFlow has built-in node search and auto-discovers nodes from the codebase at startup.
 
 ### Pin / Wire Types
 
-| Colour | Type | Carries |
-|---|---|---|
-| Pink-red | TICK | Execution flow |
-| Light blue | FLOAT | Decimal number |
-| Green | INT | Integer number |
-| Orange | BOOL | True / False |
-| Purple | STRING | Text |
-| Gray | ANY | Any value |
+| Type | Carries |
+|---|---|
+| `TICK` | Execution flow |
+| `FLOAT` | Decimal number |
+| `INT` | Integer number |
+| `BOOL` | True / false |
+| `STRING` | Text |
+| `ANY` | Any supported value |
+| `VECTOR2D`, `VECTOR3D`, `VECTOR4D` | Vector values |
+| `COLOR` | Color values |
+| `DATETIME` | Date/time values |
+| `COYOTE_FRAME` | DG-Lab Coyote waveform frame values |
+
+Tick output ordering matters for node authors: an `exec_out` output should be the first output pin, and all `TICK` outputs should be listed before data outputs. This keeps rendering and execution behavior predictable.
 
 ---
 
-### Built-in Node Groups
+## Extending SensoryFlow
 
-#### Flow
-Nodes that control when and how the graph runs.
+For full implementation details, see [DEVELOPER.md](DEVELOPER.md). Keep user-facing behavior in this README and deeper code examples in the developer guide.
 
-- **On Tick** — fires on every graph tick (10 ms by default)
-- **On Tick (Custom)** — fires on a configurable interval
-- **On Start / On Pause / On Resume / On Stop** — fires once on each graph state change
-- **Is Running** — outputs whether the graph is currently running
-- **Router** — passes a tick through one of several outputs based on an index
-- **Loop** — repeats a tick a fixed number of times
-- **Loop While** — repeats while a condition is true
+### Adding a Node
 
-#### Time
-- **Time Since Start** — seconds elapsed since graph started
-- **Epoch Seconds** — current Unix timestamp
-- **Current DateTime** — current date and time as a value
-- **Specified DateTime** — a fixed date/time constant
-- **Delay** — waits N seconds before passing the tick along
-- **Timer** — fires repeatedly on an interval
-- **Delta Time** — time between the last two ticks
-- **Countdown** — counts down from a duration and fires on completion
+Create a `NodeBase` subclass in `nodes/`, or add it to an existing node module. `DeviceRegistry` imports Python modules under `nodes/` and auto-registers concrete `NodeBase` subclasses at startup.
 
-#### Math
-Full set of arithmetic, trigonometric, and vector operations — Add, Subtract, Multiply, Divide, Modulo, Power, Sin, Cos, Tan, Sqrt, Exp, Log, Clamp, Lerp, Map Range, Vector2D/3D/4D, Dot/Cross Product, Color operations, DateTime arithmetic, and more.
+A node typically defines:
 
-#### Comparison
-- **Equal, Not Equal, Greater, Greater or Equal, Less, Less or Equal**
-- **Select** — picks one of two values based on a boolean
+- `NODE_NAME`: display name
+- `NODE_GROUP`: menu/search grouping, such as `Math/Arithmetic` or `Flow/Events`
+- `PINS`: `PinDescriptor` entries describing inputs and outputs
+- `execute(trigger_pin)`: behavior when a tick input fires
 
-#### Logic
-Boolean gates: **AND, OR, NOT, NAND, NOR, XOR, XNOR**
+Useful optional hooks include `on_start()`, `on_stop()`, `on_pause()`, `on_resume()`, `on_data_received()`, `on_output_wire_connected()`, `get_state()`, `set_state()`, and `paint_custom()`.
 
-#### Flip-Flops
-Digital logic memory elements: **D, T, JK, SR Flip-Flop**
+Use `EDITABLE_FIELDS` for node-local settings and `VARIABLE_INPUTS` for pins that can either receive a wire or expose an inline editable default.
 
-#### Waveforms
-Generates a continuously cycling signal value (0–1) based on graph time.
+When adding user-visible node names, groups, menu labels, or pin labels, add translation keys to every file in `locales/*.csv`.
 
-- **Sine, Square, Sawtooth, Triangle, Trapezoidal, Noise, Ramp**
+### Adding a Device
 
-Each waveform node lets you set frequency and amplitude. Connect the output to a device's intensity input to create rhythmic patterns.
+Create a `DeviceBase` subclass in `devices/`. `DeviceRegistry` imports modules under `devices/` and auto-registers concrete `DeviceBase` subclasses at startup.
 
-#### Filters
-Signal smoothing:
+A device driver typically defines:
 
-- **Low Pass Filter** — smooths out rapid changes, keeps slow trends
-- **High Pass Filter** — removes slow drift, keeps rapid changes
-- **Band Pass Filter** — keeps only a specific frequency range
+- `DEVICE_NAME`, `DEVICE_VERSION`, `MANUFACTURER`, and `DEVICE_DESCRIPTION`
+- `CONNECTION_KINDS`, using `PortKind` values such as `BLE`, `SERIAL`, `TCP`, `WEBSOCKET`, `REST`, or `MOCK`
+- `ICON_PATH`, if the device has an icon
+- `_open()`, `_close()`, `_ping()`, and `_execute_command(command)`
 
-#### Routing
-- **Multiplexer** — selects one of N inputs to pass through
-- **Demultiplexer** — routes one input to one of N outputs
+The base class owns the command queue, worker thread, retry behavior, status transitions, reconnect loop, and Qt signals. Device-specific nodes should normally subclass `DeviceNodeBase`, set `DEVICE_TYPE_KEY` to the device class key, and call `send_to_device(...)` from `execute()`.
 
-#### Constants
-Fixed values to feed into other nodes: **Float, Integer, String, Boolean**, plus mathematical constants: **Pi (π), Euler (e), Golden Ratio (φ), Tau (τ)**, and **Color**.
+Register live device instances in `_on_connected()` with `register_device_instance(type_key, self)` so `DeviceNodeBase` can find them and support multi-device selection.
 
-#### Control (Interactive)
-Nodes with UI controls you can interact with while the graph is running:
+### Extending Built-in Abstract Nodes
 
-- **Slider** — drag to set a float value in real time
-- **Button** — press to send a tick
-- **Toggle** — switch a boolean on/off
-- **Time Selector** — pick a time value
+Some modules provide reusable abstract node bases for common behavior. Keep the base class internal by naming it with a leading underscore, or by leaving it abstract, so auto-discovery does not expose it as a menu item.
 
-#### Conversion
-Type converters: **Time ↔ Frequency**, **Any → Float / Int / Bool / String**
+`DeviceNodeBase` is for graph nodes that target a live `DeviceBase` instance. It handles selected-device persistence, automatic fallback to the first connected instance, status display, and `send_to_device(...)`.
 
-#### Utility
-- **Counter** — increments/decrements and resets
-- **Randomizer** — picks a random output tick
-- **Random** — outputs a random float
-- **Beep (PC)** — plays a beep through the system speaker
-- **Frequency Generator** — outputs a value oscillating at a set frequency
-- **Sample & Hold** — captures a value and holds it until the next sample tick
+`WebSocketNodeBase` in `nodes/websocket_server_nodes.py` is for event-style nodes driven by JSON received on the shared WebSocket server. Subclasses set `TICK_OUTPUT_PIN`, optionally set `DATA_OUTPUT_PIN`, declare output pins with all `TICK` outputs first, and implement `should_execute_for_message(data)`. Override `on_websocket_message(data)` only when the default behavior of setting the data output and firing the tick output is not enough.
 
-#### Debug / Display
-Nodes for monitoring what is happening in your graph while it runs:
-
-- **Log / Debug** — prints a value to the log panel
-- **Numeric Display** — shows a number on the node
-- **Text Display** — shows a string
-- **Time Display** — shows a duration
-- **State Indicator** — shows a boolean as a coloured light
-- **Waveform Display** — draws a live graph of a signal
-
----
-
-### Device Nodes
-
-Each supported device comes with its own set of nodes. Examples:
-
-**Lovense vibrators** — Vibrate (set intensity 0–1)
-
-**Lovense Edge** — Vibrate Internal, Vibrate Perineum, Vibrate Both
-
-**Lovense Max** — Vibrate, Air Level, Inflate, Deflate, Accelerometer
-
-**Lovense Nora** — Vibrate, Rotate, Reverse Rotation
-
-**DG-Lab Coyote** — Build Waveform, Set Waveform A/B, Set Strength, Enable/Disable, Stop, Get Battery, and 16 built-in waveform presets (Breath, Heartbeat, Tide, Wave Ripple, etc.)
-
-If you have more than one device of the same type connected, a selector pill appears under the node's title bar so you can pick which device that node controls. You can also drag a device from the left panel and drop it onto a compatible node to assign it.
+For stateful abstract bases, call `super().get_state()` and `super().set_state(state)` so graph files remain compatible with built-in persistence.
 
 ---
 
 ## Language
 
-The interface supports multiple languages. Select your language from the settings menu. Currently available: **English**, **Polish (AI-translated for testing)**.
+The interface supports multiple languages through CSV files in `locales/`. English is the source language, and Polish is currently included for testing.
+
+When adding or renaming user-visible UI strings, add matching keys to every locale CSV file. Missing keys fall back to English or to the provided default.
 
 ---
 
 ## Graph File Format
 
-`.sfgraph` files are plain JSON and can be opened in any text editor. They store the list of nodes (with their positions and settings) and all the wires between them.
+`.sfgraph` files are plain JSON and can be opened in any text editor. They store:
+
+- nodes, including their type keys, positions, and state
+- wires between node pins
+- device aliases
+- canvas groups
+
+The node `type_key` is the fully-qualified Python class path, such as `nodes.math_nodes.MultiplyNode`. If a type key cannot be found when loading a graph, that node is skipped with a warning.
 
 ---
 
 ## License
 
-Do What The F*ck You Want To Public License — see [LICENSE.md](LICENSE.md).
+Do What The F*ck You Want To Public License. See [LICENSE.md](LICENSE.md).

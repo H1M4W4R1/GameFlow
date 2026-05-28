@@ -108,6 +108,88 @@ Every `NODE_NAME` and every pin label that appears in the UI should have a match
 
 ---
 
+## Extending Built-in Abstract Nodes
+
+Reusable node bases should stay abstract or internal. The node registry skips concrete classes whose class name starts with `_`; abstract classes are skipped by the generic subclass loader. This prevents helper bases from appearing in node search.
+
+### `DeviceNodeBase`
+
+Use `core.device_node_base.DeviceNodeBase` for nodes that operate on a live `DeviceBase` instance.
+
+```python
+class MyDeviceSetValueNode(DeviceNodeBase):
+    NODE_NAME = "My Device: Set Value"
+    NODE_GROUP = "Devices/My Device"
+    DEVICE_TYPE_KEY = "devices.my_device.MyDevice"
+    PINS = [
+        PinDescriptor("exec_in", PinDirection.INPUT, PinType.TICK),
+        PinDescriptor("value", PinDirection.INPUT, PinType.FLOAT, default=0.5),
+        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
+    ]
+
+    def execute(self, trigger_pin: str) -> None:
+        self.send_to_device(
+            "set_value",
+            {"value": float(self.get_input("value") or 0.0)},
+            on_success=lambda _: self.fire_tick("exec_out"),
+        )
+```
+
+`DeviceNodeBase` provides:
+
+- `get_device()` - selected live device, or the first connected instance of `DEVICE_TYPE_KEY`.
+- `select_device(device_id)` and `cycle_device()` - used by the canvas for multi-device selection.
+- `device_status()` - status for title-bar indicators.
+- `send_to_device(command, params, on_success, on_failure)` - async command dispatch through `DeviceBase`.
+- selected-device persistence through `get_state()` / `set_state()`.
+
+Register live devices from the device driver with:
+
+```python
+def _on_connected(self) -> None:
+    register_device_instance(DEVICE_TYPE_KEY, self)
+```
+
+Use the same fully-qualified class key for `DEVICE_TYPE_KEY` and `register_device_instance(...)`.
+
+### `WebSocketNodeBase`
+
+Use `nodes.websocket_server_nodes.WebSocketNodeBase` for event/source nodes that react to JSON messages received by the shared WebSocket server.
+
+The shared server starts when the graph starts and at least one WebSocket node subscribes. Messages are parsed as JSON and delivered to each subscribing node. Subclasses decide whether a message should fire.
+
+```python
+from nodes.websocket_server_nodes import WebSocketNodeBase
+
+class WebSocketCommandNode(WebSocketNodeBase):
+    __abstractmethods__ = frozenset()
+    NODE_NAME = "WebSocket Command"
+    NODE_GROUP = "Flow/Events"
+    TICK_OUTPUT_PIN = "on_command"
+    DATA_OUTPUT_PIN = "data"
+    PINS = [
+        PinDescriptor("on_command", PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("data", PinDirection.OUTPUT, PinType.ANY),
+    ]
+
+    def should_execute_for_message(self, data: Any) -> bool:
+        return isinstance(data, dict) and data.get("type") == "command"
+```
+
+Important rules:
+
+- Declare TICK outputs first. If the node has `exec_out`/event outputs, the first output should be the main tick output.
+- Set `TICK_OUTPUT_PIN` to the output pin fired by matching messages.
+- Set `DATA_OUTPUT_PIN` to the output pin that receives parsed JSON, or `""` if the node does not publish data.
+- Implement `should_execute_for_message(data)`.
+- Override `on_websocket_message(data)` only if the default behavior is not enough. The default sets `DATA_OUTPUT_PIN`, fires `TICK_OUTPUT_PIN`, and requests a repaint.
+- Use `get_websocket_config()` and `set_websocket_config(host, port)` for the shared server address.
+- When adding extra saved state, call `super().get_state()` and `super().set_state(state)`.
+
+The existing `WebSocketMessageNode` and `WebSocketEventNode` in `nodes/websocket_server_nodes.py` are the reference implementations.
+
+---
+
 ## Adding a Device
 
 Create a new file (or package) under `devices/`. Any `DeviceBase` subclass is auto-discovered at startup.
