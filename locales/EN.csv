@@ -122,6 +122,9 @@ device.h1m4w4r1.manufacturer,H1M4W4R1
 device.h1m4w4r1.pump.name,Remote Pump
 device.h1m4w4r1.pump.description,BLE pump with valve; session and pumping timers
 device.h1m4w4r1.pump.url,https://github.com/H1M4W4R1/RemoteVacuumPump
+device.maustec.edge_o_matic.name,Edge-o-Matic 3000
+device.maustec.edge_o_matic.description,Automated edging controller with WebSocket JSON API
+device.maustec.edge_o_matic.url,https://maustec.io/
 core.ble.no_bleak,bleak is not installed. Run: pip install bleak
 core.graph.tick_cycle,Tick cycle detected
 core.graph.infinite_loop,Infinite tick loop: {src}:{pin} already firing
@@ -150,6 +153,9 @@ ui.button.remove,Remove
 ui.button.close,Close
 ui.dialog.add_device.title,Add Device
 ui.dialog.device_detail.title,Device: {name}
+ui.dialog.device_address.title,Device Address
+ui.dialog.device_address.message,Enter the connection address for {name}.
+ui.dialog.device_address.address_label,Address:
 node.add.name,Add
 node.subtract.name,Subtract
 node.multiply.name,Multiply
@@ -368,6 +374,7 @@ node.group.devices_lovense_lapis,Devices/Lovense/Lapis
 node.group.devices_h1m4w4r1_pump,Devices/H1M4W4R1/Pump
 node.group.devices_dglab_coyote,Devices/DGLab/Coyote
 node.group.devices_dglab_coyote_waveforms,Devices/DGLab/Coyote/Waveforms
+node.group.devices_maustec_edge_o_matic,Devices/MausTec/Edge-o-Matic
 node.lush_vibrate.name,Lush: Vibrate
 node.lush_get_battery.name,Lush: Get Battery
 node.lush_red_light_on.name,Lush: Red Light On
@@ -471,6 +478,21 @@ node.coyote_waveform_spring.name,Coyote: Waveform Spring
 node.coyote_waveform_stronger.name,Coyote: Waveform Stronger
 node.coyote_waveform_tide.name,Coyote: Waveform Tide
 node.coyote_waveform_wave_ripple.name,Coyote: Waveform Wave Ripple
+node.edge_o_matic_set_motor.name,Edge-o-Matic: Set Motor
+node.edge_o_matic_set_motor_raw.name,Edge-o-Matic: Set Motor Raw
+node.edge_o_matic_automatic_mode.name,Edge-o-Matic: Automatic Mode
+node.edge_o_matic_manual_mode.name,Edge-o-Matic: Manual Mode
+node.edge_o_matic_stop.name,Edge-o-Matic: Stop
+node.edge_o_matic_set_config.name,Edge-o-Matic: Set Config
+node.edge_o_matic_set_config_parameter.name,Edge-o-Matic: Set Config Parameter
+node.edge_o_matic_configure.name,Edge-o-Matic: Configure
+node.edge_o_matic_get_config.name,Edge-o-Matic: Get Config
+node.edge_o_matic_serial_command.name,Edge-o-Matic: Serial Command
+node.edge_o_matic_get_wifi_status.name,Edge-o-Matic: Get WiFi Status
+node.edge_o_matic_get_sd_status.name,Edge-o-Matic: Get SD Status
+node.edge_o_matic_on_readings.name,Edge-o-Matic: On Readings
+node.edge_o_matic_on_event.name,Edge-o-Matic: On Event
+node.edge_o_matic_send_raw_payload.name,Edge-o-Matic: Send Raw Payload
 node.rising_trigger.name,Rising Trigger
 node.falling_trigger.name,Falling Trigger
 node.ddr_trigger.name,DDR Trigger

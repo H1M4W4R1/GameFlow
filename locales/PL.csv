@@ -122,6 +122,9 @@ device.h1m4w4r1.manufacturer,H1M4W4R1
 device.h1m4w4r1.pump.name,Remote Pump
 device.h1m4w4r1.pump.description,Pompa BLE z zaworem; timery sesji i pompowania
 device.h1m4w4r1.pump.url,https://github.com/H1M4W4R1/RemoteVacuumPump
+device.maustec.edge_o_matic.name,Edge-o-Matic 3000
+device.maustec.edge_o_matic.description,Automatyczny kontroler edgingu z API JSON przez WebSocket
+device.maustec.edge_o_matic.url,https://maustec.io/
 core.ble.no_bleak,bleak nie jest zainstalowany. Uruchom: pip install bleak
 core.graph.tick_cycle,Wykryto cykl taktowania
 core.graph.infinite_loop,Nieskończona pętla taktowania: {src}:{pin} już aktywny
@@ -150,6 +153,9 @@ ui.button.remove,Usuń
 ui.button.close,Zamknij
 ui.dialog.add_device.title,Dodaj Urządzenie
 ui.dialog.device_detail.title,Urządzenie: {name}
+ui.dialog.device_address.title,Adres urządzenia
+ui.dialog.device_address.message,Wpisz adres połączenia dla {name}.
+ui.dialog.device_address.address_label,Adres:
 node.add.name,Dodaj
 node.subtract.name,Odejmij
 node.multiply.name,Mnóż
@@ -368,6 +374,7 @@ node.group.devices_lovense_lapis,Urządzenia/Lovense/Lapis
 node.group.devices_h1m4w4r1_pump,Urządzenia/H1M4W4R1/Pompa
 node.group.devices_dglab_coyote,Urządzenia/DGLab/Coyote
 node.group.devices_dglab_coyote_waveforms,Urządzenia/DGLab/Coyote/Przebiegi
+node.group.devices_maustec_edge_o_matic,Urządzenia/MausTec/Edge-o-Matic
 node.lush_vibrate.name,Lush: Wibruj
 node.lush_get_battery.name,Lush: Pobierz baterię
 node.lush_red_light_on.name,Lush: Czerwone światło wł.
@@ -471,6 +478,21 @@ node.coyote_waveform_spring.name,Coyote: Przebieg Sprężyna
 node.coyote_waveform_stronger.name,Coyote: Przebieg Mocniejszy
 node.coyote_waveform_tide.name,Coyote: Przebieg Przypływ
 node.coyote_waveform_wave_ripple.name,Coyote: Przebieg Falowanie
+node.edge_o_matic_set_motor.name,Edge-o-Matic: Ustaw silnik
+node.edge_o_matic_set_motor_raw.name,Edge-o-Matic: Ustaw silnik raw
+node.edge_o_matic_automatic_mode.name,Edge-o-Matic: Tryb automatyczny
+node.edge_o_matic_manual_mode.name,Edge-o-Matic: Tryb ręczny
+node.edge_o_matic_stop.name,Edge-o-Matic: Zatrzymaj
+node.edge_o_matic_set_config.name,Edge-o-Matic: Ustaw konfigurację
+node.edge_o_matic_set_config_parameter.name,Edge-o-Matic: Ustaw parametr konfiguracji
+node.edge_o_matic_configure.name,Edge-o-Matic: Konfiguruj
+node.edge_o_matic_get_config.name,Edge-o-Matic: Pobierz konfigurację
+node.edge_o_matic_serial_command.name,Edge-o-Matic: Komenda serial
+node.edge_o_matic_get_wifi_status.name,Edge-o-Matic: Pobierz status WiFi
+node.edge_o_matic_get_sd_status.name,Edge-o-Matic: Pobierz status SD
+node.edge_o_matic_on_readings.name,Edge-o-Matic: Na odczyty
+node.edge_o_matic_on_event.name,Edge-o-Matic: Na zdarzenie
+node.edge_o_matic_send_raw_payload.name,Edge-o-Matic: Wyślij surowy payload
 node.rising_trigger.name,Wyzwalacz Rosnący
 node.falling_trigger.name,Wyzwalacz Malejący
 node.ddr_trigger.name,Wyzwalacz DDR

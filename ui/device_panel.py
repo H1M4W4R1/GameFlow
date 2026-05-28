@@ -779,12 +779,14 @@ class AddDeviceDialog(QDialog):
         if _PK.BLE in kinds:
             self._launch_ble_scan()
         else:
-            # Future: COM dialog.  For now accept with empty address.
-            self._result = (
-                self._selected_key,
-                ConnectionDescriptor(kind=kinds[0] if kinds else _PK.BLE, address=""),
-            )
-            self.accept()
+            kind = kinds[0] if kinds else _PK.BLE
+            dlg = _AddressDialog(cls, kind, self)
+            if dlg.exec() == QDialog.DialogCode.Accepted:
+                self._result = (
+                    self._selected_key,
+                    ConnectionDescriptor(kind=kind, address=dlg.address()),
+                )
+                self.accept()
 
     def _launch_ble_scan(self) -> None:
         """Open the BLE scan dialog, passing the preselected tile class_key."""
@@ -802,6 +804,71 @@ class AddDeviceDialog(QDialog):
 
     def result_data(self) -> Optional[tuple[str, ConnectionDescriptor]]:
         return self._result
+
+
+class _AddressDialog(QDialog):
+    """Small connection-address dialog for non-BLE devices."""
+
+    def __init__(self, device_cls: type, kind: PortKind, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(tr("ui.dialog.device_address.title"))
+        self.setStyleSheet(_DLG_STYLE)
+        self.setMinimumWidth(420)
+        self._address = ""
+
+        prefix = getattr(device_cls, "DEVICE_TR_PREFIX", None)
+        display_name = (
+            tr(f"device.{prefix}.name", default=device_cls.DEVICE_NAME)
+            if prefix else device_cls.DEVICE_NAME
+        )
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(16, 16, 16, 16)
+        lay.setSpacing(10)
+
+        label = QLabel(tr("ui.dialog.device_address.message").format(name=display_name))
+        label.setWordWrap(True)
+        lay.addWidget(label)
+
+        lay.addWidget(QLabel(tr("ui.dialog.device_address.address_label")))
+        self._address_edit = QLineEdit(self)
+        self._address_edit.setPlaceholderText(self._placeholder_for(kind))
+        default_address = getattr(device_cls, "DEFAULT_ADDRESS", "")
+        self._address_edit.setText(default_address)
+        lay.addWidget(self._address_edit)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        cancel = QPushButton(tr("ui.button.cancel"))
+        cancel.setObjectName("cancel")
+        cancel.clicked.connect(self.reject)
+        connect = QPushButton(tr("ui.button.connect_plain"))
+        connect.clicked.connect(self._accept_if_valid)
+        btn_row.addWidget(cancel)
+        btn_row.addWidget(connect)
+        lay.addLayout(btn_row)
+
+    def _placeholder_for(self, kind: PortKind) -> str:
+        if kind == PortKind.WEBSOCKET:
+            return "ws://<device-ip>:<websocket_port>"
+        if kind == PortKind.TCP:
+            return "192.168.1.42:1234"
+        if kind == PortKind.REST:
+            return "http://192.168.1.42"
+        if kind == PortKind.SERIAL:
+            return "COM3"
+        return ""
+
+    def _accept_if_valid(self) -> None:
+        address = self._address_edit.text().strip()
+        if not address:
+            self._address_edit.setFocus()
+            return
+        self._address = address
+        self.accept()
+
+    def address(self) -> str:
+        return self._address
 
 
 class _ReflowContainer(QWidget):
