@@ -2343,6 +2343,14 @@ class NodeEditorCanvas(QWidget):
             ws_act.triggered.connect(lambda: self._open_websocket_config_dialog(node_id))
             ctrl_actions.append(ws_act)
 
+        if hasattr(node, "get_mqtt_config") and hasattr(node, "set_mqtt_config"):
+            mqtt_act = QAction(
+                tr("ui.canvas.menu.mqtt_server", default="MQTT server..."),
+                menu,
+            )
+            mqtt_act.triggered.connect(lambda: self._open_mqtt_config_dialog(node_id))
+            ctrl_actions.append(mqtt_act)
+
         if (field_hit and field_hit.node_id == node_id and field_hit.is_dynamic
                 and hasattr(node, "move_dynamic_field")):
             idx = field_hit.dynamic_index
@@ -2563,6 +2571,55 @@ class NodeEditorCanvas(QWidget):
 
         if dlg.exec() == QDialog.DialogCode.Accepted:
             node.set_websocket_config(host_editor.text(), port_editor.value())
+            self.update()
+
+    def _open_mqtt_config_dialog(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_mqtt_config") or not hasattr(node, "set_mqtt_config"):
+            return
+
+        host, port = node.get_mqtt_config()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("ui.dialog.mqtt_server.title", default="MQTT Server"))
+        dlg.setModal(True)
+        dlg.setStyleSheet("""
+            QDialog { background: #1a0a0f; color: #ffd0de; }
+            QLabel  { color: #ffd0de; }
+            QLineEdit, QSpinBox {
+                background: #12070b; color: #ffd0de;
+                border: 1px solid #f95979; border-radius: 4px;
+                padding: 4px;
+            }
+            QPushButton {
+                background: #2a1018; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 4px;
+                padding: 4px 10px;
+            }
+            QPushButton:hover { background: #c90084; border-color: #c90084; }
+        """)
+
+        layout = QVBoxLayout(dlg)
+        form = QFormLayout()
+        host_editor = QLineEdit(dlg)
+        host_editor.setText(str(host))
+        port_editor = QSpinBox(dlg)
+        port_editor.setRange(1, 65535)
+        port_editor.setValue(int(port))
+        form.addRow(tr("ui.dialog.mqtt_server.host", default="Host:"), host_editor)
+        form.addRow(tr("ui.dialog.mqtt_server.port", default="Port:"), port_editor)
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            node.set_mqtt_config(host_editor.text(), port_editor.value())
             self.update()
 
     def _remove_missing_dynamic_wires(self, node_id: str, old_pins: set[str]) -> None:

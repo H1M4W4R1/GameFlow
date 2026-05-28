@@ -166,7 +166,7 @@ class WebSocketNodeBase(NodeBase):
     """Base for nodes driven by JSON received on the shared WebSocket server."""
 
     __abstractmethods__ = frozenset({"should_execute_for_message"})
-    NODE_GROUP = "Flow/Events"
+    NODE_GROUP = "Servers/WebSocket"
     MIN_WIDTH = 210.0
     MIN_HEIGHT = 60.0
     TICK_OUTPUT_PIN = ""

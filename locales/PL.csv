@@ -211,6 +211,7 @@ ui.canvas.menu.button_color,Kolor przycisku…
 ui.canvas.menu.set_range,Ustaw zakres…
 ui.canvas.menu.edit_event_name,Edytuj nazwę zdarzenia...
 ui.canvas.menu.websocket_server,Serwer WebSocket...
+ui.canvas.menu.mqtt_server,Serwer MQTT...
 ui.canvas.menu.scale_mode,Tryb skalowania
 ui.canvas.menu.channel_count,Liczba kanałów
 ui.canvas.menu.sample_count,Liczba próbek
@@ -232,10 +233,16 @@ ui.dialog.event_name.title,Edytuj nazwę zdarzenia
 ui.dialog.websocket_server.title,Serwer WebSocket
 ui.dialog.websocket_server.host,Host:
 ui.dialog.websocket_server.port,Port:
+ui.dialog.mqtt_server.title,Serwer MQTT
+ui.dialog.mqtt_server.host,Host:
+ui.dialog.mqtt_server.port,Port:
 node.on_tick.name,Na Takt
 node.on_tick_custom.name,Na Takt (Własny)
 node.websocket_message.name,Wiadomość WebSocket
 node.websocket_event.name,Zdarzenie WebSocket
+node.mqtt_message.name,Wiadomość MQTT
+node.mqtt_topic.name,Temat MQTT
+node.mqtt_send.name,Wyślij MQTT
 node.on_start.name,Na Start
 node.on_pause.name,Na Pauzę
 node.on_resume.name,Na Wznowienie
@@ -263,6 +270,8 @@ node.demultiplexer.name,Demultiplekser
 node.group.flow_events,Flow/Zdarzenia
 node.group.flow_status,Flow/Status
 node.group.flow_redirect,Flow/Przekierowanie
+node.group.servers_websocket,Serwery/WebSocket
+node.group.servers_mqtt,Serwery/MQTT
 node.group.logic_comparison,Logika/Porównanie
 node.group.logic_combination,Logika/Kombinacja
 node.group.logic_routing,Logika/Routing
@@ -315,8 +324,8 @@ node.any_int.name,Dowolny → Int
 node.any_bool.name,Dowolny → Bool
 node.any_string.name,Dowolny → String
 node.any_string_float.name,Dowolny → String → Float
-node.json_extract.name,Wyodrębnij JSON
-node.build_json.name,Zbuduj JSON
+node.json_extract.name,JSON → Dowolny
+node.build_json.name,Dowolny → JSON
 node.group.conversion,Konwersja
 node.group.math_color,Matematyka / Kolor
 node.group.math_datetime,Matematyka / Data i Czas

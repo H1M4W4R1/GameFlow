@@ -211,6 +211,7 @@ ui.canvas.menu.button_color,Button color…
 ui.canvas.menu.set_range,Set range…
 ui.canvas.menu.edit_event_name,Edit event name...
 ui.canvas.menu.websocket_server,WebSocket server...
+ui.canvas.menu.mqtt_server,MQTT server...
 ui.canvas.menu.scale_mode,Scale mode
 ui.canvas.menu.channel_count,Channel count
 ui.canvas.menu.sample_count,Sample count
@@ -232,10 +233,16 @@ ui.dialog.event_name.title,Edit Event Name
 ui.dialog.websocket_server.title,WebSocket Server
 ui.dialog.websocket_server.host,Host:
 ui.dialog.websocket_server.port,Port:
+ui.dialog.mqtt_server.title,MQTT Server
+ui.dialog.mqtt_server.host,Host:
+ui.dialog.mqtt_server.port,Port:
 node.on_tick.name,On Tick
 node.on_tick_custom.name,On Tick (Custom)
 node.websocket_message.name,WebSocket Message
 node.websocket_event.name,WebSocket Event
+node.mqtt_message.name,MQTT Message
+node.mqtt_topic.name,MQTT Topic
+node.mqtt_send.name,MQTT Send
 node.on_start.name,On Start
 node.on_pause.name,On Pause
 node.on_resume.name,On Resume
@@ -263,6 +270,8 @@ node.demultiplexer.name,Demultiplexer
 node.group.flow_events,Flow/Events
 node.group.flow_status,Flow/Status
 node.group.flow_redirect,Flow/Redirect
+node.group.servers_websocket,Servers/WebSocket
+node.group.servers_mqtt,Servers/MQTT
 node.group.logic_comparison,Logic/Comparison
 node.group.logic_combination,Logic/Combination
 node.group.logic_routing,Logic/Routing
@@ -315,8 +324,8 @@ node.any_int.name,Any → Int
 node.any_bool.name,Any → Bool
 node.any_string.name,Any → String
 node.any_string_float.name,Any → String → Float
-node.json_extract.name,JSON Extract
-node.build_json.name,Build JSON
+node.json_extract.name,JSON → Any
+node.build_json.name,Any → JSON
 node.group.conversion,Conversion
 node.group.math_color,Math / Color
 node.group.math_datetime,Math / DateTime
