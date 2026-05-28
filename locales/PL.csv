@@ -209,6 +209,8 @@ ui.canvas.menu.rename,Zmień nazwę…
 ui.canvas.menu.rename_label,Zmień etykietę…
 ui.canvas.menu.button_color,Kolor przycisku…
 ui.canvas.menu.set_range,Ustaw zakres…
+ui.canvas.menu.edit_event_name,Edytuj nazwę zdarzenia...
+ui.canvas.menu.websocket_server,Serwer WebSocket...
 ui.canvas.menu.scale_mode,Tryb skalowania
 ui.canvas.menu.channel_count,Liczba kanałów
 ui.canvas.menu.sample_count,Liczba próbek
@@ -226,8 +228,14 @@ ui.canvas.menu.add_group,Dodaj Grupę
 ui.dialog.slider_range.title,Zakres Suwaka
 ui.dialog.sample_count.title,Liczba próbek
 ui.dialog.waveform_range.title,Zakres osi Y Fali
+ui.dialog.event_name.title,Edytuj nazwę zdarzenia
+ui.dialog.websocket_server.title,Serwer WebSocket
+ui.dialog.websocket_server.host,Host:
+ui.dialog.websocket_server.port,Port:
 node.on_tick.name,Na Takt
 node.on_tick_custom.name,Na Takt (Własny)
+node.websocket_message.name,Wiadomość WebSocket
+node.websocket_event.name,Zdarzenie WebSocket
 node.on_start.name,Na Start
 node.on_pause.name,Na Pauzę
 node.on_resume.name,Na Wznowienie

@@ -209,6 +209,8 @@ ui.canvas.menu.rename,Rename…
 ui.canvas.menu.rename_label,Rename label…
 ui.canvas.menu.button_color,Button color…
 ui.canvas.menu.set_range,Set range…
+ui.canvas.menu.edit_event_name,Edit event name...
+ui.canvas.menu.websocket_server,WebSocket server...
 ui.canvas.menu.scale_mode,Scale mode
 ui.canvas.menu.channel_count,Channel count
 ui.canvas.menu.sample_count,Sample count
@@ -226,8 +228,14 @@ ui.canvas.menu.add_group,Add Group
 ui.dialog.slider_range.title,Slider Range
 ui.dialog.sample_count.title,Sample Count
 ui.dialog.waveform_range.title,Waveform Y-Axis Range
+ui.dialog.event_name.title,Edit Event Name
+ui.dialog.websocket_server.title,WebSocket Server
+ui.dialog.websocket_server.host,Host:
+ui.dialog.websocket_server.port,Port:
 node.on_tick.name,On Tick
 node.on_tick_custom.name,On Tick (Custom)
+node.websocket_message.name,WebSocket Message
+node.websocket_event.name,WebSocket Event
 node.on_start.name,On Start
 node.on_pause.name,On Pause
 node.on_resume.name,On Resume

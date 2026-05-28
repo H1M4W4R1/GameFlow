@@ -353,6 +353,7 @@ class NodeEditorCanvas(QWidget):
         self._rendered_device_selectors: list[tuple[str, QRectF]] = []
         # Title bar hit areas (node_id, scene_rect) — rebuilt each paint
         self._rendered_title_bars: list[tuple[str, QRectF]] = []
+        self._rendered_title_status: list[tuple[str, QRectF]] = []
         # Node highlighted by an in-progress device drag
         self._drag_highlight_node: Optional[str] = None
 
@@ -381,6 +382,7 @@ class NodeEditorCanvas(QWidget):
         # Hover state for tooltips
         self._hovered_pin:  Optional[RenderedPin]  = None
         self._hovered_node: Optional[str]          = None
+        self._hovered_title_status: Optional[str]  = None
         self._tooltip_timer = QTimer(self)
         self._tooltip_timer.setSingleShot(True)
         self._tooltip_timer.timeout.connect(self._show_hover_tooltip)
@@ -424,6 +426,7 @@ class NodeEditorCanvas(QWidget):
         self._rendered_fields.clear()
         self._rendered_device_selectors.clear()
         self._rendered_title_bars.clear()
+        self._rendered_title_status.clear()
         for node in self._runtime.nodes.values():
             self._draw_node(p, node)
         self._draw_wires(p)
@@ -592,6 +595,14 @@ class NodeEditorCanvas(QWidget):
             if extra:
                 sel_rect = QRectF(node.x, node.y + TITLE_H, width, DEVICE_SEL_H)
                 self._draw_device_selector(p, node, sel_rect)
+        elif hasattr(node, "paint_title_status"):
+            try:
+                node.paint_title_status(p, title_rect)
+                self._rendered_title_status.append(
+                    (node.node_id, self._title_status_rect(title_rect))
+                )
+            except Exception:
+                pass
 
         # Draw each row
         for row in rows:
@@ -1019,6 +1030,22 @@ class NodeEditorCanvas(QWidget):
                 return node_id
         return None
 
+    def _hit_title_status(self, sp: QPointF) -> Optional[str]:
+        """Return node_id if sp is inside a node's title status icon."""
+        for node_id, rect in self._rendered_title_status:
+            if rect.contains(sp):
+                return node_id
+        return None
+
+    def _title_status_rect(self, title_rect: QRectF) -> QRectF:
+        dot_d = 10.0
+        return QRectF(
+            title_rect.right() - dot_d - 4,
+            title_rect.top() + (title_rect.height() - dot_d) / 2,
+            dot_d,
+            dot_d,
+        )
+
     def _hit_group_title(self, sp: QPointF) -> Optional[str]:
         """Return group_id if sp is inside a group title bar."""
         for gid, rect in self._rendered_group_title_bars:
@@ -1338,14 +1365,21 @@ class NodeEditorCanvas(QWidget):
         if not self._panning and not self._dragging_node and not self._wire_src:
             scene = self._v2s(event.position())
             hp = self._hit_pin(scene)
+            hs = self._hit_title_status(scene)
             new_hovered_pin  = hp
-            new_hovered_node = self._hit_node(scene) if not hp else None
-            if new_hovered_pin != self._hovered_pin or new_hovered_node != self._hovered_node:
+            new_hovered_status = hs if not hp else None
+            new_hovered_node = self._hit_node(scene) if not hp and not hs else None
+            if (
+                new_hovered_pin != self._hovered_pin
+                or new_hovered_status != self._hovered_title_status
+                or new_hovered_node != self._hovered_node
+            ):
                 self._hovered_pin  = new_hovered_pin
+                self._hovered_title_status = new_hovered_status
                 self._hovered_node = new_hovered_node
                 self._tooltip_timer.stop()
                 QToolTip.hideText()
-                if new_hovered_pin or new_hovered_node:
+                if new_hovered_pin or new_hovered_status or new_hovered_node:
                     self._tooltip_timer.start(500)
         if self._resizing_group:
             scene = self._v2s(event.position())
@@ -1617,6 +1651,18 @@ class NodeEditorCanvas(QWidget):
                 text = (f"<b>{rp.pin_name}</b>"
                         f"<br>{direction} · <b>{type_name}</b>{optional}")
             QToolTip.showText(global_pos, text, self)
+            return
+
+        if self._hovered_title_status:
+            node = self._runtime.get_node(self._hovered_title_status)
+            tooltip = ""
+            if node and hasattr(node, "title_status_tooltip"):
+                try:
+                    tooltip = str(node.title_status_tooltip())
+                except Exception:
+                    tooltip = ""
+            if tooltip:
+                QToolTip.showText(global_pos, tooltip, self)
             return
 
         # Node tooltip — only when NODE_TOOLTIP is set
@@ -2281,6 +2327,22 @@ class NodeEditorCanvas(QWidget):
                 ch_menu.addAction(act)
             ctrl_actions.append(ch_menu)
 
+        if hasattr(node, "get_event_name") and hasattr(node, "set_event_name"):
+            event_act = QAction(
+                tr("ui.canvas.menu.edit_event_name", default="Edit event name..."),
+                menu,
+            )
+            event_act.triggered.connect(lambda: self._open_event_name_dialog(node_id))
+            ctrl_actions.append(event_act)
+
+        if hasattr(node, "get_websocket_config") and hasattr(node, "set_websocket_config"):
+            ws_act = QAction(
+                tr("ui.canvas.menu.websocket_server", default="WebSocket server..."),
+                menu,
+            )
+            ws_act.triggered.connect(lambda: self._open_websocket_config_dialog(node_id))
+            ctrl_actions.append(ws_act)
+
         if (field_hit and field_hit.node_id == node_id and field_hit.is_dynamic
                 and hasattr(node, "move_dynamic_field")):
             idx = field_hit.dynamic_index
@@ -2411,6 +2473,97 @@ class NodeEditorCanvas(QWidget):
             self._history.push(WireDeleteCmd(self._runtime, wire))
         self._history.end_macro()
         self.update()
+
+    def _open_event_name_dialog(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_event_name") or not hasattr(node, "set_event_name"):
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("ui.dialog.event_name.title", default="Edit Event Name"))
+        dlg.setModal(True)
+        dlg.setStyleSheet("""
+            QDialog { background: #1a0a0f; color: #ffd0de; }
+            QLabel  { color: #ffd0de; }
+            QLineEdit {
+                background: #12070b; color: #ffd0de;
+                border: 1px solid #f95979; border-radius: 4px;
+                padding: 4px;
+            }
+            QPushButton {
+                background: #2a1018; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 4px;
+                padding: 4px 10px;
+            }
+            QPushButton:hover { background: #c90084; border-color: #c90084; }
+        """)
+
+        layout = QVBoxLayout(dlg)
+        editor = QLineEdit(dlg)
+        editor.setText(str(node.get_event_name()))
+        editor.selectAll()
+        layout.addWidget(editor)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            node.set_event_name(editor.text())
+            self.update()
+
+    def _open_websocket_config_dialog(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_websocket_config") or not hasattr(node, "set_websocket_config"):
+            return
+
+        host, port = node.get_websocket_config()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("ui.dialog.websocket_server.title", default="WebSocket Server"))
+        dlg.setModal(True)
+        dlg.setStyleSheet("""
+            QDialog { background: #1a0a0f; color: #ffd0de; }
+            QLabel  { color: #ffd0de; }
+            QLineEdit, QSpinBox {
+                background: #12070b; color: #ffd0de;
+                border: 1px solid #f95979; border-radius: 4px;
+                padding: 4px;
+            }
+            QPushButton {
+                background: #2a1018; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 4px;
+                padding: 4px 10px;
+            }
+            QPushButton:hover { background: #c90084; border-color: #c90084; }
+        """)
+
+        layout = QVBoxLayout(dlg)
+        form = QFormLayout()
+        host_editor = QLineEdit(dlg)
+        host_editor.setText(str(host))
+        port_editor = QSpinBox(dlg)
+        port_editor.setRange(1, 65535)
+        port_editor.setValue(int(port))
+        form.addRow(tr("ui.dialog.websocket_server.host", default="Host:"), host_editor)
+        form.addRow(tr("ui.dialog.websocket_server.port", default="Port:"), port_editor)
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            node.set_websocket_config(host_editor.text(), port_editor.value())
+            self.update()
 
     def _remove_missing_dynamic_wires(self, node_id: str, old_pins: set[str]) -> None:
         node = self._runtime.get_node(node_id)
