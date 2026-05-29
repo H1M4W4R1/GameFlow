@@ -14,11 +14,14 @@ Requirements (pip install):
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 
 from bleak.backends.winrt.util import allow_sta
 allow_sta()
+
+os.environ.setdefault("QT_FFMPEG_DEBUG", "0")
 
 # Ensure project root is in path
 PROJECT_ROOT = Path(__file__).parent

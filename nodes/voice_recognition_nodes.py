@@ -298,8 +298,9 @@ _SHARED_VOICE_SERVICE = _SharedVoiceRecognitionService()
 class VoiceRecognitionNode(NodeBase):
     """Fire a tick whenever the configured word or phrase is heard."""
 
-    NODE_NAME = "Voice Recognition"
-    NODE_GROUP = "Flow/Events"
+    NODE_NAME = "On Voice Detected"
+    NODE_GROUP = "Audio"
+    _TR_KEY = "voice_recognition"
     NODE_TITLE_COLOR = "#184f56"
     MIN_WIDTH = 230.0
     VARIABLE_INPUTS = {

@@ -48,6 +48,7 @@ node.touchpad_display.name,Wyświetlacz Touchpadu
 node.group.constants,Stałe
 node.group.controls,Kontrolki
 node.group.debug,Debug
+node.group.audio,Audio
 device.lovense.manufacturer,Lovense
 device.lovense.lush.name,Lush
 device.lovense.lush.description,Wibrator wewnętrzny do noszenia
@@ -219,6 +220,10 @@ ui.canvas.menu.edit_event_name,Edytuj nazwę zdarzenia...
 ui.canvas.menu.websocket_server,Serwer WebSocket...
 ui.canvas.menu.mqtt_server,Serwer MQTT...
 ui.canvas.menu.voice_recognition,Rozpoznawanie mowy...
+ui.canvas.menu.select_sfx,Wybierz plik SFX...
+ui.canvas.menu.audio_output_device,Wyjściowe urządzenie audio
+ui.canvas.menu.default_audio_device,Domyślne urządzenie wyjściowe
+ui.canvas.menu.open_audio_directory,Otwórz katalog audio
 ui.canvas.menu.scale_mode,Tryb skalowania
 ui.canvas.menu.channel_count,Liczba kanałów
 ui.canvas.menu.sample_count,Liczba próbek
@@ -250,6 +255,8 @@ ui.dialog.voice_recognition.sensitivity,Czułość:
 ui.dialog.voice_recognition.default_mic,Domyślny mikrofon
 ui.dialog.voice_recognition.group.microphones,Mikrofony
 ui.dialog.voice_recognition.group.speakers,Głośniki
+ui.dialog.sfx_file.title,Wybierz plik SFX
+ui.dialog.sfx_file.filter,Pliki audio (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.aiff *.opus *.wma);;Wszystkie pliki (*.*)
 node.on_tick.name,Na Takt
 node.on_tick_custom.name,Na Takt (Własny)
 node.websocket_message.name,Wiadomość WebSocket
@@ -262,7 +269,10 @@ node.mqtt_topic.name,Temat MQTT
 node.on_mqtt_message.name,Na wiadomość MQTT
 node.on_mqtt_topic.name,Na temat MQTT
 node.mqtt_send.name,Wyślij MQTT
-node.voice_recognition.name,Rozpoznawanie Mowy
+node.voice_recognition.name,Po Wykryciu Głosu
+node.play_sfx.name,Odtwórz SFX
+node.play_sfx.no_file,Nie wybrano pliku
+node.play_sfx.missing_file,Brak pliku
 node.on_start.name,Na Start
 node.on_pause.name,Na Pauzę
 node.on_resume.name,Na Wznowienie
