@@ -46,6 +46,7 @@ from PyQt6.QtWidgets import (
     QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
     QFrame, QLineEdit, QListWidget, QListWidgetItem,
     QMenu, QVBoxLayout, QWidget, QToolTip, QColorDialog, QSpinBox,
+    QComboBox,
 )
 
 from core.localization import tr
@@ -2351,6 +2352,15 @@ class NodeEditorCanvas(QWidget):
             mqtt_act.triggered.connect(lambda: self._open_mqtt_config_dialog(node_id))
             ctrl_actions.append(mqtt_act)
 
+        if (hasattr(node, "get_voice_recognition_config")
+                and hasattr(node, "set_voice_recognition_config")):
+            voice_act = QAction(
+                tr("ui.canvas.menu.voice_recognition", default="Voice recognition..."),
+                menu,
+            )
+            voice_act.triggered.connect(lambda: self._open_voice_recognition_dialog(node_id))
+            ctrl_actions.append(voice_act)
+
         if (field_hit and field_hit.node_id == node_id and field_hit.is_dynamic
                 and hasattr(node, "move_dynamic_field")):
             idx = field_hit.dynamic_index
@@ -2620,6 +2630,84 @@ class NodeEditorCanvas(QWidget):
 
         if dlg.exec() == QDialog.DialogCode.Accepted:
             node.set_mqtt_config(host_editor.text(), port_editor.value())
+            self.update()
+
+    def _open_voice_recognition_dialog(self, node_id: str) -> None:
+        node = self._runtime.get_node(node_id)
+        if not node or not hasattr(node, "get_voice_recognition_config"):
+            return
+        if not hasattr(node, "set_voice_recognition_config"):
+            return
+
+        current_mic, sensitivity = node.get_voice_recognition_config()
+        audio_devices = [("microphone", None, "Default microphone", True)]
+        if hasattr(node, "list_voice_audio_devices"):
+            audio_devices = node.list_voice_audio_devices()
+        elif hasattr(node, "list_voice_microphones"):
+            audio_devices = [
+                ("microphone", mic_index, mic_name, True)
+                for mic_index, mic_name in node.list_voice_microphones()
+            ]
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("ui.dialog.voice_recognition.title", default="Voice Recognition"))
+        dlg.setModal(True)
+        dlg.setStyleSheet("""
+            QDialog { background: #1a0a0f; color: #ffd0de; }
+            QLabel  { color: #ffd0de; }
+            QComboBox, QSpinBox {
+                background: #12070b; color: #ffd0de;
+                border: 1px solid #f95979; border-radius: 4px;
+                padding: 4px;
+            }
+            QPushButton {
+                background: #2a1018; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 4px;
+                padding: 4px 10px;
+            }
+            QPushButton:hover { background: #c90084; border-color: #c90084; }
+        """)
+
+        layout = QVBoxLayout(dlg)
+        form = QFormLayout()
+
+        mic_editor = QComboBox(dlg)
+        selected_index = 0
+        for idx, (device_kind, mic_index, mic_name, enabled) in enumerate(audio_devices):
+            if device_kind == "group":
+                label = tr(
+                    f"ui.dialog.voice_recognition.group.{str(mic_name).lower()}",
+                    default=str(mic_name),
+                )
+            else:
+                label = str(mic_name or tr("ui.dialog.voice_recognition.default_mic", default="Default microphone"))
+            mic_editor.addItem(label, mic_index)
+            item = mic_editor.model().item(idx)
+            if item is not None and not enabled:
+                item.setEnabled(False)
+            if enabled and mic_index == current_mic:
+                selected_index = idx
+        mic_editor.setCurrentIndex(selected_index)
+
+        sensitivity_editor = QSpinBox(dlg)
+        sensitivity_editor.setRange(0, 100)
+        sensitivity_editor.setValue(int(sensitivity))
+
+        form.addRow(tr("ui.dialog.voice_recognition.microphone", default="Microphone:"), mic_editor)
+        form.addRow(tr("ui.dialog.voice_recognition.sensitivity", default="Sensitivity:"), sensitivity_editor)
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            mic_index = mic_editor.currentData()
+            node.set_voice_recognition_config(mic_index, sensitivity_editor.value())
             self.update()
 
     def _remove_missing_dynamic_wires(self, node_id: str, old_pins: set[str]) -> None:

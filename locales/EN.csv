@@ -218,6 +218,7 @@ ui.canvas.menu.set_range,Set range…
 ui.canvas.menu.edit_event_name,Edit event name...
 ui.canvas.menu.websocket_server,WebSocket server...
 ui.canvas.menu.mqtt_server,MQTT server...
+ui.canvas.menu.voice_recognition,Voice recognition...
 ui.canvas.menu.scale_mode,Scale mode
 ui.canvas.menu.channel_count,Channel count
 ui.canvas.menu.sample_count,Sample count
@@ -242,6 +243,12 @@ ui.dialog.websocket_server.port,Port:
 ui.dialog.mqtt_server.title,MQTT Server
 ui.dialog.mqtt_server.host,Host:
 ui.dialog.mqtt_server.port,Port:
+ui.dialog.voice_recognition.title,Voice Recognition
+ui.dialog.voice_recognition.microphone,Microphone:
+ui.dialog.voice_recognition.sensitivity,Sensitivity:
+ui.dialog.voice_recognition.default_mic,Default microphone
+ui.dialog.voice_recognition.group.microphones,Microphones
+ui.dialog.voice_recognition.group.speakers,Speakers
 node.on_tick.name,On Tick
 node.on_tick_custom.name,On Tick (Custom)
 node.websocket_message.name,WebSocket Message
@@ -254,6 +261,7 @@ node.mqtt_topic.name,MQTT Topic
 node.on_mqtt_message.name,On MQTT Message
 node.on_mqtt_topic.name,On MQTT Topic
 node.mqtt_send.name,MQTT Send
+node.voice_recognition.name,Voice Recognition
 node.on_start.name,On Start
 node.on_pause.name,On Pause
 node.on_resume.name,On Resume
