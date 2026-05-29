@@ -13,9 +13,11 @@ from typing import Any, Optional
 
 from PyQt6.QtCore import Qt, QRectF, QPointF
 from PyQt6.QtGui import (
-    QBrush, QColor, QFont, QLinearGradient, QPainter, QPen,
+    QAction, QBrush, QColor, QFont, QLinearGradient, QPainter, QPen,
 )
+from PyQt6.QtWidgets import QMenu
 
+from core.localization import tr
 from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType
 
@@ -86,6 +88,28 @@ class SliderNode(NodeBase):
             self.node_changed.emit()
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        range_act = QAction(tr("ui.canvas.menu.set_range"), menu)
+        range_act.triggered.connect(lambda: canvas._open_ctrl_range_dialog(self.node_id))
+        menu.addAction(range_act)
+
+        scale_menu = QMenu(tr("ui.canvas.menu.scale_mode"), menu)
+        scale_menu.setStyleSheet(menu.styleSheet())
+        current_scale = self.get_ctrl_scale()
+        for mode, label in [
+            ("linear", "Linear"),
+            ("exponential", "Exponential"),
+            ("logarithmic", "Logarithmic"),
+        ]:
+            act = QAction(label, scale_menu)
+            act.setCheckable(True)
+            act.setChecked(current_scale == mode)
+            act.triggered.connect(
+                lambda _checked, m=mode: canvas._set_ctrl_scale(self.node_id, m)
+            )
+            scale_menu.addAction(act)
+        menu.addMenu(scale_menu)
 
     def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         self._update_from_scene(scene_pos, ctrl_rect)
@@ -267,6 +291,15 @@ class ButtonNode(NodeBase):
     def set_ctrl_color(self, hex_color: str) -> None:
         self._btn_color = hex_color
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        lbl_act = QAction(tr("ui.canvas.menu.rename_label"), menu)
+        lbl_act.triggered.connect(lambda: canvas._trigger_ctrl_label_editor(self.node_id))
+        menu.addAction(lbl_act)
+
+        color_act = QAction(tr("ui.canvas.menu.button_color"), menu)
+        color_act.triggered.connect(lambda: canvas._open_ctrl_color_picker(self.node_id))
+        menu.addAction(color_act)
 
     # ── painting ───────────────────────────────────────────────────────────────
 
@@ -657,6 +690,23 @@ class TouchpadNode(NodeBase):
         if mode in ("reset", "hold"):
             self._mode = mode
             self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        mode_menu = QMenu(tr("ui.canvas.menu.touchpad_mode", default="Release Mode"), menu)
+        mode_menu.setStyleSheet(menu.styleSheet())
+        current_mode = self.get_touchpad_mode()
+        for mode, label in [
+            ("reset", "Reset to 0,0"),
+            ("hold", "Keep Last Value"),
+        ]:
+            act = QAction(label, mode_menu)
+            act.setCheckable(True)
+            act.setChecked(current_mode == mode)
+            act.triggered.connect(
+                lambda _checked, m=mode: canvas._set_touchpad_mode(self.node_id, m)
+            )
+            mode_menu.addAction(act)
+        menu.addMenu(mode_menu)
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
 

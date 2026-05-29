@@ -6,8 +6,10 @@ import re
 from typing import Any
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QFont, QFontMetrics, QPainter, QPen
+from PyQt6.QtGui import QAction, QBrush, QColor, QFont, QFontMetrics, QPainter, QPen
+from PyQt6.QtWidgets import QMenu
 
+from core.localization import tr
 from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType
 
@@ -17,6 +19,27 @@ _LINE_H = 14
 _MAX_DEBUG_W = 540.0
 _MAX_DEBUG_H = 380.0
 _SCROLLBAR = 10.0
+
+
+def _add_json_fields_context_menu(node: NodeBase, canvas: Any, menu: QMenu, field_hit: Any) -> None:
+    if not (field_hit and field_hit.node_id == node.node_id and field_hit.is_dynamic):
+        return
+    idx = field_hit.dynamic_index
+    fields_menu = QMenu(tr("ui.canvas.menu.json_fields", default="JSON fields"), menu)
+    fields_menu.setStyleSheet(menu.styleSheet())
+
+    up_act = QAction(tr("ui.canvas.menu.move_field_up", default="Move field up"), fields_menu)
+    up_act.setEnabled(idx > 0)
+    up_act.triggered.connect(lambda: canvas._move_dynamic_field(node.node_id, idx, -1))
+    fields_menu.addAction(up_act)
+
+    down_act = QAction(tr("ui.canvas.menu.move_field_down", default="Move field down"), fields_menu)
+    field_count = len([spec for spec in node.get_dynamic_field_specs() if str(spec[1]).strip()])
+    down_act.setEnabled(0 <= idx < field_count - 1)
+    down_act.triggered.connect(lambda: canvas._move_dynamic_field(node.node_id, idx, 1))
+    fields_menu.addAction(down_act)
+
+    menu.addMenu(fields_menu)
 
 
 class JsonExtractNode(NodeBase):
@@ -67,6 +90,9 @@ class JsonExtractNode(NodeBase):
         self.PINS = self._build_pins()
         self._compute()
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        _add_json_fields_context_menu(self, canvas, menu, field_hit)
 
     def get_dynamic_output_pin_names(self) -> list[str]:
         return self._output_pin_names()
@@ -207,6 +233,9 @@ class BuildJsonNode(NodeBase):
         self.PINS = self._build_pins()
         self._compute()
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        _add_json_fields_context_menu(self, canvas, menu, field_hit)
 
     def get_dynamic_input_pin_names(self) -> list[str]:
         return self._input_pin_names()

@@ -225,6 +225,7 @@ ui.canvas.menu.sample_count,Sample count
 ui.canvas.menu.custom_sample_count,Custom…
 ui.canvas.menu.waveform_range,Y-axis range
 ui.canvas.menu.custom_range,Custom…
+ui.canvas.menu.touchpad_mode,Release Mode
 ui.canvas.menu.json_fields,JSON fields
 ui.canvas.menu.move_field_up,Move field up
 ui.canvas.menu.move_field_down,Move field down

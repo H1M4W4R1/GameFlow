@@ -9,8 +9,10 @@ import weakref
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QPainter
+from PyQt6.QtGui import QAction, QBrush, QColor, QPainter
+from PyQt6.QtWidgets import QMenu
 
+from core.localization import tr
 from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType
 
@@ -395,6 +397,16 @@ class VoiceRecognitionNode(NodeBase):
             self._sensitivity,
         )
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        voice_act = QAction(
+            tr("ui.canvas.menu.voice_recognition", default="Voice recognition..."),
+            menu,
+        )
+        voice_act.triggered.connect(
+            lambda: canvas._open_voice_recognition_dialog(self.node_id)
+        )
+        menu.addAction(voice_act)
 
     def list_voice_microphones(self) -> list[tuple[int | None, str]]:
         return _SHARED_VOICE_SERVICE.list_microphones()

@@ -400,6 +400,17 @@ class NodeBase(QObject):
 
     # ── Control panel interaction ─────────────────────────────────────────
 
+    def _get_context_menu(self, canvas: Any, menu: Any, field_hit: Any = None) -> None:
+        """
+        Add node-specific actions to a node right-click context menu.
+
+        The canvas owns universal actions such as rename, duplicate, delete, and
+        connection removal. Subclasses can override this hook to add their own
+        actions or submenus. *canvas* is the active NodeEditorCanvas, so node
+        implementations can reuse existing dialog/history helpers without
+        moving those concerns into NodeBase.
+        """
+
     def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         """Called when LMB is pressed inside the CUSTOM row area.
         *scene_pos* is the click in scene coordinates.

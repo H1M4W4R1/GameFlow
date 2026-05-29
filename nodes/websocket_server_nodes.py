@@ -11,8 +11,10 @@ import weakref
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QPainter
+from PyQt6.QtGui import QAction, QBrush, QColor, QPainter
+from PyQt6.QtWidgets import QMenu
 
+from core.localization import tr
 from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType
 
@@ -259,6 +261,14 @@ class WebSocketNodeBase(NodeBase):
         _SHARED_SERVER.reconfigure_from(self, self._ws_host, self._ws_port)
         self.node_changed.emit()
 
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        ws_act = QAction(
+            tr("ui.canvas.menu.websocket_server", default="WebSocket server..."),
+            menu,
+        )
+        ws_act.triggered.connect(lambda: canvas._open_websocket_config_dialog(self.node_id))
+        menu.addAction(ws_act)
+
     def paint_title_status(self, painter: QPainter, rect: QRectF) -> None:
         if _SHARED_SERVER.startup_error:
             color = QColor("#ffb300")
@@ -388,6 +398,15 @@ class WebSocketEventNode(WebSocketNodeBase):
     def set_event_name(self, event_name: str) -> None:
         self._event_name = str(event_name).strip()
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        super()._get_context_menu(canvas, menu, field_hit)
+        event_act = QAction(
+            tr("ui.canvas.menu.edit_event_name", default="Edit event name..."),
+            menu,
+        )
+        event_act.triggered.connect(lambda: canvas._open_event_name_dialog(self.node_id))
+        menu.addAction(event_act)
 
     def title_status_tooltip(self) -> str:
         base = super().title_status_tooltip()

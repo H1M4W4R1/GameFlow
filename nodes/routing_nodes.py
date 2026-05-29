@@ -15,8 +15,10 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui  import QPainter, QColor, QFont
+from PyQt6.QtGui  import QAction, QPainter, QColor, QFont
+from PyQt6.QtWidgets import QMenu
 
+from core.localization import tr
 from core.node_base import NodeBase
 from core.types     import PinDescriptor, PinDirection, PinType
 
@@ -88,6 +90,20 @@ class _RoutingNodeBase(NodeBase):
         self._channel_count = n
         self._compute()
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        ch_menu = QMenu(tr("ui.canvas.menu.channel_count"), menu)
+        ch_menu.setStyleSheet(menu.styleSheet())
+        current_ch = self.get_channel_count()
+        for n_ch in range(_MIN_CHANNELS, _MAX_CHANNELS + 1):
+            act = QAction(str(n_ch), ch_menu)
+            act.setCheckable(True)
+            act.setChecked(current_ch == n_ch)
+            act.triggered.connect(
+                lambda _checked, count=n_ch: canvas._set_channel_count(self.node_id, count)
+            )
+            ch_menu.addAction(act)
+        menu.addMenu(ch_menu)
 
     # ── Lifecycle ────────────────────────────────────────────────────────────
 

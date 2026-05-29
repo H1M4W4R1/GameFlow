@@ -12,8 +12,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QPainter
+from PyQt6.QtGui import QAction, QBrush, QColor, QPainter
+from PyQt6.QtWidgets import QMenu
 
+from core.localization import tr
 from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType
 
@@ -401,6 +403,14 @@ class MqttConfiguredNode(NodeBase):
         self._mqtt_port = self._coerce_port(port)
         _SHARED_MQTT_SERVER.reconfigure_from(self, self._mqtt_host, self._mqtt_port)
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        mqtt_act = QAction(
+            tr("ui.canvas.menu.mqtt_server", default="MQTT server..."),
+            menu,
+        )
+        mqtt_act.triggered.connect(lambda: canvas._open_mqtt_config_dialog(self.node_id))
+        menu.addAction(mqtt_act)
 
     def paint_title_status(self, painter: QPainter, rect: QRectF) -> None:
         if _SHARED_MQTT_SERVER.startup_error:

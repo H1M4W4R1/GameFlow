@@ -21,8 +21,10 @@ from collections import deque
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt, QPointF
-from PyQt6.QtGui  import QPainter, QColor, QFont, QPen, QPainterPath, QBrush
+from PyQt6.QtGui  import QAction, QPainter, QColor, QFont, QPen, QPainterPath, QBrush
+from PyQt6.QtWidgets import QMenu
 
+from core.localization import tr
 from core.node_base import NodeBase
 from core.types     import PinDescriptor, PinDirection, PinType
 
@@ -393,6 +395,55 @@ class WaveformDisplayNode(NodeBase):
         self._custom_max = float(max_val)
         self._range_mode = "Custom"
         self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        sample_menu = QMenu(tr("ui.canvas.menu.sample_count", default="Sample count"), menu)
+        sample_menu.setStyleSheet(menu.styleSheet())
+        current_samples = self.get_sample_count()
+        for n_s in (50, 100, 200, 300, 500):
+            act = QAction(str(n_s), sample_menu)
+            act.setCheckable(True)
+            act.setChecked(current_samples == n_s)
+            act.triggered.connect(
+                lambda _checked, s=n_s: canvas._set_sample_count(self.node_id, s)
+            )
+            sample_menu.addAction(act)
+
+        sample_menu.addSeparator()
+        custom_samples_act = QAction(
+            tr("ui.canvas.menu.custom_sample_count", default="Custom..."),
+            sample_menu,
+        )
+        custom_samples_act.triggered.connect(
+            lambda: canvas._open_sample_count_dialog(self.node_id)
+        )
+        sample_menu.addAction(custom_samples_act)
+        menu.addMenu(sample_menu)
+
+        range_menu = QMenu(tr("ui.canvas.menu.waveform_range", default="Y-axis range"), menu)
+        range_menu.setStyleSheet(menu.styleSheet())
+        current_range = self.get_waveform_range()
+        for range_mode in self._RANGE_PRESETS.keys():
+            act = QAction(range_mode, range_menu)
+            act.setCheckable(True)
+            act.setChecked(current_range == range_mode)
+            act.triggered.connect(
+                lambda _checked, m=range_mode: canvas._set_waveform_range(self.node_id, m)
+            )
+            range_menu.addAction(act)
+
+        range_menu.addSeparator()
+        custom_range_act = QAction(
+            tr("ui.canvas.menu.custom_range", default="Custom..."),
+            range_menu,
+        )
+        custom_range_act.setCheckable(True)
+        custom_range_act.setChecked(current_range == "Custom")
+        custom_range_act.triggered.connect(
+            lambda: canvas._open_waveform_custom_range_dialog(self.node_id)
+        )
+        range_menu.addAction(custom_range_act)
+        menu.addMenu(range_menu)
 
     # ── data / state ──────────────────────────────────────────────────────────
 

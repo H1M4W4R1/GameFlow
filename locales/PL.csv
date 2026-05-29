@@ -225,6 +225,7 @@ ui.canvas.menu.sample_count,Liczba próbek
 ui.canvas.menu.custom_sample_count,Niestandardowo…
 ui.canvas.menu.waveform_range,Zakres osi Y
 ui.canvas.menu.custom_range,Niestandardowo…
+ui.canvas.menu.touchpad_mode,Tryb po puszczeniu
 ui.canvas.menu.json_fields,Pola JSON
 ui.canvas.menu.move_field_up,Przenieś pole wyżej
 ui.canvas.menu.move_field_down,Przenieś pole niżej
