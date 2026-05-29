@@ -30,13 +30,13 @@ def _add_json_fields_context_menu(node: NodeBase, canvas: Any, menu: QMenu, fiel
 
     up_act = QAction(tr("ui.canvas.menu.move_field_up", default="Move field up"), fields_menu)
     up_act.setEnabled(idx > 0)
-    up_act.triggered.connect(lambda: canvas._move_dynamic_field(node.node_id, idx, -1))
+    up_act.triggered.connect(lambda: (node.move_dynamic_field(idx, -1), canvas.update()))
     fields_menu.addAction(up_act)
 
     down_act = QAction(tr("ui.canvas.menu.move_field_down", default="Move field down"), fields_menu)
     field_count = len([spec for spec in node.get_dynamic_field_specs() if str(spec[1]).strip()])
     down_act.setEnabled(0 <= idx < field_count - 1)
-    down_act.triggered.connect(lambda: canvas._move_dynamic_field(node.node_id, idx, 1))
+    down_act.triggered.connect(lambda: (node.move_dynamic_field(idx, 1), canvas.update()))
     fields_menu.addAction(down_act)
 
     menu.addMenu(fields_menu)

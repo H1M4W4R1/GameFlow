@@ -22,7 +22,9 @@ from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt, QPointF
 from PyQt6.QtGui  import QAction, QPainter, QColor, QFont, QPen, QPainterPath, QBrush
-from PyQt6.QtWidgets import QMenu
+from PyQt6.QtWidgets import (
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QMenu, QSpinBox,
+)
 
 from core.localization import tr
 from core.node_base import NodeBase
@@ -405,7 +407,7 @@ class WaveformDisplayNode(NodeBase):
             act.setCheckable(True)
             act.setChecked(current_samples == n_s)
             act.triggered.connect(
-                lambda _checked, s=n_s: canvas._set_sample_count(self.node_id, s)
+                lambda _checked, s=n_s: self._set_sample_count(canvas, s)
             )
             sample_menu.addAction(act)
 
@@ -415,7 +417,7 @@ class WaveformDisplayNode(NodeBase):
             sample_menu,
         )
         custom_samples_act.triggered.connect(
-            lambda: canvas._open_sample_count_dialog(self.node_id)
+            lambda: self._open_sample_count_dialog(canvas)
         )
         sample_menu.addAction(custom_samples_act)
         menu.addMenu(sample_menu)
@@ -428,7 +430,7 @@ class WaveformDisplayNode(NodeBase):
             act.setCheckable(True)
             act.setChecked(current_range == range_mode)
             act.triggered.connect(
-                lambda _checked, m=range_mode: canvas._set_waveform_range(self.node_id, m)
+                lambda _checked, m=range_mode: self._set_waveform_range(canvas, m)
             )
             range_menu.addAction(act)
 
@@ -440,10 +442,70 @@ class WaveformDisplayNode(NodeBase):
         custom_range_act.setCheckable(True)
         custom_range_act.setChecked(current_range == "Custom")
         custom_range_act.triggered.connect(
-            lambda: canvas._open_waveform_custom_range_dialog(self.node_id)
+            lambda: self._open_custom_range_dialog(canvas)
         )
         range_menu.addAction(custom_range_act)
         menu.addMenu(range_menu)
+
+    def _set_sample_count(self, canvas: Any, count: int) -> None:
+        self.set_sample_count(count)
+        canvas.update()
+
+    def _set_waveform_range(self, canvas: Any, mode: str) -> None:
+        self.set_waveform_range(mode)
+        canvas.update()
+
+    def _open_custom_range_dialog(self, canvas: Any) -> None:
+        old_min, old_max = self.get_custom_range()
+        dlg = QDialog(canvas)
+        dlg.setWindowTitle(tr("ui.dialog.waveform_range.title", default="Waveform Y-Axis Range"))
+        layout = QFormLayout(dlg)
+        min_spin = QDoubleSpinBox()
+        min_spin.setRange(-1e9, 1e9)
+        min_spin.setDecimals(4)
+        min_spin.setSingleStep(0.1)
+        min_spin.setValue(old_min)
+        max_spin = QDoubleSpinBox()
+        max_spin.setRange(-1e9, 1e9)
+        max_spin.setDecimals(4)
+        max_spin.setSingleStep(0.1)
+        max_spin.setValue(old_max)
+        layout.addRow("Min:", min_spin)
+        layout.addRow("Max:", max_spin)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            new_min = min_spin.value()
+            new_max = max_spin.value()
+            if new_min != old_min or new_max != old_max:
+                self.set_custom_range(new_min, new_max)
+            canvas.update()
+
+    def _open_sample_count_dialog(self, canvas: Any) -> None:
+        old_count = self.get_custom_sample_count()
+        dlg = QDialog(canvas)
+        dlg.setWindowTitle(tr("ui.dialog.sample_count.title", default="Sample Count"))
+        layout = QFormLayout(dlg)
+        count_spin = QSpinBox()
+        count_spin.setRange(10, self._MAX_SAMPLES)
+        count_spin.setSingleStep(10)
+        count_spin.setValue(old_count)
+        layout.addRow("Count:", count_spin)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            new_count = count_spin.value()
+            if new_count != old_count:
+                self.set_custom_sample_count(new_count)
+            canvas.update()
 
     # ── data / state ──────────────────────────────────────────────────────────
 

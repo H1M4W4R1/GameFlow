@@ -18,6 +18,7 @@ from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui  import QAction, QPainter, QColor, QFont
 from PyQt6.QtWidgets import QMenu
 
+from core.command_history import WireDeleteCmd
 from core.localization import tr
 from core.node_base import NodeBase
 from core.types     import PinDescriptor, PinDirection, PinType
@@ -99,11 +100,31 @@ class _RoutingNodeBase(NodeBase):
             act = QAction(str(n_ch), ch_menu)
             act.setCheckable(True)
             act.setChecked(current_ch == n_ch)
-            act.triggered.connect(
-                lambda _checked, count=n_ch: canvas._set_channel_count(self.node_id, count)
-            )
+            act.triggered.connect(lambda _checked, count=n_ch: self._set_channel_count(canvas, count))
             ch_menu.addAction(act)
         menu.addMenu(ch_menu)
+
+    def _set_channel_count(self, canvas: Any, count: int) -> None:
+        old_count = self.get_channel_count()
+        if count == old_count:
+            return
+        is_mux = any(p.name.startswith("in_") for p in self.PINS
+                     if p.direction.name == "INPUT")
+        prefix = "in_" if is_mux else "out_"
+        removed_pins = {f"{prefix}{i}" for i in range(count, old_count)}
+        dead_wires = [
+            w for w in canvas._runtime.wires.values()
+            if (w.src_node == self.node_id and w.src_pin in removed_pins) or
+               (w.dst_node == self.node_id and w.dst_pin in removed_pins)
+        ]
+
+        canvas._history.begin_macro(f"Set channel count -> {count}")
+        for wire in dead_wires:
+            canvas._runtime.remove_wire(wire.wire_id)
+            canvas._history.push(WireDeleteCmd(canvas._runtime, wire))
+        self.set_channel_count(count)
+        canvas._history.end_macro()
+        canvas.update()
 
     # ── Lifecycle ────────────────────────────────────────────────────────────
 

@@ -10,7 +10,7 @@ from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QAction, QBrush, QColor, QPainter
-from PyQt6.QtWidgets import QMenu
+from PyQt6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout, QMenu, QSpinBox
 
 from core.localization import tr
 from core.node_base import NodeBase
@@ -403,10 +403,54 @@ class VoiceRecognitionNode(NodeBase):
             tr("ui.canvas.menu.voice_recognition", default="Voice recognition..."),
             menu,
         )
-        voice_act.triggered.connect(
-            lambda: canvas._open_voice_recognition_dialog(self.node_id)
-        )
+        voice_act.triggered.connect(lambda: self._open_voice_recognition_dialog(canvas))
         menu.addAction(voice_act)
+
+    def _open_voice_recognition_dialog(self, canvas: Any) -> None:
+        current_mic, sensitivity = self.get_voice_recognition_config()
+        audio_devices = self.list_voice_audio_devices()
+
+        dlg = QDialog(canvas)
+        dlg.setWindowTitle(tr("ui.dialog.voice_recognition.title", default="Voice Recognition"))
+        dlg.setModal(True)
+        layout = QFormLayout(dlg)
+
+        mic_editor = QComboBox(dlg)
+        selected_index = 0
+        for idx, (device_kind, mic_index, mic_name, enabled) in enumerate(audio_devices):
+            if device_kind == "group":
+                label = tr(
+                    f"ui.dialog.voice_recognition.group.{str(mic_name).lower()}",
+                    default=str(mic_name),
+                )
+            else:
+                label = str(mic_name or tr("ui.dialog.voice_recognition.default_mic", default="Default microphone"))
+            mic_editor.addItem(label, mic_index)
+            item = mic_editor.model().item(idx)
+            if item is not None and not enabled:
+                item.setEnabled(False)
+            if enabled and mic_index == current_mic:
+                selected_index = idx
+        mic_editor.setCurrentIndex(selected_index)
+
+        sensitivity_editor = QSpinBox(dlg)
+        sensitivity_editor.setRange(0, 100)
+        sensitivity_editor.setValue(int(sensitivity))
+
+        layout.addRow(tr("ui.dialog.voice_recognition.microphone", default="Microphone:"), mic_editor)
+        layout.addRow(tr("ui.dialog.voice_recognition.sensitivity", default="Sensitivity:"), sensitivity_editor)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.set_voice_recognition_config(mic_editor.currentData(), sensitivity_editor.value())
+            canvas.update()
 
     def list_voice_microphones(self) -> list[tuple[int | None, str]]:
         return _SHARED_VOICE_SERVICE.list_microphones()

@@ -12,7 +12,9 @@ from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QAction, QBrush, QColor, QPainter
-from PyQt6.QtWidgets import QMenu
+from PyQt6.QtWidgets import (
+    QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QMenu, QSpinBox, QVBoxLayout,
+)
 
 from core.localization import tr
 from core.node_base import NodeBase
@@ -266,8 +268,37 @@ class WebSocketNodeBase(NodeBase):
             tr("ui.canvas.menu.websocket_server", default="WebSocket server..."),
             menu,
         )
-        ws_act.triggered.connect(lambda: canvas._open_websocket_config_dialog(self.node_id))
+        ws_act.triggered.connect(lambda: self._open_websocket_config_dialog(canvas))
         menu.addAction(ws_act)
+
+    def _open_websocket_config_dialog(self, canvas: Any) -> None:
+        host, port = self.get_websocket_config()
+        dlg = QDialog(canvas)
+        dlg.setWindowTitle(tr("ui.dialog.websocket_server.title", default="WebSocket Server"))
+        dlg.setModal(True)
+
+        layout = QVBoxLayout(dlg)
+        form = QFormLayout()
+        host_editor = QLineEdit(dlg)
+        host_editor.setText(str(host))
+        port_editor = QSpinBox(dlg)
+        port_editor.setRange(1, 65535)
+        port_editor.setValue(int(port))
+        form.addRow(tr("ui.dialog.websocket_server.host", default="Host:"), host_editor)
+        form.addRow(tr("ui.dialog.websocket_server.port", default="Port:"), port_editor)
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.set_websocket_config(host_editor.text(), port_editor.value())
+            canvas.update()
 
     def paint_title_status(self, painter: QPainter, rect: QRectF) -> None:
         if _SHARED_SERVER.startup_error:
@@ -405,8 +436,31 @@ class WebSocketEventNode(WebSocketNodeBase):
             tr("ui.canvas.menu.edit_event_name", default="Edit event name..."),
             menu,
         )
-        event_act.triggered.connect(lambda: canvas._open_event_name_dialog(self.node_id))
+        event_act.triggered.connect(lambda: self._open_event_name_dialog(canvas))
         menu.addAction(event_act)
+
+    def _open_event_name_dialog(self, canvas: Any) -> None:
+        dlg = QDialog(canvas)
+        dlg.setWindowTitle(tr("ui.dialog.event_name.title", default="Edit Event Name"))
+        dlg.setModal(True)
+
+        layout = QVBoxLayout(dlg)
+        editor = QLineEdit(dlg)
+        editor.setText(str(self.get_event_name()))
+        editor.selectAll()
+        layout.addWidget(editor)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.set_event_name(editor.text())
+            canvas.update()
 
     def title_status_tooltip(self) -> str:
         base = super().title_status_tooltip()

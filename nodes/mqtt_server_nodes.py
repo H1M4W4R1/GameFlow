@@ -13,7 +13,9 @@ from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QAction, QBrush, QColor, QPainter
-from PyQt6.QtWidgets import QMenu
+from PyQt6.QtWidgets import (
+    QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QMenu, QSpinBox, QVBoxLayout,
+)
 
 from core.localization import tr
 from core.node_base import NodeBase
@@ -409,8 +411,37 @@ class MqttConfiguredNode(NodeBase):
             tr("ui.canvas.menu.mqtt_server", default="MQTT server..."),
             menu,
         )
-        mqtt_act.triggered.connect(lambda: canvas._open_mqtt_config_dialog(self.node_id))
+        mqtt_act.triggered.connect(lambda: self._open_mqtt_config_dialog(canvas))
         menu.addAction(mqtt_act)
+
+    def _open_mqtt_config_dialog(self, canvas: Any) -> None:
+        host, port = self.get_mqtt_config()
+        dlg = QDialog(canvas)
+        dlg.setWindowTitle(tr("ui.dialog.mqtt_server.title", default="MQTT Server"))
+        dlg.setModal(True)
+
+        layout = QVBoxLayout(dlg)
+        form = QFormLayout()
+        host_editor = QLineEdit(dlg)
+        host_editor.setText(str(host))
+        port_editor = QSpinBox(dlg)
+        port_editor.setRange(1, 65535)
+        port_editor.setValue(int(port))
+        form.addRow(tr("ui.dialog.mqtt_server.host", default="Host:"), host_editor)
+        form.addRow(tr("ui.dialog.mqtt_server.port", default="Port:"), port_editor)
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            dlg,
+        )
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.set_mqtt_config(host_editor.text(), port_editor.value())
+            canvas.update()
 
     def paint_title_status(self, painter: QPainter, rect: QRectF) -> None:
         if _SHARED_MQTT_SERVER.startup_error:

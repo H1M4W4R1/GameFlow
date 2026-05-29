@@ -15,11 +15,19 @@ from PyQt6.QtCore import Qt, QRectF, QPointF
 from PyQt6.QtGui import (
     QAction, QBrush, QColor, QFont, QLinearGradient, QPainter, QPen,
 )
-from PyQt6.QtWidgets import QMenu
+from PyQt6.QtWidgets import (
+    QColorDialog, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QMenu,
+)
 
+from core.command_history import CtrlPropCmd
 from core.localization import tr
 from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType
+
+
+def _parse_hex_to_qcolor(value: str) -> QColor:
+    color = QColor(str(value or "").strip())
+    return color if color.isValid() else QColor(255, 255, 255)
 
 
 # ── Slider ─────────────────────────────────────────────────────────────────────
@@ -91,7 +99,7 @@ class SliderNode(NodeBase):
 
     def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
         range_act = QAction(tr("ui.canvas.menu.set_range"), menu)
-        range_act.triggered.connect(lambda: canvas._open_ctrl_range_dialog(self.node_id))
+        range_act.triggered.connect(lambda: self._open_range_dialog(canvas))
         menu.addAction(range_act)
 
         scale_menu = QMenu(tr("ui.canvas.menu.scale_mode"), menu)
@@ -105,11 +113,84 @@ class SliderNode(NodeBase):
             act = QAction(label, scale_menu)
             act.setCheckable(True)
             act.setChecked(current_scale == mode)
-            act.triggered.connect(
-                lambda _checked, m=mode: canvas._set_ctrl_scale(self.node_id, m)
-            )
+            act.triggered.connect(lambda _checked, m=mode: self._set_scale(canvas, m))
             scale_menu.addAction(act)
         menu.addMenu(scale_menu)
+
+    def _open_range_dialog(self, canvas: Any) -> None:
+        old_min, old_max = self.get_ctrl_range()
+
+        dlg = QDialog(canvas)
+        dlg.setWindowTitle(tr("ui.dialog.slider_range.title"))
+        dlg.setStyleSheet("""
+            QDialog      { background: #220d14; color: #ffd0de; }
+            QLabel        { color: #ffd0de; font-family: 'Segoe UI'; font-size: 9pt; }
+            QDoubleSpinBox {
+                background: #2a0e1a; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 3px 6px; font-family: 'Courier New'; font-size: 9pt;
+            }
+            QDoubleSpinBox:focus { border-color: #c90084; }
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                background: #3a0d22; border: none; width: 16px;
+            }
+            QPushButton {
+                background: #3a0d22; color: #ffd0de;
+                border: 1px solid #45072f; border-radius: 3px;
+                padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt;
+            }
+            QPushButton:hover   { background: #c90084; border-color: #c90084; }
+            QPushButton:default { border-color: #c90084; }
+        """)
+
+        layout = QFormLayout(dlg)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
+
+        min_spin = QDoubleSpinBox()
+        min_spin.setRange(-1e9, 1e9)
+        min_spin.setDecimals(4)
+        min_spin.setSingleStep(0.1)
+        min_spin.setValue(old_min)
+
+        max_spin = QDoubleSpinBox()
+        max_spin.setRange(-1e9, 1e9)
+        max_spin.setDecimals(4)
+        max_spin.setSingleStep(0.1)
+        max_spin.setValue(old_max)
+
+        layout.addRow("Min:", min_spin)
+        layout.addRow("Max:", max_spin)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addRow(buttons)
+
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        new_min = min_spin.value()
+        new_max = max_spin.value()
+        if new_min != old_min or new_max != old_max:
+            self.set_ctrl_range(new_min, new_max)
+            canvas._history.push(CtrlPropCmd(
+                canvas._runtime, self.node_id,
+                "set_ctrl_range", (old_min, old_max), (new_min, new_max), "Set range",
+            ))
+        canvas.update()
+
+    def _set_scale(self, canvas: Any, mode: str) -> None:
+        old_mode = self.get_ctrl_scale()
+        if old_mode == mode:
+            return
+        self.set_ctrl_scale(mode)
+        canvas._history.push(CtrlPropCmd(
+            canvas._runtime, self.node_id,
+            "set_ctrl_scale", old_mode, mode, "Scale mode",
+        ))
+        canvas.update()
 
     def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         self._update_from_scene(scene_pos, ctrl_rect)
@@ -129,6 +210,30 @@ class SliderNode(NodeBase):
         self.node_changed.emit()
 
     # ── painting ───────────────────────────────────────────────────────────────
+
+    def _trigger_label_editor(self, canvas: Any) -> None:
+        ctrl_rect = canvas._get_ctrl_rect(self.node_id)
+        if ctrl_rect is None:
+            return
+        canvas._open_ctrl_label_editor(self, self.ctrl_label_rect(ctrl_rect))
+
+    def _open_color_picker(self, canvas: Any) -> None:
+        old_color = self.get_ctrl_color()
+        color = QColorDialog.getColor(
+            _parse_hex_to_qcolor(str(old_color)),
+            canvas,
+            tr("ui.canvas.menu.button_color"),
+        )
+        if not color.isValid():
+            return
+        new_color = f"#{color.red():02x}{color.green():02x}{color.blue():02x}"
+        if new_color != old_color:
+            self.set_ctrl_color(new_color)
+            canvas._history.push(CtrlPropCmd(
+                canvas._runtime, self.node_id,
+                "set_ctrl_color", old_color, new_color, "Button color",
+            ))
+        canvas.update()
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         pad      = 14.0
@@ -294,11 +399,11 @@ class ButtonNode(NodeBase):
 
     def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
         lbl_act = QAction(tr("ui.canvas.menu.rename_label"), menu)
-        lbl_act.triggered.connect(lambda: canvas._trigger_ctrl_label_editor(self.node_id))
+        lbl_act.triggered.connect(lambda: self._trigger_label_editor(canvas))
         menu.addAction(lbl_act)
 
         color_act = QAction(tr("ui.canvas.menu.button_color"), menu)
-        color_act.triggered.connect(lambda: canvas._open_ctrl_color_picker(self.node_id))
+        color_act.triggered.connect(lambda: self._open_color_picker(canvas))
         menu.addAction(color_act)
 
     # ── painting ───────────────────────────────────────────────────────────────
@@ -702,13 +807,22 @@ class TouchpadNode(NodeBase):
             act = QAction(label, mode_menu)
             act.setCheckable(True)
             act.setChecked(current_mode == mode)
-            act.triggered.connect(
-                lambda _checked, m=mode: canvas._set_touchpad_mode(self.node_id, m)
-            )
+            act.triggered.connect(lambda _checked, m=mode: self._set_touchpad_mode(canvas, m))
             mode_menu.addAction(act)
         menu.addMenu(mode_menu)
 
     # ── ctrl interaction ───────────────────────────────────────────────────────
+
+    def _set_touchpad_mode(self, canvas: Any, mode: str) -> None:
+        old_mode = self.get_touchpad_mode()
+        if old_mode == mode:
+            return
+        self.set_touchpad_mode(mode)
+        canvas._history.push(CtrlPropCmd(
+            canvas._runtime, self.node_id,
+            "set_touchpad_mode", old_mode, mode, "Touchpad mode",
+        ))
+        canvas.update()
 
     def on_ctrl_press(self, scene_pos: QPointF, ctrl_rect: QRectF, modifiers: Qt.KeyboardModifiers = Qt.KeyboardModifier.NoModifier) -> bool:
         self._is_pressed = True
