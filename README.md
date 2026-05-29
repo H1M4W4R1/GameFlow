@@ -1,4 +1,7 @@
-# SensoryFlow
+<div align="center">
+  <h1>SensoryFlow</h1>
+  <img src="https://github.com/H1M4W4R1/SensoryFlow/blob/master/gh_images/screenshot.png" alt="Preview screenshot"/>
+</div>
 
 SensoryFlow is a visual node-graph application for creating automated experiences with connected hardware devices: BLE, Serial, TCP, WebSocket, REST, and device-specific integrations.
 
