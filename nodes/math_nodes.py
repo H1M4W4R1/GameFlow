@@ -11,6 +11,8 @@ Design rules:
 from __future__ import annotations
 
 import math
+import time
+from collections import deque
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
@@ -568,6 +570,114 @@ def _vec4(x=0.0, y=0.0, z=0.0, w=0.0): return (float(x), float(y), float(z), flo
 
 def _f(v, i):
     return float(v[i]) if isinstance(v, (tuple, list)) and len(v) > i else 0.0
+
+
+class PeakNormalizerNode(NodeBase):
+    """
+    Normalize the current float value against the min/max seen in a recent
+    time window.
+
+    result = (value - min_value) / (max_value - min_value)
+    If the window has no range yet, result is 0.0.
+    """
+    NODE_NAME  = "Peak Normalizer"
+    NODE_GROUP = "Math/Min-Max"
+    PINS = [
+        PinDescriptor("value",      PinDirection.INPUT,  PinType.FLOAT, default=0.0),
+        PinDescriptor("window_s",   PinDirection.INPUT,  PinType.FLOAT, optional=True),
+        PinDescriptor("result",     PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("min_value",  PinDirection.OUTPUT, PinType.FLOAT),
+        PinDescriptor("max_value",  PinDirection.OUTPUT, PinType.FLOAT),
+    ]
+    VARIABLE_INPUTS = {
+        "window_s": (float, 1.0),
+    }
+    MIN_WIDTH  = 180.0
+    MIN_HEIGHT = 90.0
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._samples: deque[tuple[float, float]] = deque()
+        self._last_window_s: float | None = None
+
+    def on_start(self) -> None:
+        self._reset()
+        self._publish()
+
+    def execute(self, trigger_pin: str) -> None:
+        self._add_current_sample()
+
+    def on_data_received(self, pin_name: str, value: Any) -> None:
+        if pin_name == "window_s":
+            self._reset()
+        self._add_current_sample()
+
+    def on_var_input_changed(self, pin_name: str, value: Any) -> None:
+        if pin_name == "window_s":
+            self._reset()
+            self._add_current_sample()
+
+    def on_tick_check(self) -> None:
+        if not self._samples:
+            return
+        self._maybe_reset_for_window_change()
+        if self._prune_samples(time.monotonic()):
+            self._publish()
+
+    def _reset(self) -> None:
+        self._samples.clear()
+        self._last_window_s = self._window_s()
+
+    def _window_s(self) -> float:
+        try:
+            return max(1e-6, float(self.get_var_input("window_s") or 1.0))
+        except (TypeError, ValueError):
+            return 1.0
+
+    def _value(self) -> float:
+        try:
+            return float(self.get_input("value") or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _maybe_reset_for_window_change(self) -> None:
+        window_s = self._window_s()
+        if self._last_window_s != window_s:
+            self._reset()
+
+    def _add_current_sample(self) -> None:
+        self._maybe_reset_for_window_change()
+        now = time.monotonic()
+        self._samples.append((now, self._value()))
+        self._prune_samples(now)
+        self._publish()
+
+    def _prune_samples(self, now: float) -> bool:
+        cutoff = now - self._window_s()
+        changed = False
+        while self._samples and self._samples[0][0] < cutoff:
+            self._samples.popleft()
+            changed = True
+        return changed
+
+    def _publish(self) -> None:
+        value = self._value()
+        values = [sample_value for _, sample_value in self._samples]
+        if not values:
+            values = [value]
+        min_value = min(values)
+        max_value = max(values)
+        span = max_value - min_value
+        result = 0.0 if span == 0.0 else (value - min_value) / span
+        self.set_output("result", max(0.0, min(1.0, result)))
+        self.set_output("min_value", min_value)
+        self.set_output("max_value", max_value)
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        window_s = self._window_s()
+        painter.setPen(QColor("#90a4ae"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"peak {window_s:.3g}s")
 
 
 class Vector2DConstructorNode(NodeBase):

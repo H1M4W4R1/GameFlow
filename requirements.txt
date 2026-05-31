@@ -5,3 +5,4 @@ websockets>=12.0
 requests>=2.31.0
 SpeechRecognition>=3.10.0
 PyAudio>=0.2.14
+pyaudiowpatch>=0.2.12.7

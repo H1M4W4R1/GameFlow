@@ -184,6 +184,7 @@ node.round.name,Round
 node.clamp.name,Ogranicz
 node.lerp.name,Lerp
 node.map_range.name,Mapuj Zakres
+node.peak_normalizer.name,Normalizator Szczytowy
 node.vector2d.name,Vector2D
 node.vector3d.name,Vector3D
 node.group.math_arithmetic,Matematyka / Arytmetyka
@@ -231,6 +232,7 @@ ui.canvas.menu.custom_sample_count,Niestandardowo…
 ui.canvas.menu.waveform_range,Zakres osi Y
 ui.canvas.menu.custom_range,Niestandardowo…
 ui.canvas.menu.touchpad_mode,Tryb po puszczeniu
+ui.canvas.menu.sampler_mode,Tryb próbkowania
 ui.canvas.menu.json_fields,Pola JSON
 ui.canvas.menu.move_field_up,Przenieś pole wyżej
 ui.canvas.menu.move_field_down,Przenieś pole niżej
@@ -530,3 +532,16 @@ node.value_portal_output.name,Portal Wartości Wyjście
 node.tick_portal_input.name,Portal Taktu Wejście
 node.tick_portal_output.name,Portal Taktu Wyjście
 node.connection.name,Połączenie
+ui.canvas.menu.select_audio_stream_file,Wybierz plik strumienia audio...
+ui.canvas.menu.open_audio_stream_directory,Otwórz katalog strumieni audio
+ui.canvas.menu.audio_input_device,Wejściowe urządzenie audio
+ui.canvas.menu.default_audio_input_device,Domyślne urządzenie wejściowe
+ui.canvas.menu.loopback_hint,loopback
+ui.dialog.audio_stream_file.title,Wybierz Plik Strumienia Audio
+ui.dialog.audio_stream_file.filter,Pliki audio (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.aiff *.opus *.wma);;Wszystkie pliki (*.*)
+node.audio_file_stream.name,Strumień z Pliku Audio
+node.audio_file_stream.no_file,Nie wybrano pliku
+node.audio_file_stream.error,Błąd dekodowania
+node.audio_input_stream.name,Strumień Wejścia Audio
+node.audio_input_stream.default_device,Domyślne urządzenie wejściowe
+node.audio_input_stream.loopback_unavailable,Loopback głośnika jest niedostępny. Zainstaluj pyaudiowpatch albo włącz systemowe wejście loopback, takie jak Stereo Mix.

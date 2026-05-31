@@ -13,9 +13,11 @@ import time
 from typing import Any
 
 from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui  import QPainter, QColor, QFont
+from PyQt6.QtGui  import QAction, QPainter, QColor, QFont
+from PyQt6.QtWidgets import QMenu
 
 from core.node_base import NodeBase
+from core.localization import tr
 from core.types     import PinDescriptor, PinDirection, PinType
 
 
@@ -297,49 +299,166 @@ class FrequencyGeneratorNode(NodeBase):
 
 class SampleAndHoldNode(NodeBase):
     """
-    On each 'trigger' tick, captures the current 'input' value and holds it
-    on 'value' until the next trigger. exec_out fires after each sample.
-    The held value persists across ticks — only updated on trigger.
+    Samples the current ANY input each time trigger receives a tick.
+
+    Sample Last preserves the original value. Numeric sample modes are based
+    on values that can be converted to float and are kept in a bounded buffer.
+    exec_out fires after outputs are updated so device notification nodes can
+    be driven from the sampled values.
     """
     NODE_NAME  = "Sample & Hold"
     NODE_GROUP = "Utility"
+    _MODES = {
+        "max": "Sample Max",
+        "min": "Sample Min",
+        "avg": "Sample Avg",
+        "last": "Sample Last",
+        "median": "Sample Median",
+    }
     PINS = [
-        PinDescriptor("trigger",  PinDirection.INPUT,  PinType.TICK),
-        PinDescriptor("input",    PinDirection.INPUT,  PinType.ANY),
-        PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
-        PinDescriptor("value",    PinDirection.OUTPUT, PinType.ANY),
+        PinDescriptor("trigger",       PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("reset",         PinDirection.INPUT,  PinType.TICK),
+        PinDescriptor("input",         PinDirection.INPUT,  PinType.ANY),
+        PinDescriptor("max_samples",   PinDirection.INPUT,  PinType.INT, optional=True),
+        PinDescriptor("exec_out",      PinDirection.OUTPUT, PinType.TICK),
+        PinDescriptor("value",         PinDirection.OUTPUT, PinType.ANY),
+        PinDescriptor("sample_count",  PinDirection.OUTPUT, PinType.INT),
     ]
-    MIN_WIDTH  = 170.0
-    MIN_HEIGHT = 80.0
+    VARIABLE_INPUTS = {
+        "max_samples": (int, 100),
+    }
+    MIN_WIDTH  = 210.0
+    MIN_HEIGHT = 140.0
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._held: Any = None
+        self._values: list[Any] = []
+        self._numeric_values: list[float | None] = []
+        self._last: Any = None
+        self._sample_mode: str = "last"
 
     def on_start(self) -> None:
-        self._held = None
+        self._reset()
+        self._publish()
 
     def execute(self, trigger_pin: str) -> None:
-        self._held = self.get_input("input")
-        self.set_output("value", self._held)
+        if trigger_pin == "reset":
+            self._reset()
+            self._publish()
+            self.node_changed.emit()
+            return
+        self._sample()
+        self._publish()
         self.fire_tick("exec_out")
         self.node_changed.emit()
 
-    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        v = self._held
-        if v is None:
-            label = "—"
-        elif isinstance(v, float):
-            label = f"{v:.4g}"
-        elif isinstance(v, int):
-            label = str(v)
-        elif isinstance(v, (tuple, list)):
-            parts = ", ".join(f"{x:.3g}" for x in list(v)[:3])
-            label = f"({parts}{'…' if len(v) > 3 else ''})"
+    def on_var_input_changed(self, pin_name: str, value: Any) -> None:
+        if pin_name == "max_samples":
+            self._trim()
+            self._publish()
+
+    def get_sample_mode(self) -> str:
+        return self._sample_mode
+
+    def set_sample_mode(self, mode: str) -> None:
+        if mode not in self._MODES:
+            return
+        self._sample_mode = mode
+        self._publish()
+        self.node_changed.emit()
+
+    def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
+        mode_menu = QMenu(tr("ui.canvas.menu.sampler_mode", default="Sample mode"), menu)
+        mode_menu.setStyleSheet(menu.styleSheet())
+        for mode, label in self._MODES.items():
+            act = QAction(label, mode_menu)
+            act.setCheckable(True)
+            act.setChecked(mode == self._sample_mode)
+            act.triggered.connect(
+                lambda _checked, m=mode: self._set_sample_mode(canvas, m)
+            )
+            mode_menu.addAction(act)
+        menu.addMenu(mode_menu)
+
+    def _set_sample_mode(self, canvas: Any, mode: str) -> None:
+        self.set_sample_mode(mode)
+        canvas.update()
+
+    def _reset(self) -> None:
+        self._values.clear()
+        self._numeric_values.clear()
+        self._last = None
+
+    def _max_samples(self) -> int:
+        try:
+            return max(1, int(self.get_var_input("max_samples") or 100))
+        except (TypeError, ValueError):
+            return 100
+
+    def _sample(self) -> None:
+        value = self.get_input("input")
+        self._last = value
+        self._values.append(value)
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            numeric_value = None
+        self._numeric_values.append(numeric_value)
+        self._trim()
+
+    def _trim(self) -> None:
+        max_samples = self._max_samples()
+        if len(self._values) > max_samples:
+            del self._values[:-max_samples]
+        if len(self._numeric_values) > max_samples:
+            del self._numeric_values[:-max_samples]
+
+    def _numeric(self) -> list[float]:
+        return [v for v in self._numeric_values if v is not None]
+
+    def _median(self, values: list[float]) -> float:
+        ordered = sorted(values)
+        mid = len(ordered) // 2
+        if len(ordered) % 2 == 1:
+            return ordered[mid]
+        return (ordered[mid - 1] + ordered[mid]) / 2.0
+
+    def _publish(self) -> None:
+        if self._sample_mode == "last":
+            sample = self._last
         else:
-            label = str(v)[:16]
+            numeric = self._numeric()
+            if not numeric:
+                sample = 0.0
+            elif self._sample_mode == "max":
+                sample = max(numeric)
+            elif self._sample_mode == "min":
+                sample = min(numeric)
+            elif self._sample_mode == "avg":
+                sample = sum(numeric) / len(numeric)
+            elif self._sample_mode == "median":
+                sample = self._median(numeric)
+            else:
+                sample = self._last
+        self.set_output("value", sample)
+        self.set_output("sample_count", len(self._values))
+
+    def get_state(self) -> dict[str, Any]:
+        state = super().get_state()
+        state["_sample_mode"] = self._sample_mode
+        return state
+
+    def set_state(self, state: dict[str, Any]) -> None:
+        mode = state.pop("_sample_mode", "last")
+        super().set_state(state)
+        self._sample_mode = mode if mode in self._MODES else "last"
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#80cbc4"))
-        painter.setFont(QFont("Courier New", 9))
+        painter.setFont(QFont("Courier New", 8))
+        label = f"{self._MODES[self._sample_mode]} n={len(self._values)}"
+        if self._last is not None:
+            label += f" last={str(self._last)[:12]}"
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
 
 

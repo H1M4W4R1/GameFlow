@@ -184,6 +184,7 @@ node.round.name,Round
 node.clamp.name,Clamp
 node.lerp.name,Lerp
 node.map_range.name,Map Range
+node.peak_normalizer.name,Peak Normalizer
 node.vector2d.name,Vector2D
 node.vector3d.name,Vector3D
 node.group.math_arithmetic,Math / Arithmetic
@@ -224,6 +225,11 @@ ui.canvas.menu.select_sfx,Select SFX file...
 ui.canvas.menu.audio_output_device,Output audio device
 ui.canvas.menu.default_audio_device,Default output device
 ui.canvas.menu.open_audio_directory,Open Audio Directory
+ui.canvas.menu.select_audio_stream_file,Select audio stream file...
+ui.canvas.menu.open_audio_stream_directory,Open Audio Stream Directory
+ui.canvas.menu.audio_input_device,Input audio device
+ui.canvas.menu.default_audio_input_device,Default input device
+ui.canvas.menu.loopback_hint,loopback
 ui.canvas.menu.scale_mode,Scale mode
 ui.canvas.menu.channel_count,Channel count
 ui.canvas.menu.sample_count,Sample count
@@ -231,6 +237,7 @@ ui.canvas.menu.custom_sample_count,Custom…
 ui.canvas.menu.waveform_range,Y-axis range
 ui.canvas.menu.custom_range,Custom…
 ui.canvas.menu.touchpad_mode,Release Mode
+ui.canvas.menu.sampler_mode,Sample mode
 ui.canvas.menu.json_fields,JSON fields
 ui.canvas.menu.move_field_up,Move field up
 ui.canvas.menu.move_field_down,Move field down
@@ -257,6 +264,8 @@ ui.dialog.voice_recognition.group.microphones,Microphones
 ui.dialog.voice_recognition.group.speakers,Speakers
 ui.dialog.sfx_file.title,Select SFX File
 ui.dialog.sfx_file.filter,Audio files (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.aiff *.opus *.wma);;All files (*.*)
+ui.dialog.audio_stream_file.title,Select Audio Stream File
+ui.dialog.audio_stream_file.filter,Audio files (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.aiff *.opus *.wma);;All files (*.*)
 node.on_tick.name,On Tick
 node.on_tick_custom.name,On Tick (Custom)
 node.websocket_message.name,WebSocket Message
@@ -273,6 +282,12 @@ node.voice_recognition.name,On Voice Detected
 node.play_sfx.name,Play SFX
 node.play_sfx.no_file,No file selected
 node.play_sfx.missing_file,Missing file
+node.audio_file_stream.name,Audio File Stream
+node.audio_file_stream.no_file,No file selected
+node.audio_file_stream.error,Decode error
+node.audio_input_stream.name,Audio Input Stream
+node.audio_input_stream.default_device,Default input device
+node.audio_input_stream.loopback_unavailable,Speaker loopback is unavailable. Install pyaudiowpatch or enable a system loopback input such as Stereo Mix.
 node.on_start.name,On Start
 node.on_pause.name,On Pause
 node.on_resume.name,On Resume
