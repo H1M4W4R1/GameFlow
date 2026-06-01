@@ -76,14 +76,14 @@ def _node_display_name(node_or_cls) -> str:
 
 
 # ── Visual constants ──────────────────────────────────────────────────────────
-COL_BG              = QColor("#1a0a0f")
-COL_GRID_MINOR      = QColor("#2a1018")
-COL_GRID_MAJOR      = QColor("#3d1525")
-COL_NODE_BG         = QColor("#220d14")
-COL_NODE_BORDER     = QColor("#45072f")
-COL_NODE_SEL_BORDER = QColor("#f95979")
-COL_TITLE_TEXT      = QColor("#ffd0de")
-COL_PIN_TEXT        = QColor("#c8889a")
+COL_BG              = QColor("#0d1117")
+COL_GRID_MINOR      = QColor("#161b22")
+COL_GRID_MAJOR      = QColor("#262b36")
+COL_NODE_BG         = QColor("#161b22")
+COL_NODE_BORDER     = QColor("#30363d")
+COL_NODE_SEL_BORDER = QColor("#a78bfa")
+COL_TITLE_TEXT      = QColor("#f4f0ff")
+COL_PIN_TEXT        = QColor("#a59bbd")
 COL_WIRE_SHADOW     = QColor("#00000080")
 
 PIN_RADIUS    = 6.0
@@ -460,8 +460,8 @@ class NodeEditorCanvas(QWidget):
         rect = QRectF(min(ox, cx), min(oy, cy), abs(cx - ox), abs(cy - oy))
         if rect.width() < 2 and rect.height() < 2:
             return
-        p.setPen(QPen(QColor("#f95979"), 1, Qt.PenStyle.DashLine))
-        p.setBrush(QBrush(QColor(249, 89, 121, 30)))
+        p.setPen(QPen(QColor("#a78bfa"), 1, Qt.PenStyle.DashLine))
+        p.setBrush(QBrush(QColor(139, 92, 246, 30)))
         p.drawRect(rect)
 
     # ── Groups ────────────────────────────────────────────────────────────────
@@ -501,7 +501,7 @@ class NodeEditorCanvas(QWidget):
         p.drawPath(tp)
 
         # Group name
-        p.setPen(QColor("#ffd0de"))
+        p.setPen(QColor("#f4f0ff"))
         p.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
         p.drawText(
             QRectF(grp.x + 10, grp.y, grp.width - 20, GROUP_TITLE_H),
@@ -556,7 +556,7 @@ class NodeEditorCanvas(QWidget):
             border_col = COL_NODE_BORDER
             border_w   = 1
         p.setPen(QPen(border_col, border_w))
-        p.setBrush(QBrush(QColor("#220d1430" if selected else "#220d14")))
+        p.setBrush(QBrush(QColor("#161b2230" if selected else "#161b22")))
         p.drawRoundedRect(rect, NODE_RADIUS, NODE_RADIUS)
 
         # Title bar
@@ -572,8 +572,8 @@ class NodeEditorCanvas(QWidget):
             grad.setColorAt(0, _base)
             grad.setColorAt(1, _base.darker(160))
         else:
-            grad.setColorAt(0, QColor("#c90084"))
-            grad.setColorAt(1, QColor("#45072f"))
+            grad.setColorAt(0, QColor("#8b5cf6"))
+            grad.setColorAt(1, QColor("#30363d"))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QBrush(grad))
         p.drawPath(tp)
@@ -624,7 +624,7 @@ class NodeEditorCanvas(QWidget):
         if selected:
             glow = QRadialGradient(rect.center(), max(width, total_h) * 0.7)
             glow.setColorAt(0.7, QColor(0, 0, 0, 0))
-            glow.setColorAt(1.0, QColor("#f9597920"))
+            glow.setColorAt(1.0, QColor("#a78bfa20"))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QBrush(glow))
             p.drawRoundedRect(rect.adjusted(-6, -6, 6, 6), NODE_RADIUS + 4, NODE_RADIUS + 4)
@@ -698,16 +698,16 @@ class NodeEditorCanvas(QWidget):
         pill_rect = QRectF(pill_x, row.y + 1, pill_w, row.h - 2)
 
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(QColor("#1e0d18" if connected else "#2d1020")))
+        p.setBrush(QBrush(QColor("#191f2b" if connected else "#21262d")))
         p.drawRoundedRect(pill_rect, 4, 4)
-        border_col = QColor("#4a2030") if connected else QColor("#f95979")
+        border_col = QColor("#3d4660") if connected else QColor("#a78bfa")
         p.setPen(QPen(border_col, 1))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(pill_rect, 4, 4)
 
         # Label
         label = row.var_name.replace("_", " ")
-        p.setPen(QColor("#5a3040" if connected else "#9a5070"))
+        p.setPen(QColor("#606875" if connected else "#8b949e"))
         p.setFont(QFont("Segoe UI", 7))
         p.drawText(
             QRectF(pill_rect.x() + 4, row.y, LABEL_W, row.h),
@@ -742,14 +742,14 @@ class NodeEditorCanvas(QWidget):
                            width - FIELD_INSET * 2, row.h - 2)
 
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(QColor("#2d1020")))
+        p.setBrush(QBrush(QColor("#21262d")))
         p.drawRoundedRect(pill_rect, 4, 4)
-        p.setPen(QPen(QColor("#6b3050"), 1))
+        p.setPen(QPen(QColor("#6e7681"), 1))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(pill_rect, 4, 4)
 
         label = row.field_name.replace("_", " ")
-        p.setPen(QColor("#7a4060"))
+        p.setPen(QColor("#7d8590"))
         p.setFont(QFont("Segoe UI", 7))
         p.drawText(
             QRectF(pill_rect.x() + 4, row.y, LABEL_W, row.h),
@@ -802,14 +802,14 @@ class NodeEditorCanvas(QWidget):
         )
 
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(QColor("#2d1020")))
+        p.setBrush(QBrush(QColor("#21262d")))
         p.drawRoundedRect(pill_rect, 4, 4)
-        p.setPen(QPen(QColor("#6b3050"), 1))
+        p.setPen(QPen(QColor("#6e7681"), 1))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(pill_rect, 4, 4)
 
         display = str(value or "")
-        p.setPen(QColor("#ffd0de" if display else "#7a4060"))
+        p.setPen(QColor("#f4f0ff" if display else "#7d8590"))
         p.setFont(QFont("Courier New", 9, QFont.Weight.Bold))
         p.drawText(
             pill_rect.adjusted(6, 0, -6, 0),
@@ -850,11 +850,11 @@ class NodeEditorCanvas(QWidget):
 
         # Background band
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(QColor("#1e0810")))
+        p.setBrush(QBrush(QColor("#111827")))
         p.drawRect(rect)
 
         # Top separator line
-        p.setPen(QPen(QColor("#45072f"), 1))
+        p.setPen(QPen(QColor("#30363d"), 1))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawLine(rect.topLeft(), rect.topRight())
 
@@ -873,7 +873,7 @@ class NodeEditorCanvas(QWidget):
         alias = get_device_alias(dev) if dev else "—"
         if len(alias) > 15:
             alias = alias[:12] + "…"
-        p.setPen(QColor("#ffd0de"))
+        p.setPen(QColor("#f4f0ff"))
         p.setFont(QFont("Segoe UI", 8))
         p.drawText(
             QRectF(rect.left() + 20.0, rect.top(), rect.width() - 34.0, rect.height()),
@@ -882,7 +882,7 @@ class NodeEditorCanvas(QWidget):
         )
 
         # Chevron ▾
-        p.setPen(QColor("#c8889a"))
+        p.setPen(QColor("#a59bbd"))
         p.setFont(QFont("Segoe UI", 9))
         p.drawText(
             QRectF(rect.right() - 16.0, rect.top(), 14.0, rect.height()),
@@ -968,7 +968,7 @@ class NodeEditorCanvas(QWidget):
         col.setAlpha(alpha)
         p.setPen(QPen(COL_WIRE_SHADOW, width + 2)); p.drawPath(path)
         if highlight:
-            glow = QColor("#f95979"); glow.setAlpha(80)
+            glow = QColor("#a78bfa"); glow.setAlpha(80)
             p.setPen(QPen(glow, width + 6)); p.drawPath(path)
         p.setPen(QPen(col, width)); p.drawPath(path)
 
@@ -1736,8 +1736,8 @@ class NodeEditorCanvas(QWidget):
         editor.setObjectName("FieldEditor")
         editor.setStyleSheet("""
             QLineEdit#FieldEditor {
-                background: #1a0a0f; color: #ffd0de;
-                border: 1px solid #f95979; border-radius: 4px;
+                background: #0d1117; color: #f4f0ff;
+                border: 1px solid #a78bfa; border-radius: 4px;
                 padding: 0 4px; font-family: 'Courier New'; font-size: 9pt;
             }
         """)
@@ -1808,8 +1808,8 @@ class NodeEditorCanvas(QWidget):
         editor.setObjectName("TitleEditor")
         editor.setStyleSheet("""
             QLineEdit#TitleEditor {
-                background: #2d1020; color: #ffd0de;
-                border: 1px solid #f95979; border-radius: 4px;
+                background: #21262d; color: #f4f0ff;
+                border: 1px solid #a78bfa; border-radius: 4px;
                 padding: 0 8px; font-family: 'Segoe UI'; font-size: 9pt;
                 font-weight: bold;
             }
@@ -1853,7 +1853,7 @@ class NodeEditorCanvas(QWidget):
         editor.setObjectName("CtrlLabelEditor")
         editor.setStyleSheet("""
             QLineEdit#CtrlLabelEditor {
-                background: #1e0a30; color: #ffd0de;
+                background: #1e0a30; color: #f4f0ff;
                 border: 1px solid #ea80fc; border-radius: 6px;
                 padding: 0 6px; font-family: 'Segoe UI'; font-size: 9pt;
                 font-weight: bold;
@@ -1896,8 +1896,8 @@ class NodeEditorCanvas(QWidget):
         editor.setObjectName("TitleEditor")
         editor.setStyleSheet("""
             QLineEdit#TitleEditor {
-                background: #2d1020; color: #ffd0de;
-                border: 1px solid #f95979; border-radius: 4px;
+                background: #21262d; color: #f4f0ff;
+                border: 1px solid #a78bfa; border-radius: 4px;
                 padding: 0 8px; font-family: 'Segoe UI'; font-size: 9pt;
                 font-weight: bold;
             }
@@ -2463,35 +2463,35 @@ def _format_value(val, typ: type, dim: bool) -> tuple[str, QColor]:
 
 _MENU_STYLE = """
 QMenu {
-    background-color: #220d14; color: #ffd0de;
-    border: 1px solid #45072f; border-radius: 4px;
+    background-color: #161b22; color: #f4f0ff;
+    border: 1px solid #30363d; border-radius: 4px;
     padding: 4px; font-family: 'Segoe UI'; font-size: 9pt;
 }
-QMenu::item:selected { background-color: #c90084; border-radius: 3px; }
+QMenu::item:selected { background-color: #8b5cf6; border-radius: 3px; }
 QMenu::item          { padding: 4px 20px 4px 12px; }
-QMenu::separator     { background: #45072f; height: 1px; margin: 4px 8px; }
+QMenu::separator     { background: #30363d; height: 1px; margin: 4px 8px; }
 """
 
 _SEARCH_POPUP_STYLE = """
 QFrame {
-    background: #220d14; border: 1px solid #45072f; border-radius: 6px;
+    background: #161b22; border: 1px solid #30363d; border-radius: 6px;
 }
 QLineEdit {
-    background: #2a0e1a; color: #ffd0de;
-    border: 1px solid #45072f; border-radius: 3px;
+    background: #1c212b; color: #f4f0ff;
+    border: 1px solid #30363d; border-radius: 3px;
     padding: 5px 8px; font-family: 'Segoe UI'; font-size: 10pt;
 }
-QLineEdit:focus { border-color: #c90084; }
+QLineEdit:focus { border-color: #8b5cf6; }
 QListWidget {
-    background: #220d14; color: #ffd0de;
+    background: #161b22; color: #f4f0ff;
     border: none; outline: none;
     font-family: 'Segoe UI'; font-size: 9pt;
 }
 QListWidget::item { padding: 4px 10px; border-radius: 3px; }
-QListWidget::item:selected { background: #c90084; color: #fff; }
-QListWidget::item:hover { background: #3a0d22; }
-QScrollBar:vertical { width: 6px; background: #1a0510; border: none; }
-QScrollBar::handle:vertical { background: #45072f; border-radius: 3px; min-height: 20px; }
+QListWidget::item:selected { background: #8b5cf6; color: #fff; }
+QListWidget::item:hover { background: #2d2542; }
+QScrollBar:vertical { width: 6px; background: #0b0f14; border: none; }
+QScrollBar::handle:vertical { background: #30363d; border-radius: 3px; min-height: 20px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 """
 

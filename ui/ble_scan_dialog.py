@@ -80,7 +80,7 @@ class _RSSIBar(QWidget):
         bw, gap = 6, 2
         for i in range(4):
             bh  = 4 + i * 3
-            col = cols[i] if i < bars else "#2d1020"
+            col = cols[i] if i < bars else "#21262d"
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QBrush(QColor(col)))
             p.drawRoundedRect(i * (bw + gap), 14 - bh, bw, bh, 1, 1)
@@ -91,10 +91,10 @@ class _RSSIBar(QWidget):
 class _CandidateRow(QFrame):
     selected = pyqtSignal(str)   # address
 
-    _S_NORMAL = ("QFrame{background:#220d14;border:1px solid #45072f;"
+    _S_NORMAL = ("QFrame{background:#161b22;border:1px solid #30363d;"
                  "border-radius:6px;margin:1px 4px;}"
-                 "QFrame:hover{border:1px solid #c90084;background:#2d1020;}")
-    _S_ACTIVE = ("QFrame{background:#45072f;border:2px solid #f95979;"
+                 "QFrame:hover{border:1px solid #8b5cf6;background:#21262d;}")
+    _S_ACTIVE = ("QFrame{background:#30363d;border:2px solid #a78bfa;"
                  "border-radius:6px;margin:1px 4px;}")
 
     def __init__(self, c: BLECandidate) -> None:
@@ -112,10 +112,10 @@ class _CandidateRow(QFrame):
         info.setSpacing(1)
         self._name_lbl = QLabel(c.name or "Unknown")
         self._name_lbl.setStyleSheet(
-            "color:#ffd0de;font-weight:bold;font-size:9pt;background:transparent;")
+            "color:#f4f0ff;font-weight:bold;font-size:9pt;background:transparent;")
         self._addr_lbl = QLabel(c.address)
         self._addr_lbl.setStyleSheet(
-            "color:#7a4060;font-size:7pt;background:transparent;")
+            "color:#7d8590;font-size:7pt;background:transparent;")
         info.addWidget(self._name_lbl)
         info.addWidget(self._addr_lbl)
         lay.addLayout(info, stretch=1)
@@ -124,7 +124,7 @@ class _CandidateRow(QFrame):
         lay.addWidget(self._rssi_bar)
         self._rssi_lbl = QLabel(tr("ui.ble_scan.rssi").format(rssi=c.rssi))
         self._rssi_lbl.setStyleSheet(
-            "color:#6b3050;font-size:7pt;background:transparent;min-width:52px;")
+            "color:#6e7681;font-size:7pt;background:transparent;min-width:52px;")
         lay.addWidget(self._rssi_lbl)
 
     def update_rssi(self, rssi: int) -> None:
@@ -141,19 +141,19 @@ class _CandidateRow(QFrame):
 # ── Dialog ────────────────────────────────────────────────────────────────────
 
 _DLG_STYLE = """
-QDialog,QWidget     { background:#1a0a0f; color:#ffd0de; }
-QLabel              { color:#ffd0de; font-size:9pt; background:transparent; }
-QProgressBar        { background:#220d14; border:1px solid #45072f;
+QDialog,QWidget     { background:#0d1117; color:#f4f0ff; }
+QLabel              { color:#f4f0ff; font-size:9pt; background:transparent; }
+QProgressBar        { background:#161b22; border:1px solid #30363d;
                       border-radius:3px; }
-QProgressBar::chunk { background:#c90084; border-radius:3px; }
-QPushButton         { background:#c90084; color:white; border:none;
+QProgressBar::chunk { background:#8b5cf6; border-radius:3px; }
+QPushButton         { background:#8b5cf6; color:white; border:none;
                       border-radius:4px; padding:6px 16px; font-size:9pt; }
-QPushButton:hover   { background:#f95979; }
-QPushButton:disabled{ background:#2d1020; color:#5a3040; }
-QPushButton#cancel  { background:#45072f; }
-QPushButton#cancel:hover { background:#6b3050; }
-QScrollBar:vertical { background:#1a0a0f; width:6px; }
-QScrollBar::handle:vertical { background:#45072f; border-radius:3px; min-height:20px; }
+QPushButton:hover   { background:#a78bfa; }
+QPushButton:disabled{ background:#21262d; color:#606875; }
+QPushButton#cancel  { background:#30363d; }
+QPushButton#cancel:hover { background:#6e7681; }
+QScrollBar:vertical { background:#0d1117; width:6px; }
+QScrollBar::handle:vertical { background:#30363d; border-radius:3px; min-height:20px; }
 """
 
 
@@ -232,14 +232,14 @@ class BLEScanDialog(QDialog):
 
         # Hint text
         self._hint_lbl = QLabel(tr("ui.ble_scan.device_hint"))
-        self._hint_lbl.setStyleSheet("color:#6b3050;font-size:8pt;")
+        self._hint_lbl.setStyleSheet("color:#6e7681;font-size:8pt;")
         self._hint_lbl.setWordWrap(True)
         root.addWidget(self._hint_lbl)
 
         # Divider label
         found_lbl = QLabel(tr("ui.ble_scan.found_header"))
         found_lbl.setStyleSheet(
-            "color:#45072f;font-size:7pt;letter-spacing:2px;padding-top:4px;")
+            "color:#30363d;font-size:7pt;letter-spacing:2px;padding-top:4px;")
         root.addWidget(found_lbl)
 
         # Results scroll list
@@ -256,7 +256,7 @@ class BLEScanDialog(QDialog):
         self._empty_lbl = QLabel(tr("ui.ble_scan.no_devices_yet"))
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_lbl.setStyleSheet(
-            "color:#4a2030;font-size:9pt;padding:24px;")
+            "color:#3d4660;font-size:9pt;padding:24px;")
         self._list_lay.insertWidget(0, self._empty_lbl)
         self._scroll.setWidget(self._list_w)
         root.addWidget(self._scroll, stretch=1)

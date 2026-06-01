@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <!-- Arrow shaft -->
-  <rect x="11" y="3" width="2" height="9" rx="1" fill="#ffd0de"/>
+  <rect x="11" y="3" width="2" height="9" rx="1" fill="#f4f0ff"/>
   <!-- Arrow head (pointing down) -->
-  <polygon points="7,10 12,16 17,10" fill="#ffd0de"/>
+  <polygon points="7,10 12,16 17,10" fill="#f4f0ff"/>
   <!-- Basin: base bar -->
-  <rect x="4" y="20" width="16" height="2" rx="1" fill="#ffd0de"/>
+  <rect x="4" y="20" width="16" height="2" rx="1" fill="#f4f0ff"/>
   <!-- Basin: left rim -->
-  <rect x="4" y="16" width="2" height="5" rx="1" fill="#ffd0de"/>
+  <rect x="4" y="16" width="2" height="5" rx="1" fill="#f4f0ff"/>
   <!-- Basin: right rim -->
-  <rect x="18" y="16" width="2" height="5" rx="1" fill="#ffd0de"/>
+  <rect x="18" y="16" width="2" height="5" rx="1" fill="#f4f0ff"/>
 </svg>

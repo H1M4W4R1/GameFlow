@@ -69,25 +69,25 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 _UNKNOWN_ICON = str(_PROJECT_ROOT / "assets" / "icons" / "unknown.svg")
 
 _DLG_STYLE = """
-QDialog, QWidget       { background: #1a0a0f; color: #ffd0de; }
-QLabel                 { color: #ffd0de; font-size: 9pt; background: transparent; }
-QLineEdit              { background: #220d14; color: #ffd0de; border: 1px solid #45072f;
+QDialog, QWidget       { background: #0d1117; color: #f4f0ff; }
+QLabel                 { color: #f4f0ff; font-size: 9pt; background: transparent; }
+QLineEdit              { background: #161b22; color: #f4f0ff; border: 1px solid #30363d;
                          border-radius: 4px; padding: 4px 8px; font-size: 9pt; }
-QLineEdit:focus        { border: 1px solid #c90084; }
-QTabWidget::pane       { border: 1px solid #45072f; background: #1a0a0f; }
-QTabBar::tab           { background: #2d1020; color: #c8889a; padding: 6px 14px;
-                         border: 1px solid #45072f; border-bottom: none;
+QLineEdit:focus        { border: 1px solid #8b5cf6; }
+QTabWidget::pane       { border: 1px solid #30363d; background: #0d1117; }
+QTabBar::tab           { background: #21262d; color: #a59bbd; padding: 6px 14px;
+                         border: 1px solid #30363d; border-bottom: none;
                          border-radius: 4px 4px 0 0; font-size: 9pt; }
-QTabBar::tab:selected  { background: #45072f; color: #ffd0de; }
-QTabBar::tab:hover     { background: #3d1525; }
-QPushButton            { background: #c90084; color: white; border: none;
+QTabBar::tab:selected  { background: #30363d; color: #f4f0ff; }
+QTabBar::tab:hover     { background: #262b36; }
+QPushButton            { background: #8b5cf6; color: white; border: none;
                          border-radius: 4px; padding: 6px 16px; font-size: 9pt; }
-QPushButton:hover      { background: #f95979; }
-QPushButton:disabled   { background: #2d1020; color: #5a3040; }
-QPushButton#cancel     { background: #45072f; }
-QPushButton#cancel:hover { background: #6b3050; }
-QScrollBar:vertical    { background: #1a0a0f; width: 6px; }
-QScrollBar::handle:vertical { background: #45072f; border-radius: 3px; min-height: 20px; }
+QPushButton:hover      { background: #a78bfa; }
+QPushButton:disabled   { background: #21262d; color: #606875; }
+QPushButton#cancel     { background: #30363d; }
+QPushButton#cancel:hover { background: #6e7681; }
+QScrollBar:vertical    { background: #0d1117; width: 6px; }
+QScrollBar::handle:vertical { background: #30363d; border-radius: 3px; min-height: 20px; }
 """
 
 
@@ -133,16 +133,16 @@ class BatteryWidget(QWidget):
         w, h = self.width(), self.height()
 
         # Outer shell
-        p.setPen(QPen(QColor("#45072f"), 1))
-        p.setBrush(QColor("#1a0a0f"))
+        p.setPen(QPen(QColor("#30363d"), 1))
+        p.setBrush(QColor("#0d1117"))
         p.drawRoundedRect(0, 2, w - 4, h - 4, 2, 2)
         # Nub
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#45072f"))
+        p.setBrush(QColor("#30363d"))
         p.drawRect(w - 4, h // 2 - 2, 3, 4)
 
         if self._level < 0:
-            p.setPen(QColor("#5a3040"))
+            p.setPen(QColor("#606875"))
             p.setFont(QFont("Segoe UI", 6))
             p.drawText(1, 0, w - 5, h, Qt.AlignmentFlag.AlignCenter, "—")
             return
@@ -179,9 +179,9 @@ class DeviceRow(QFrame):
         self._rename_editor: Optional[QLineEdit] = None
         self.setObjectName("DeviceRow")
         self.setStyleSheet("""
-            QFrame#DeviceRow            { background:#220d14; border:1px solid #45072f;
+            QFrame#DeviceRow            { background:#161b22; border:1px solid #30363d;
                                           border-radius:6px; margin:2px 4px; }
-            QFrame#DeviceRow:hover      { border:1px solid #c90084; background:#2d1020; }
+            QFrame#DeviceRow:hover      { border:1px solid #8b5cf6; background:#21262d; }
         """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedHeight(52)
@@ -203,10 +203,10 @@ class DeviceRow(QFrame):
         info.setSpacing(1)
         self._name_lbl = QLabel(device_name)
         self._name_lbl.setStyleSheet(
-            "color:#ffd0de;font-weight:bold;font-size:9pt;background:transparent;")
+            "color:#f4f0ff;font-weight:bold;font-size:9pt;background:transparent;")
         self._addr_lbl = QLabel(address)
         self._addr_lbl.setStyleSheet(
-            "color:#7a4060;font-size:7pt;background:transparent;")
+            "color:#7d8590;font-size:7pt;background:transparent;")
         info.addWidget(self._name_lbl)
         info.addWidget(self._addr_lbl)
         layout.addLayout(info)
@@ -229,14 +229,14 @@ class DeviceRow(QFrame):
         """Highlight this row when a node linked to this device is selected."""
         if active:
             self.setStyleSheet("""
-                QFrame#DeviceRow { background:#2d0f1a; border:1px solid #f95979;
+                QFrame#DeviceRow { background:#27213a; border:1px solid #a78bfa;
                                    border-radius:6px; margin:2px 4px; }
             """)
         else:
             self.setStyleSheet("""
-                QFrame#DeviceRow { background:#220d14; border:1px solid #45072f;
+                QFrame#DeviceRow { background:#161b22; border:1px solid #30363d;
                                    border-radius:6px; margin:2px 4px; }
-                QFrame#DeviceRow:hover { border:1px solid #c90084; background:#2d1020; }
+                QFrame#DeviceRow:hover { border:1px solid #8b5cf6; background:#21262d; }
             """)
 
     def mousePressEvent(self, event) -> None:
@@ -284,7 +284,7 @@ class DeviceRow(QFrame):
 
         editor = QLineEdit(current, self)
         editor.setStyleSheet(
-            "background:#2d1020; color:#ffd0de; border:1px solid #f95979;"
+            "background:#21262d; color:#f4f0ff; border:1px solid #a78bfa;"
             "border-radius:3px; padding:0 3px; font-size:9pt; font-weight:bold;"
         )
         # Match the geometry of the name label
@@ -350,7 +350,7 @@ class DevicePanel(QWidget):
 
     def _setup_ui(self) -> None:
         self.setFixedWidth(230)
-        self.setStyleSheet("background:#1a0a0f;")
+        self.setStyleSheet("background:#0d1117;")
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -358,21 +358,21 @@ class DevicePanel(QWidget):
 
         # Header
         header = QFrame()
-        header.setStyleSheet("background:#45072f;border-bottom:1px solid #c90084;")
+        header.setStyleSheet("background:#30363d;border-bottom:1px solid #8b5cf6;")
         hl = QHBoxLayout(header)
         hl.setContentsMargins(10, 8, 8, 8)
         title = QLabel(tr("ui.panel.devices.title"))
         title.setStyleSheet(
-            "color:#ffd0de;font-weight:bold;font-size:10pt;letter-spacing:2px;")
+            "color:#f4f0ff;font-weight:bold;font-size:10pt;letter-spacing:2px;")
         hl.addWidget(title)
         hl.addStretch()
         add_btn = QPushButton("+")
         add_btn.setFixedSize(24, 24)
         add_btn.setToolTip(tr("ui.panel.devices.add_tooltip"))
         add_btn.setStyleSheet("""
-            QPushButton { background:transparent; color:#c8889a; border:none;
+            QPushButton { background:transparent; color:#a59bbd; border:none;
                           font-size:16pt; font-weight:bold; padding:0; margin:0; }
-            QPushButton:hover { color:#f95979; }
+            QPushButton:hover { color:#a78bfa; }
         """)
         add_btn.clicked.connect(self._on_add_clicked)
         hl.addWidget(add_btn)
@@ -404,7 +404,7 @@ class DevicePanel(QWidget):
         self._list_lay.addStretch()
         self._empty_lbl = QLabel(tr("ui.panel.devices.empty"))
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_lbl.setStyleSheet("color:#6b3050;font-size:9pt;padding:20px;")
+        self._empty_lbl.setStyleSheet("color:#6e7681;font-size:9pt;padding:20px;")
         self._list_lay.insertWidget(0, self._empty_lbl)
         self._scroll.setWidget(self._list_w)
         root.addWidget(self._scroll)
@@ -416,7 +416,7 @@ class DevicePanel(QWidget):
         """Full-width language combobox at the bottom of the panel."""
         footer = QFrame()
         footer.setStyleSheet(
-            "QFrame { background:#150809; border-top:1px solid #2d1020; }"
+            "QFrame { background:#0b0f14; border-top:1px solid #21262d; }"
         )
         fl = QHBoxLayout(footer)
         fl.setContentsMargins(8, 6, 8, 6)
@@ -428,27 +428,27 @@ class DevicePanel(QWidget):
         self._lang_combo.setIconSize(QSize(20, 14))
         self._lang_combo.setStyleSheet("""
             QComboBox {
-                background: #220d14;
-                color: #c8889a;
-                border: 1px solid #45072f;
+                background: #161b22;
+                color: #a59bbd;
+                border: 1px solid #30363d;
                 border-radius: 4px;
                 padding: 3px 8px;
                 font-size: 9pt;
             }
-            QComboBox:hover { border: 1px solid #c90084; color: #ffd0de; }
+            QComboBox:hover { border: 1px solid #8b5cf6; color: #f4f0ff; }
             QComboBox::drop-down { border: none; width: 18px; }
             QComboBox::down-arrow {
                 image: none;
                 border-left: 4px solid transparent;
                 border-right: 4px solid transparent;
-                border-top: 5px solid #c8889a;
+                border-top: 5px solid #a59bbd;
                 width: 0; height: 0;
             }
             QComboBox QAbstractItemView {
-                background: #220d14;
-                color: #ffd0de;
-                selection-background-color: #45072f;
-                border: 1px solid #c90084;
+                background: #161b22;
+                color: #f4f0ff;
+                selection-background-color: #30363d;
+                border: 1px solid #8b5cf6;
                 outline: none;
             }
         """)
@@ -601,12 +601,12 @@ class _DeviceTile(QFrame):
     selected = pyqtSignal(str)   # class_key
 
     _STYLE_NORMAL = """
-        QFrame { background:#220d14; border:2px solid #45072f;
+        QFrame { background:#161b22; border:2px solid #30363d;
                  border-radius:8px; }
-        QFrame:hover { border:2px solid #c90084; background:#2d1020; }
+        QFrame:hover { border:2px solid #8b5cf6; background:#21262d; }
     """
     _STYLE_ACTIVE = """
-        QFrame { background:#45072f; border:2px solid #f95979;
+        QFrame { background:#30363d; border:2px solid #a78bfa;
                  border-radius:8px; }
     """
 
@@ -636,7 +636,7 @@ class _DeviceTile(QFrame):
         name = QLabel(display_name)
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name.setWordWrap(True)
-        name.setStyleSheet("color:#ffd0de;font-size:9pt;background:transparent;")
+        name.setStyleSheet("color:#f4f0ff;font-size:9pt;background:transparent;")
         lay.addWidget(name)
 
     def set_active(self, active: bool) -> None:
@@ -701,13 +701,13 @@ class AddDeviceDialog(QDialog):
         # Info bar
         self._info_bar = QLabel(tr("ui.panel.devices.select_continue"))
         self._info_bar.setStyleSheet(
-            "color:#9a5070;font-size:8pt;padding:4px;"
-            "background:#220d14;border:1px solid #45072f;border-radius:4px;")
+            "color:#8b949e;font-size:8pt;padding:4px;"
+            "background:#161b22;border:1px solid #30363d;border-radius:4px;")
         root.addWidget(self._info_bar)
 
         # Hint label (shown below info bar)
         self._hint_lbl = QLabel("")
-        self._hint_lbl.setStyleSheet("color:#6b3050;font-size:8pt;")
+        self._hint_lbl.setStyleSheet("color:#6e7681;font-size:8pt;")
         self._hint_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root.addWidget(self._hint_lbl)
 
@@ -1064,7 +1064,7 @@ def _make_icon_widget(icon_path: Optional[str], size: int) -> QWidget:
     lbl.setFixedSize(size, size)
     lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
     lbl.setStyleSheet(
-        f"color:#6b3050;font-size:{int(size*0.5)}pt;font-weight:bold;"
-        "background:#220d14;border:1px solid #45072f;border-radius:4px;"
+        f"color:#6e7681;font-size:{int(size*0.5)}pt;font-weight:bold;"
+        "background:#161b22;border:1px solid #30363d;border-radius:4px;"
     )
     return lbl

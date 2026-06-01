@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <!-- Floppy body (notched top-right corner) -->
-  <path d="M3 3 L16 3 L21 8 L21 21 L3 21 Z" fill="#ffd0de"/>
+  <path d="M3 3 L16 3 L21 8 L21 21 L3 21 Z" fill="#f4f0ff"/>
   <!-- Label area -->
-  <rect x="5" y="14" width="14" height="6" rx="0.5" fill="#45072f" opacity="0.35"/>
+  <rect x="5" y="14" width="14" height="6" rx="0.5" fill="#30363d" opacity="0.35"/>
   <!-- Write-protect window -->
-  <rect x="7" y="4" width="6" height="5" fill="#45072f" opacity="0.25"/>
+  <rect x="7" y="4" width="6" height="5" fill="#30363d" opacity="0.25"/>
 </svg>

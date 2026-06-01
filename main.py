@@ -1,5 +1,5 @@
 """
-SensoryFlow — entry point.
+GameFlow — entry point.
 
 Run:
     python main.py
@@ -55,7 +55,7 @@ def main() -> None:
     log = logging.getLogger("main")
 
     app = QApplication(sys.argv)
-    app.setApplicationName("SensoryFlow")
+    app.setApplicationName("GameFlow")
     app.setApplicationVersion("1.0.0")
 
     # ── Bootstrap ──────────────────────────────────────────────────────────────

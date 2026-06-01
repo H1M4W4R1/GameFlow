@@ -21,7 +21,7 @@ ui.button.cancel,Anuluj
 ui.dialog.unsaved_changes.title,Niezapisane zmiany
 ui.dialog.unsaved_changes.message,Bieżący flow ma niezapisane zmiany.
 ui.dialog.save_graph.title,Zapisz Flow
-ui.dialog.save_graph.filter,SensoryFlow Graph (*.sfgraph);;JSON (*.json)
+ui.dialog.save_graph.filter,GameFlow Graph (*.sfgraph);;JSON (*.json)
 ui.dialog.load_graph.title,Wczytaj Flow
 ui.untitled,Bez tytułu
 node.float.name,Float

@@ -21,7 +21,7 @@ ui.button.cancel,Cancel
 ui.dialog.unsaved_changes.title,Unsaved Changes
 ui.dialog.unsaved_changes.message,The current graph has unsaved changes.
 ui.dialog.save_graph.title,Save Graph
-ui.dialog.save_graph.filter,SensoryFlow Graph (*.sfgraph);;JSON (*.json)
+ui.dialog.save_graph.filter,GameFlow Graph (*.sfgraph);;JSON (*.json)
 ui.dialog.load_graph.title,Load Graph
 ui.untitled,Untitled
 node.float.name,Float

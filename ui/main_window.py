@@ -3,7 +3,7 @@ MainWindow — top-level application window.
 
 Layout:
     ┌─────────────────────────────────────────────────────────┐
-    │  TOP BAR  [SensoryFlow]  [Save] [Load]  ──  [▶ Run]    │
+    │  TOP BAR  [GameFlow]  [Save] [Load]  ──  [▶ Run]    │
     ├────────────┬────────────────────────────────────────────┤
     │  DEVICES   │                                            │
     │  ● Dev A   │        NODE EDITOR CANVAS                  │
@@ -59,7 +59,7 @@ class MainWindow(QWidget):
             Qt.WindowType.Window
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
-        self.setWindowTitle("SensoryFlow")
+        self.setWindowTitle("GameFlow")
         self.resize(1400, 900)
         self.setStyleSheet(_APP_STYLE)
 
@@ -93,7 +93,7 @@ class MainWindow(QWidget):
         # Divider
         div = QFrame()
         div.setFrameShape(QFrame.Shape.VLine)
-        div.setStyleSheet("border: none; background: #45072f;")
+        div.setStyleSheet("border: none; background: #30363d;")
         div.setFixedWidth(1)
         body.addWidget(div)
 
@@ -114,7 +114,7 @@ class MainWindow(QWidget):
         self._status_bar = QLabel(tr("ui.status.ready"))
         self._status_bar.setFixedHeight(22)
         self._status_bar.setStyleSheet(
-            "background: #45072f; color: #c8889a; font-size: 8pt; padding: 2px 10px;"
+            "background: #30363d; color: #a59bbd; font-size: 8pt; padding: 2px 10px;"
         )
         root.addWidget(self._status_bar)
 
@@ -136,8 +136,8 @@ class MainWindow(QWidget):
         bar.setStyleSheet(
             "QWidget#TitleBar {"
             "  background: qlineargradient(x1:0,y1:0,x2:1,y2:0,"
-            "    stop:0 #45072f, stop:0.6 #220d14, stop:1 #1a0a0f);"
-            "  border-bottom: 1px solid #c90084;"
+            "    stop:0 #30363d, stop:0.6 #161b22, stop:1 #0d1117);"
+            "  border-bottom: 1px solid #8b5cf6;"
             "}"
         )
         layout = QHBoxLayout(bar)
@@ -147,13 +147,13 @@ class MainWindow(QWidget):
         # ── Logo (pure text — no background, transparent) ──────────────────
         logo = QLabel()
         logo.setText(
-            "<span style='color:#f95979;font-size:13pt;"
+            "<span style='color:#8b5cf6;font-size:14pt;"
             "font-family:Segoe UI,Ubuntu,sans-serif;"
-            "letter-spacing:1px;'>⬡</span>"
-            "<span style='color:#ffd0de;font-size:10pt;"
+            "font-weight:bold;letter-spacing:1px;'>&#9670;</span>"
+            "<span style='color:#f4f0ff;font-size:10pt;"
             "font-family:Segoe UI,Ubuntu,sans-serif;"
-            "font-weight:bold;letter-spacing:3px;'> SENSORY</span>"
-            "<span style='color:#f95979;font-size:10pt;"
+            "font-weight:bold;letter-spacing:3px;'> GAME</span>"
+            "<span style='color:#a78bfa;font-size:10pt;"
             "font-family:Segoe UI,Ubuntu,sans-serif;"
             "font-weight:bold;letter-spacing:3px;'>FLOW</span>"
         )
@@ -177,7 +177,7 @@ class MainWindow(QWidget):
         self._graph_name_label = QLabel(tr("ui.untitled"))
         self._graph_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._graph_name_label.setStyleSheet(
-            "color:#7a4060;font-size:8pt;background:transparent;")
+            "color:#7d8590;font-size:8pt;background:transparent;")
         layout.addWidget(self._graph_name_label)
 
         drag_right = _DragZone(self)
@@ -199,14 +199,14 @@ class MainWindow(QWidget):
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFixedWidth(1)
-        sep.setStyleSheet("background:#45072f;border:none;")
+        sep.setStyleSheet("background:#30363d;border:none;")
         layout.addWidget(sep)
         layout.addSpacing(2)
 
         # ── Window control buttons ─────────────────────────────────────────
-        self._min_btn  = _WinButton("—", "#ffd0de", self._on_minimize)
-        self._max_btn  = _WinButton("□", "#ffd0de", self._on_maximize)
-        self._close_btn= _WinButton("✕", "#f95979", self._on_close_window)
+        self._min_btn  = _WinButton("—", "#f4f0ff", self._on_minimize)
+        self._max_btn  = _WinButton("□", "#f4f0ff", self._on_maximize)
+        self._close_btn= _WinButton("✕", "#a78bfa", self._on_close_window)
         layout.addWidget(self._min_btn)
         layout.addWidget(self._max_btn)
         layout.addWidget(self._close_btn)
@@ -579,8 +579,8 @@ class _ConfirmDialog(QDialog):
         self.setFixedWidth(360)
         self.setStyleSheet("""
             QDialog {
-                background: #220d14;
-                border: 1px solid #c90084;
+                background: #161b22;
+                border: 1px solid #8b5cf6;
                 border-radius: 8px;
             }
         """)
@@ -591,13 +591,13 @@ class _ConfirmDialog(QDialog):
 
         title_lbl = QLabel(title)
         title_lbl.setStyleSheet(
-            "color:#f95979; font-size:11pt; font-weight:bold; background:transparent;"
+            "color:#a78bfa; font-size:11pt; font-weight:bold; background:transparent;"
         )
         layout.addWidget(title_lbl)
 
         msg_lbl = QLabel(message)
         msg_lbl.setWordWrap(True)
-        msg_lbl.setStyleSheet("color:#ffd0de; background:transparent;")
+        msg_lbl.setStyleSheet("color:#f4f0ff; background:transparent;")
         layout.addWidget(msg_lbl)
 
         layout.addSpacing(4)
@@ -609,25 +609,25 @@ class _ConfirmDialog(QDialog):
         _btn_style = (
             "QPushButton {{ background:{bg}; color:{fg}; border:{bd};"
             " border-radius:5px; padding:4px 16px; }}"
-            "QPushButton:hover {{ background:#f95979; color:#fff; border:none; }}"
+            "QPushButton:hover {{ background:#a78bfa; color:#fff; border:none; }}"
         )
 
         save_btn = QPushButton(tr("ui.button.save"))
         save_btn.setFixedHeight(30)
         save_btn.setStyleSheet(
-            _btn_style.format(bg="#c90084", fg="#fff", bd="none")
+            _btn_style.format(bg="#8b5cf6", fg="#fff", bd="none")
         )
 
         discard_btn = QPushButton(tr("ui.button.discard"))
         discard_btn.setFixedHeight(30)
         discard_btn.setStyleSheet(
-            _btn_style.format(bg="#45072f", fg="#ffd0de", bd="1px solid #c90084")
+            _btn_style.format(bg="#30363d", fg="#f4f0ff", bd="1px solid #8b5cf6")
         )
 
         cancel_btn = QPushButton(tr("ui.button.cancel"))
         cancel_btn.setFixedHeight(30)
         cancel_btn.setStyleSheet(
-            _btn_style.format(bg="#2d1020", fg="#c8889a", bd="none")
+            _btn_style.format(bg="#21262d", fg="#a59bbd", bd="none")
         )
 
         for btn in (save_btn, discard_btn, cancel_btn):
@@ -688,15 +688,15 @@ class _ToolButton(QPushButton):
                 QPushButton:disabled { background: transparent; }
             """)
             return
-        bg = "#c90084" if self._accent else "#45072f"
+        bg = "#8b5cf6" if self._accent else "#30363d"
         self.setStyleSheet(f"""
             QPushButton {{
                 background: {bg};
                 border: none;
                 border-radius: 6px;
             }}
-            QPushButton:hover {{ background: #f95979; }}
-            QPushButton:disabled {{ background: #2d1020; }}
+            QPushButton:hover {{ background: #a78bfa; }}
+            QPushButton:disabled {{ background: #21262d; }}
         """)
 
     def paintEvent(self, event) -> None:
@@ -704,7 +704,7 @@ class _ToolButton(QPushButton):
         if self._renderer is None:
             # Fallback: draw text label
             p = QPainter(self)
-            p.setPen(QColor("#ffd0de" if self.isEnabled() else "#6b3050"))
+            p.setPen(QColor("#f4f0ff" if self.isEnabled() else "#6e7681"))
             p.setFont(QFont("Segoe UI Symbol", 11))
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._label)
             return
@@ -734,14 +734,14 @@ class _WinButton(QPushButton):
         self.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
-                color: #6b3050;
+                color: #6e7681;
                 border: none;
                 border-radius: 4px;
                 font-size: 10pt;
                 font-family: 'Segoe UI Symbol', 'Segoe UI', sans-serif;
             }}
             QPushButton:hover {{
-                background: #2d1020;
+                background: #21262d;
                 color: {self._hover_color};
             }}
         """)
@@ -848,8 +848,8 @@ class _ResizeHandle(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         sz   = self.HANDLE_SIZE
-        col  = QColor("#c90084")
-        col2 = QColor("#45072f")
+        col  = QColor("#8b5cf6")
+        col2 = QColor("#30363d")
         # Three diagonal grip lines (bottom-right corner, lines run NE→SW)
         for i, (x1, y1, x2, y2) in enumerate([
             (sz-2, sz-4,  sz-4,  sz-2),
@@ -888,29 +888,29 @@ QWidget {
     font-size: 9pt;
 }
 QToolTip {
-    background: #220d14;
-    color: #ffd0de;
-    border: 1px solid #c90084;
+    background: #161b22;
+    color: #f4f0ff;
+    border: 1px solid #8b5cf6;
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 9pt;
 }
 /* Outer window border */
 QWidget[isMainWindow="true"] {
-    border: 1px solid #c90084;
+    border: 1px solid #8b5cf6;
     border-radius: 8px;
-    background: #1a0a0f;
+    background: #0d1117;
 }
 QScrollBar:vertical {
-    background: #1a0a0f;
+    background: #0d1117;
     width: 8px;
     margin: 0;
 }
 QScrollBar::handle:vertical {
-    background: #45072f;
+    background: #30363d;
     border-radius: 4px;
     min-height: 20px;
 }
-QScrollBar::handle:vertical:hover { background: #c90084; }
+QScrollBar::handle:vertical:hover { background: #8b5cf6; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 """
