@@ -1,6 +1,6 @@
 # GameFlow — Developer Guide
 
-This document covers how to extend GameFlow: adding nodes, adding devices, and working with the translation system.
+This document covers how to extend GameFlow with plugins: adding nodes, adding devices, and working with the translation system.
 
 ---
 
@@ -17,17 +17,27 @@ GameFlow/
 │   ├── device_registry.py     — Auto-discovery of devices and nodes
 │   └── localization.py        — CSV-based string localization
 │
-├── devices/                   — Drop new device drivers here (auto-discovered)
+├── devices/                   — Built-in device drivers (auto-discovered)
 │   ├── serial_device.py
 │   ├── ble_device.py
 │   ├── tcp_device.py
 │   ├── websocket_device.py
 │   └── rest_device.py
 │
-├── nodes/                     — Drop new node files here (auto-discovered)
+├── nodes/                     — Built-in nodes (auto-discovered)
 │   ├── math_nodes.py
 │   ├── flow_nodes.py
 │   └── ...
+│
+├── plugins/                   — Custom or third-party device/node plugins
+│   └── my_plugin/
+│       ├── __init__.py
+│       ├── my_device.py
+│       ├── my_nodes.py
+│       ├── assets/icons/
+│       └── locales/
+│           ├── EN.csv
+│           └── PL.csv
 │
 ├── ui/
 │   ├── main_window.py         — Application shell, toolbar, layout
@@ -44,9 +54,44 @@ GameFlow/
 
 ---
 
+## Plugin Structure
+
+Custom nodes and devices should live in `plugins/<plugin_name>/`. The application scans `plugins/` recursively at startup, imports every `.py` file except `__init__.py`, and registers concrete subclasses of `NodeBase` and `DeviceBase`.
+
+A plugin does not need a manifest. A plain Python package is enough:
+
+```text
+plugins/my_plugin/
+  __init__.py
+  my_device.py
+  my_nodes.py
+  assets/icons/my_device.svg
+  locales/EN.csv
+  locales/PL.csv
+```
+
+Use valid Python identifiers for plugin folder names and module names. This keeps saved graph type keys stable and readable, for example:
+
+```text
+plugins.my_plugin.my_nodes.MultiplyNode
+plugins.my_plugin.my_device.MyDevice
+```
+
+Plugin modules can import each other with normal package imports:
+
+```python
+from plugins.my_plugin.my_device import DEVICE_TYPE_KEY
+```
+
+Icons should use repo-relative paths such as `plugins/my_plugin/assets/icons/my_device.svg`. Plugin translations go in `plugins/my_plugin/locales/<LANG>.csv` and are merged with the core locale files automatically.
+
+Built-in folders (`nodes/` and `devices/`) are still scanned, but plugins are the preferred path for custom integrations because the device driver, device nodes, assets, and translations can ship together.
+
+---
+
 ## Adding a Node
 
-Create a new file under `nodes/` (or add a class to an existing file). The registry auto-discovers any `NodeBase` subclass at startup.
+Create a new module under `plugins/<plugin_name>/` and define a `NodeBase` subclass. The registry auto-discovers concrete `NodeBase` subclasses at startup.
 
 ### Minimal example
 
@@ -102,7 +147,7 @@ EDITABLE_FIELDS = [
 
 ### Translations
 
-Every `NODE_NAME` and every pin label that appears in the UI should have a matching key in `locales/EN.csv`. See the **Translation System** section below.
+Every `NODE_NAME` and every pin label that appears in the UI should have a matching key in `plugins/<plugin_name>/locales/EN.csv`. See the **Translation System** section below.
 
 ---
 
@@ -118,7 +163,7 @@ Use `core.device_node_base.DeviceNodeBase` for nodes that operate on a live `Dev
 class MyDeviceSetValueNode(DeviceNodeBase):
     NODE_NAME = "My Device: Set Value"
     NODE_GROUP = "Devices/My Device"
-    DEVICE_TYPE_KEY = "devices.my_device.MyDevice"
+    DEVICE_TYPE_KEY = "plugins.my_plugin.my_device.MyDevice"
     PINS = [
         PinDescriptor("exec_in", PinDirection.INPUT, PinType.TICK),
         PinDescriptor("value", PinDirection.INPUT, PinType.FLOAT, default=0.5),
@@ -190,7 +235,7 @@ The existing `WebSocketMessageNode` and `WebSocketEventNode` in `nodes/websocket
 
 ## Adding a Device
 
-Create a new file (or package) under `devices/`. Any `DeviceBase` subclass is auto-discovered at startup.
+Create a new module under `plugins/<plugin_name>/`. Any concrete `DeviceBase` subclass is auto-discovered at startup.
 
 ### Minimal device driver
 
@@ -200,13 +245,13 @@ from core.device_node_base import DeviceNodeBase, register_device_instance
 from core.types import ConnectionDescriptor, PortKind, PinDescriptor, PinDirection, PinType
 from typing import Any
 
-DEVICE_TYPE_KEY = "devices.my_device.MyDevice"
+DEVICE_TYPE_KEY = "plugins.my_plugin.my_device.MyDevice"
 
 class MyDevice(DeviceBase):
     DEVICE_NAME      = "My Device"
     DEVICE_VERSION   = "1.0.0"
     CONNECTION_KINDS = [PortKind.TCP]       # or BLE, SERIAL, WEBSOCKET, REST
-    ICON_PATH        = "assets/icons/my_device.png"   # optional
+    ICON_PATH        = "plugins/my_plugin/assets/icons/my_device.svg"   # optional
 
     def _open(self) -> None:
         # Open connection using self.descriptor (ConnectionDescriptor)
@@ -232,7 +277,13 @@ class MyDevice(DeviceBase):
 
 ### Device node
 
+Device nodes can live in the same module as the device, or in a separate plugin module such as `plugins/my_plugin/my_nodes.py`.
+
 ```python
+from core.device_node_base import DeviceNodeBase
+from core.types import PinDescriptor, PinDirection, PinType
+from plugins.my_plugin.my_device import DEVICE_TYPE_KEY
+
 class MyDeviceVibrateNode(DeviceNodeBase):
     NODE_NAME       = "MyDevice: Vibrate"
     NODE_GROUP      = "My Device"
@@ -301,7 +352,7 @@ ui.button.run_graph,Run Graph  (F5)
 
 ### Loading
 
-At startup, `core/localization.py` loads the CSV for the user's preferred language (stored in `~/.gameflow/settings.json`). Falls back to English if a key is missing.
+At startup, `core/localization.py` loads the CSV for the user's preferred language (stored in `~/.gameflow/settings.json`). It loads the core file from `locales/<LANG>.csv`, then merges matching plugin files from `plugins/*/locales/<LANG>.csv`. Missing keys fall back to English or to the default passed to `tr()`.
 
 ```python
 from core.localization import tr
@@ -313,7 +364,7 @@ The `tr()` function returns the translated string for the key, or the `default` 
 
 ### Adding translations for a new node
 
-When you add a new node, add all displayable strings to **both** `locales/EN.csv` and `locales/PL.csv` (and any other locale files present). The EN file is the source of truth.
+When you add a new node or device in a plugin, add all displayable strings to **both** `plugins/<plugin_name>/locales/EN.csv` and `plugins/<plugin_name>/locales/PL.csv` (and any other locale files present). The EN file is the source of truth.
 
 Suggested key naming:
 
@@ -321,11 +372,12 @@ Suggested key naming:
 node.<group>.<node_slug>.name           — Node display name
 node.<group>.<node_slug>.pin.<pin_name> — Pin label
 node.<group>.<node_slug>.field.<key>    — Editable field label
+device.<plugin>.<device_slug>.name      — Device display name
 ```
 
 ### Adding a new language
 
-1. Copy `locales/EN.csv` to `locales/<LANG_CODE>.csv` (e.g. `DE.csv`).
+1. Copy `locales/EN.csv` to `locales/<LANG_CODE>.csv` (e.g. `DE.csv`). For plugins, copy each `plugins/<plugin_name>/locales/EN.csv` to the matching plugin locale file too.
 2. Translate each value (right-hand side of each row). Do not change keys.
 3. Add the language code and display name to the language selector in `ui/main_window.py`.
 4. Add a flag icon to `assets/icons/lang/<LANG_CODE>.svg` (optional).
@@ -356,7 +408,7 @@ Avoid blocking in `execute()` — long operations (network I/O, sleep) belong in
   "nodes": [
     {
       "node_id": "uuid",
-      "type_key": "nodes.math_nodes.MultiplyNode",
+      "type_key": "plugins.my_plugin.my_nodes.MultiplyNode",
       "x": 300.0,
       "y": 150.0,
       "state": { "some_field": 1.0 }
@@ -374,18 +426,4 @@ Avoid blocking in `execute()` — long operations (network I/O, sleep) belong in
 }
 ```
 
-`type_key` is the fully-qualified Python class path (module + class name). If a `type_key` is not found at load time, that node is skipped with a warning.
-
----
-
-## UI Colour Palette
-
-| Token | Hex | Usage |
-|---|---|---|
-| primary | `#f95979` | Tick wires, accents |
-| hot | `#d62a5e` | Hover states |
-| magenta | `#c90084` | Title bars, run button |
-| deep | `#ae0072` | Borders |
-| darkest | `#45072f` | Panels, grid major |
-| bg-dark | `#1a0a0f` | Canvas background |
-| bg-node | `#220d14` | Node bodies |
+`type_key` is the fully-qualified Python class path (module + class name). Plugin nodes use keys such as `plugins.my_plugin.my_nodes.MyNode`. If a `type_key` is not found at load time, that node is skipped with a warning.

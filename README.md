@@ -111,55 +111,13 @@ Tick output ordering matters for node authors: an `exec_out` output should be th
 
 For full implementation details, see [DEVELOPER.md](DEVELOPER.md). Keep user-facing behavior in this README and deeper code examples in the developer guide.
 
-### Adding a Node
-
-Create a `NodeBase` subclass in `nodes/`, or add it to an existing node module. `DeviceRegistry` imports Python modules under `nodes/` and auto-registers concrete `NodeBase` subclasses at startup.
-
-A node typically defines:
-
-- `NODE_NAME`: display name
-- `NODE_GROUP`: menu/search grouping, such as `Math/Arithmetic` or `Flow/Events`
-- `PINS`: `PinDescriptor` entries describing inputs and outputs
-- `execute(trigger_pin)`: behavior when a tick input fires
-
-Useful optional hooks include `on_start()`, `on_stop()`, `on_pause()`, `on_resume()`, `on_data_received()`, `on_output_wire_connected()`, `get_state()`, `set_state()`, and `paint_custom()`.
-
-Use `EDITABLE_FIELDS` for node-local settings and `VARIABLE_INPUTS` for pins that can either receive a wire or expose an inline editable default.
-
-When adding user-visible node names, groups, menu labels, or pin labels, add translation keys to every file in `locales/*.csv`.
-
-### Adding a Device
-
-Create a `DeviceBase` subclass in `devices/`. `DeviceRegistry` imports modules under `devices/` and auto-registers concrete `DeviceBase` subclasses at startup.
-
-A device driver typically defines:
-
-- `DEVICE_NAME`, `DEVICE_VERSION`, `MANUFACTURER`, and `DEVICE_DESCRIPTION`
-- `CONNECTION_KINDS`, using `PortKind` values such as `BLE`, `SERIAL`, `TCP`, `WEBSOCKET`, `REST`, or `MOCK`
-- `ICON_PATH`, if the device has an icon
-- `_open()`, `_close()`, `_ping()`, and `_execute_command(command)`
-
-The base class owns the command queue, worker thread, retry behavior, status transitions, reconnect loop, and Qt signals. Device-specific nodes should normally subclass `DeviceNodeBase`, set `DEVICE_TYPE_KEY` to the device class key, and call `send_to_device(...)` from `execute()`.
-
-Register live device instances in `_on_connected()` with `register_device_instance(type_key, self)` so `DeviceNodeBase` can find them and support multi-device selection.
-
-### Extending Built-in Abstract Nodes
-
-Some modules provide reusable abstract node bases for common behavior. Keep the base class internal by naming it with a leading underscore, or by leaving it abstract, so auto-discovery does not expose it as a menu item.
-
-`DeviceNodeBase` is for graph nodes that target a live `DeviceBase` instance. It handles selected-device persistence, automatic fallback to the first connected instance, status display, and `send_to_device(...)`.
-
-`WebSocketNodeBase` in `nodes/websocket_server_nodes.py` is for event-style nodes driven by JSON received on the shared WebSocket server. Subclasses set `TICK_OUTPUT_PIN`, optionally set `DATA_OUTPUT_PIN`, declare output pins with all `TICK` outputs first, and implement `should_execute_for_message(data)`. Override `on_websocket_message(data)` only when the default behavior of setting the data output and firing the tick output is not enough.
-
-For stateful abstract bases, call `super().get_state()` and `super().set_state(state)` so graph files remain compatible with built-in persistence.
-
 ---
 
 ## Language
 
 The interface supports multiple languages through CSV files in `locales/`. English is the source language, and Polish is currently included for testing.
 
-When adding or renaming user-visible UI strings, add matching keys to every locale CSV file. Missing keys fall back to English or to the provided default.
+When adding or renaming user-visible UI strings, add matching keys to the relevant locale CSV files. Core strings live in `locales/*.csv`; plugin strings live in `plugins/<plugin_name>/locales/*.csv`. Missing keys fall back to English or to the provided default.
 
 ---
 
@@ -172,7 +130,7 @@ When adding or renaming user-visible UI strings, add matching keys to every loca
 - device aliases
 - canvas groups
 
-The node `type_key` is the fully-qualified Python class path, such as `nodes.math_nodes.MultiplyNode`. If a type key cannot be found when loading a graph, that node is skipped with a warning.
+The node `type_key` is the fully-qualified Python class path, such as `nodes.math_nodes.MultiplyNode` for built-ins or `plugins.my_plugin.my_nodes.MyNode` for plugin nodes. If a type key cannot be found when loading a graph, that node is skipped with a warning.
 
 ---
 
