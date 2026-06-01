@@ -144,6 +144,7 @@ ui.canvas.menu.edit_event_name,Edit event name...
 ui.canvas.menu.websocket_server,WebSocket server...
 ui.canvas.menu.mqtt_server,MQTT server...
 ui.canvas.menu.voice_recognition,Voice recognition...
+ui.canvas.menu.voice_recognition_backend,Recognition backend
 ui.canvas.menu.select_sfx,Select SFX file...
 ui.canvas.menu.audio_output_device,Output audio device
 ui.canvas.menu.default_audio_device,Default output device
@@ -182,6 +183,9 @@ ui.dialog.mqtt_server.port,Port:
 ui.dialog.voice_recognition.title,Voice Recognition
 ui.dialog.voice_recognition.microphone,Microphone:
 ui.dialog.voice_recognition.sensitivity,Sensitivity:
+ui.dialog.voice_recognition.backend,Backend:
+ui.dialog.voice_recognition.backend.vosk,Vosk (local)
+ui.dialog.voice_recognition.backend.google,Google (online)
 ui.dialog.voice_recognition.default_mic,Default microphone
 ui.dialog.voice_recognition.group.microphones,Microphones
 ui.dialog.voice_recognition.group.speakers,Speakers
