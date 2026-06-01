@@ -91,10 +91,10 @@ class DeviceNodeBase(NodeBase):
     Base for device-specific graph nodes.
 
     Set in subclass:
-        DEVICE_TYPE_KEY = "devices.lovense.vibrators.LovenseDomi"
-        ICON_PATH       = "assets/icons/lovense/domi.svg"
-        NODE_NAME       = "Domi: Vibrate"
-        NODE_GROUP      = "Devices/Lovense/Domi"
+        DEVICE_TYPE_KEY = "devices.manufacturer.type.DeviceName"
+        ICON_PATH       = "assets/icons/device_name.svg"
+        NODE_NAME       = "Device: Operation"
+        NODE_GROUP      = "Devices/Manufacturer/Device"
         PINS            = [...]
 
     Reads / writes the bound device via:

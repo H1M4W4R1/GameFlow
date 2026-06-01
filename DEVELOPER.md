@@ -22,9 +22,7 @@ sensoryflow/
 │   ├── ble_device.py
 │   ├── tcp_device.py
 │   ├── websocket_device.py
-│   ├── rest_device.py
-│   ├── lovense/
-│   └── dglab/
+│   └── rest_device.py
 │
 ├── nodes/                     — Drop new node files here (auto-discovered)
 │   ├── math_nodes.py
