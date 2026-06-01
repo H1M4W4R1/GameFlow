@@ -65,13 +65,14 @@ def main() -> None:
     # Auto-discover devices and nodes
     devices_path = PROJECT_ROOT / "devices"
     nodes_path   = PROJECT_ROOT / "nodes"
+    plugins_path = PROJECT_ROOT / "plugins"
 
     # Seed nodes so they're always available
     _seed_nodes(registry)
 
     # Discover third-party / user additions
     try:
-        registry.discover(devices_path, nodes_path)
+        registry.discover(devices_path, nodes_path, plugins_path)
     except Exception as exc:
         log.warning("Discovery error (non-fatal): %s", exc)
 
@@ -90,14 +91,12 @@ def main() -> None:
 
 def _seed_nodes(registry: DeviceRegistry) -> None:
     """
-    Walk /nodes/ and /devices/ and register all concrete NodeBase and DeviceBase
-    subclasses. Any .py file dropped into /nodes/ is picked up automatically.
+    Walk /nodes/, /devices/, and /plugins/ and register all concrete NodeBase
+    and DeviceBase subclasses.
     """
-    import importlib
-    import pkgutil
-
     from core.node_base   import NodeBase
     from core.device_base import DeviceBase
+    from core.device_registry import _import_module_from_file, _iter_module_files, _module_name_for_file
 
     def _walk_and_register(root: Path, base: type, store: dict) -> int:
         if not root.exists():
@@ -106,11 +105,12 @@ def _seed_nodes(registry: DeviceRegistry) -> None:
         if parent not in sys.path:
             sys.path.insert(0, parent)
         count = 0
-        for info in pkgutil.walk_packages([str(root)], prefix=f"{root.name}."):
+        for file_path in _iter_module_files(root):
+            module_name = _module_name_for_file(root, file_path)
             try:
-                mod = importlib.import_module(info.name)
+                mod = _import_module_from_file(module_name, file_path)
             except Exception as exc:
-                log.warning("Skipping %s: %s", info.name, exc)
+                log.warning("Skipping %s: %s", module_name, exc)
                 continue
             for attr_name in dir(mod):
                 obj = getattr(mod, attr_name)
@@ -140,6 +140,13 @@ def _seed_nodes(registry: DeviceRegistry) -> None:
     # Device-specific nodes (DeviceNodeBase subclasses) also live under /devices/
     dn = _walk_and_register(PROJECT_ROOT / "devices", NodeBase, registry._node_classes)
     log.info("Seeded %d device node(s) from /devices/", dn)
+
+    # Plugins can contain devices, nodes, or both at any folder depth.
+    pd = _walk_and_register(PROJECT_ROOT / "plugins", DeviceBase, registry._device_classes)
+    log.info("Seeded %d plugin device class(es) from /plugins/", pd)
+
+    pn = _walk_and_register(PROJECT_ROOT / "plugins", NodeBase, registry._node_classes)
+    log.info("Seeded %d plugin node(s) from /plugins/", pn)
 
 
 if __name__ == "__main__":

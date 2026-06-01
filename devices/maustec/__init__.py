@@ -1,2 +1,0 @@
-"""MausTec device integrations."""
-

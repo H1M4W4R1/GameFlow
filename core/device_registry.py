@@ -6,7 +6,6 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import logging
-import pkgutil
 import sys
 from pathlib import Path
 from typing import Optional, Type
@@ -44,9 +43,12 @@ class DeviceRegistry(QObject):
 
     # ── Discovery ─────────────────────────────────────────────────────────────
 
-    def discover(self, devices_path: Path, nodes_path: Path) -> None:
+    def discover(self, devices_path: Path, nodes_path: Path, plugins_path: Optional[Path] = None) -> None:
         self._discover_devices(devices_path)
         self._discover_nodes(nodes_path)
+        if plugins_path is not None:
+            self._discover_devices(plugins_path)
+            self._discover_nodes(plugins_path)
 
     def _discover_devices(self, path: Path) -> None:
         for cls in _load_subclasses(path, DeviceBase):
@@ -168,10 +170,10 @@ def _load_subclasses(path: Path, base_class: type) -> list[type]:
     if parent not in sys.path:
         sys.path.insert(0, parent)
 
-    pkg_name = path.name
-    for info in pkgutil.walk_packages([str(path)], prefix=f"{pkg_name}."):
+    for file_path in _iter_module_files(path):
+        module_name = _module_name_for_file(path, file_path)
         try:
-            mod = importlib.import_module(info.name)
+            mod = _import_module_from_file(module_name, file_path)
             for attr_name in dir(mod):
                 obj = getattr(mod, attr_name)
                 if (
@@ -182,5 +184,47 @@ def _load_subclasses(path: Path, base_class: type) -> list[type]:
                 ):
                     found.append(obj)
         except Exception as exc:
-            log.warning("Could not load module %s: %s", info.name, exc)
+            log.warning("Could not load module %s: %s", module_name, exc)
     return found
+
+
+def _iter_module_files(path: Path) -> list[Path]:
+    return sorted(
+        file_path
+        for file_path in path.rglob("*.py")
+        if file_path.name != "__init__.py"
+    )
+
+
+def _module_name_for_file(root: Path, file_path: Path) -> str:
+    relative = file_path.relative_to(root.parent).with_suffix("")
+    parts = relative.parts
+    if all(part.isidentifier() for part in parts):
+        return ".".join(parts)
+
+    fallback = "_".join(_sanitize_module_part(part) for part in parts)
+    return f"_sensoryflow_plugin_{fallback}"
+
+
+def _sanitize_module_part(part: str) -> str:
+    cleaned = "".join(char if char.isalnum() or char == "_" else "_" for char in part)
+    if not cleaned or cleaned[0].isdigit():
+        cleaned = f"_{cleaned}"
+    return cleaned
+
+
+def _import_module_from_file(module_name: str, file_path: Path):
+    if module_name.startswith("_sensoryflow_plugin_"):
+        existing = sys.modules.get(module_name)
+        if existing is not None:
+            return existing
+
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Cannot create import spec for {file_path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        return module
+
+    return importlib.import_module(module_name)
