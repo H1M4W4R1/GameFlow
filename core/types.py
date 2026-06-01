@@ -1,5 +1,5 @@
 """
-Core types, enums, and typed data structures for SensoryFlow.
+Core types, enums, and typed data structures for GameFlow.
 All inter-module data exchange should use these types.
 """
 from __future__ import annotations

@@ -36,7 +36,9 @@ from PyQt6.QtWidgets import (
 
 from core.device_base import DeviceBase
 from core.device_registry import DeviceRegistry
-from core.localization import tr, get_current_language, load_language, save_language_pref
+from core.localization import (
+    tr, get_current_language, get_available_languages, load_language, save_language_pref,
+)
 from core.types import DeviceStatus, ConnectionDescriptor, PortKind
 
 log = logging.getLogger(__name__)
@@ -455,8 +457,7 @@ class DevicePanel(QWidget):
 
         # Populate with available locale files
         _icons_dir = Path(__file__).parent.parent / "assets" / "icons" / "lang"
-        locales_dir = Path(__file__).parent.parent / "locales"
-        available = sorted(p.stem.upper() for p in locales_dir.glob("*.csv"))
+        available = get_available_languages()
         current = get_current_language().upper()
         for code in available:
             _, name = _LANG_INFO.get(code, ("🌐", code))

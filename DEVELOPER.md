@@ -1,13 +1,13 @@
-# SensoryFlow — Developer Guide
+# GameFlow — Developer Guide
 
-This document covers how to extend SensoryFlow: adding nodes, adding devices, and working with the translation system.
+This document covers how to extend GameFlow: adding nodes, adding devices, and working with the translation system.
 
 ---
 
 ## Project Layout
 
 ```
-sensoryflow/
+GameFlow/
 ├── core/
 │   ├── types.py               — Shared data structures and enums
 │   ├── node_base.py           — NodeBase: abstract graph node
@@ -285,7 +285,7 @@ When 2+ devices of the same `DEVICE_TYPE_KEY` are connected, the canvas shows a 
 
 ## Translation System
 
-SensoryFlow uses a simple CSV-based system. Strings live in `locales/<LANG>.csv`. Each row is:
+GameFlow uses a simple CSV-based system. Strings live in `locales/<LANG>.csv`. Each row is:
 
 ```
 key,translated string
@@ -301,7 +301,7 @@ ui.button.run_graph,Run Graph  (F5)
 
 ### Loading
 
-At startup, `core/localization.py` loads the CSV for the user's preferred language (stored in `~/.sensoryflow/settings.json`). Falls back to English if a key is missing.
+At startup, `core/localization.py` loads the CSV for the user's preferred language (stored in `~/.gameflow/settings.json`). Falls back to English if a key is missing.
 
 ```python
 from core.localization import tr

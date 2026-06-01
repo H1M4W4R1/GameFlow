@@ -1,1 +1,1 @@
-# SensoryFlow core package
+# GameFlow core package

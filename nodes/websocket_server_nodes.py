@@ -108,7 +108,7 @@ class _SharedWebSocketServer:
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(
             target=self._run_loop,
-            name="SensoryFlow-WebSocketServer",
+            name="GameFlow-WebSocketServer",
             daemon=True,
         )
         self._thread.start()

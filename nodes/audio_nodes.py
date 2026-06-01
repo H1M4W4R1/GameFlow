@@ -967,7 +967,7 @@ class AudioInputStreamNode(NodeBase):
         self._status = "starting"
         self._thread = threading.Thread(
             target=self._capture_loop,
-            name="SensoryFlow-AudioInputStream",
+            name="GameFlow-AudioInputStream",
             daemon=True,
         )
         self._thread.start()

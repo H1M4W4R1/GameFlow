@@ -1,4 +1,4 @@
-"""Undo/redo command system for SensoryFlow.
+"""Undo/redo command system for GameFlow.
 
 Usage::
 

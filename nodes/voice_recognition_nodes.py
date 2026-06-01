@@ -183,7 +183,7 @@ class _SharedVoiceRecognitionService:
         self._status = "starting"
         self._thread = threading.Thread(
             target=self._run_loop,
-            name="SensoryFlow-VoiceRecognition",
+            name="GameFlow-VoiceRecognition",
             daemon=True,
         )
         self._thread.start()

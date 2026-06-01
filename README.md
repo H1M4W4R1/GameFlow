@@ -1,11 +1,15 @@
 <div align="center">
-  <h1>SensoryFlow</h1>
-  <img src="https://github.com/H1M4W4R1/SensoryFlow/blob/master/gh_images/screenshot.png" alt="Preview screenshot"/>
+  <h1>GameFlow</h1>
+  <img src="https://github.com/H1M4W4R1/GameFlow/blob/master/gh_images/screenshot.png" alt="Preview screenshot"/>
 </div>
 
-SensoryFlow is a visual node-graph application for creating automated experiences with connected hardware devices: BLE, Serial, TCP, WebSocket, REST, and device-specific integrations.
+GameFlow is a visual node-graph application for creating automated experiences with connected hardware devices: BLE, Serial, TCP, WebSocket, REST, and device-specific integrations.
 
 You build experiences by connecting nodes together on a canvas. Each node does something: generates a waveform, controls a device, waits for a timer, checks a condition, parses JSON, reacts to a WebSocket message, or routes execution flow. Nodes talk to each other through wires, so most graphs can be built without writing code.
+
+Originally this package was named SensoryFlow and was oriented towards adult entertainment industry, however due to
+enormous amount of alternative usages it was rebranded into GameFlow, as its main purpose is to integrate external feedback
+devices with games.
 
 ---
 
@@ -24,7 +28,7 @@ On first launch the app opens an empty graph canvas.
 
 ## Devices
 
-Devices appear in the left panel when they are added or discovered. SensoryFlow includes specific integrations for devices such as Lovense toys, DG-Lab Coyote, and the H1M4W4R1 pump, plus generic Serial, TCP, WebSocket, REST, and BLE-style device bases.
+Devices appear in the left panel when they are added or discovered. 
 
 A colored dot shows device connection status:
 
@@ -83,7 +87,7 @@ Graphs are saved as `.sfgraph` files.
 
 Nodes are the building blocks of a graph. Each node has input pins on the left and output pins on the right. TICK pins carry execution flow; data pins carry values.
 
-The full node list is intentionally not maintained here because SensoryFlow has built-in node search and auto-discovers nodes from the codebase at startup.
+The full node list is intentionally not maintained here because GameFlow has built-in node search and auto-discovers nodes from the codebase at startup.
 
 ### Pin / Wire Types
 
@@ -98,13 +102,12 @@ The full node list is intentionally not maintained here because SensoryFlow has 
 | `VECTOR2D`, `VECTOR3D`, `VECTOR4D` | Vector values |
 | `COLOR` | Color values |
 | `DATETIME` | Date/time values |
-| `COYOTE_FRAME` | DG-Lab Coyote waveform frame values |
 
 Tick output ordering matters for node authors: an `exec_out` output should be the first output pin, and all `TICK` outputs should be listed before data outputs. This keeps rendering and execution behavior predictable.
 
 ---
 
-## Extending SensoryFlow
+## Extending GameFlow
 
 For full implementation details, see [DEVELOPER.md](DEVELOPER.md). Keep user-facing behavior in this README and deeper code examples in the developer guide.
 

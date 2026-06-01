@@ -203,7 +203,7 @@ def _module_name_for_file(root: Path, file_path: Path) -> str:
         return ".".join(parts)
 
     fallback = "_".join(_sanitize_module_part(part) for part in parts)
-    return f"_sensoryflow_plugin_{fallback}"
+    return f"_gameflow_plugin_{fallback}"
 
 
 def _sanitize_module_part(part: str) -> str:
@@ -214,7 +214,7 @@ def _sanitize_module_part(part: str) -> str:
 
 
 def _import_module_from_file(module_name: str, file_path: Path):
-    if module_name.startswith("_sensoryflow_plugin_"):
+    if module_name.startswith("_gameflow_plugin_"):
         existing = sys.modules.get(module_name)
         if existing is not None:
             return existing

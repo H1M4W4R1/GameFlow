@@ -186,7 +186,7 @@ class _SharedMqttServer:
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(
             target=self._run_loop,
-            name="SensoryFlow-MqttServer",
+            name="GameFlow-MqttServer",
             daemon=True,
         )
         self._thread.start()
@@ -612,7 +612,7 @@ class MqttSendNode(MqttConfiguredNode):
     NODE_GROUP = "Servers/MQTT"
     MIN_WIDTH = 220.0
     VARIABLE_INPUTS = {
-        "topic": (str, "sensoryflow/message"),
+        "topic": (str, "gameflow/message"),
         "payload": (str, ""),
         "retain": (bool, False),
     }

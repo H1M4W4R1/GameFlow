@@ -1,7 +1,7 @@
 """
 device_persistence.py — save and restore known devices between runs.
 
-Saved to: ~/.sensoryflow/devices.json
+Saved to: ~/.gameflow/devices.json
 Format:
 {
   "version": 1,
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_CONFIG_DIR  = Path.home() / ".sensoryflow"
+_CONFIG_DIR  = Path.home() / ".gameflow"
 _DEVICES_FILE = _CONFIG_DIR / "devices.json"
 _FORMAT_VER  = 1
 
