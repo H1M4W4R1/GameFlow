@@ -319,3 +319,7 @@ node.audio_file_stream.error,Błąd dekodowania
 node.audio_input_stream.name,Strumień Wejścia Audio
 node.audio_input_stream.default_device,Domyślne urządzenie wejściowe
 node.audio_input_stream.loopback_unavailable,Loopback głośnika jest niedostępny. Zainstaluj pyaudiowpatch albo włącz systemowe wejście loopback, takie jak Stereo Mix.
+ui.debug_console.title,Konsola Debugowania
+ui.debug_console.status_tooltip,Kliknij dwukrotnie, aby otworzyć konsolę debugowania.
+ui.debug_console.level_tooltip,Pokaż logi {level}
+ui.debug_console.search_placeholder,Szukaj w logach...

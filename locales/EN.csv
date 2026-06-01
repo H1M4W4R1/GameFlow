@@ -319,3 +319,7 @@ node.value_portal_output.name,Value Portal Output
 node.tick_portal_input.name,Tick Portal Input
 node.tick_portal_output.name,Tick Portal Output
 node.connection.name,Connection
+ui.debug_console.title,Debug Console
+ui.debug_console.status_tooltip,Double-click to open the debug console.
+ui.debug_console.level_tooltip,Show {level} logs
+ui.debug_console.search_placeholder,Search logs...

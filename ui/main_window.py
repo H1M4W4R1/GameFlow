@@ -20,7 +20,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore  import Qt, QPointF, QPoint, QTimer
+from PyQt6.QtCore  import Qt, QPointF, QPoint, QTimer, pyqtSignal
 from PyQt6.QtGui   import QIcon, QKeySequence, QShortcut, QFont, QColor, QMouseEvent, QPainter, QPen, QBrush
 from PyQt6.QtCore  import QRect, QSize, QPoint, QRectF
 from PyQt6.QtSvg   import QSvgRenderer
@@ -35,6 +35,7 @@ from core.device_persistence import save_devices, load_devices
 from core.localization       import tr
 from core.types           import SavedGraph, ConnectionDescriptor, WireDescriptor
 from ui.device_panel      import DevicePanel
+from ui.debug_console     import DebugConsole, LOG_DIR
 from ui.node_editor_canvas import NodeEditorCanvas
 
 log = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class MainWindow(QWidget):
         self._graph_path: Optional[Path] = None
         self._dirty      = False
         self._loading    = False
+        self._debug_console: Optional[DebugConsole] = None
 
         # Frameless window
         self.setWindowFlags(
@@ -111,11 +113,13 @@ class MainWindow(QWidget):
         root.addWidget(body_widget, stretch=1)
 
         # Status bar (plain QLabel, not QStatusBar which requires QMainWindow)
-        self._status_bar = QLabel(tr("ui.status.ready"))
+        self._status_bar = _StatusBarLabel(tr("ui.status.ready"))
         self._status_bar.setFixedHeight(22)
         self._status_bar.setStyleSheet(
             "background: #30363d; color: #a59bbd; font-size: 8pt; padding: 2px 10px;"
         )
+        self._status_bar.setToolTip(tr("ui.debug_console.status_tooltip"))
+        self._status_bar.double_clicked.connect(self._open_debug_console)
         root.addWidget(self._status_bar)
 
         # Resize grip (bottom-right corner)
@@ -212,6 +216,11 @@ class MainWindow(QWidget):
         layout.addWidget(self._close_btn)
 
         return bar
+
+    def _open_debug_console(self) -> None:
+        if self._debug_console is None:
+            self._debug_console = DebugConsole(LOG_DIR / "gameflow.log", self)
+        self._debug_console.show_and_raise()
 
     def _connect_signals(self) -> None:
         self._new_btn.clicked.connect(self._on_new)
@@ -826,6 +835,17 @@ class _DragZone(QWidget):
                 self._window.showNormal()
             else:
                 self._window.showMaximized()
+
+
+class _StatusBarLabel(QLabel):
+    double_clicked = pyqtSignal()
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.double_clicked.emit()
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
 
 
 class _ResizeHandle(QWidget):

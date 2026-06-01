@@ -37,16 +37,21 @@ from PyQt6.QtGui     import QFont
 
 from core.device_registry import DeviceRegistry
 from core.graph_runtime   import GraphRuntime
+from ui.debug_console     import configure_file_logging
 from ui.main_window       import MainWindow
 
 log = logging.getLogger(__name__)
 
 
 def setup_logging() -> None:
+    log_path = configure_file_logging()
     logging.basicConfig(
         level  = logging.DEBUG,
         format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers = [logging.StreamHandler(sys.stdout)],
+        handlers = [
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(log_path, encoding="utf-8"),
+        ],
     )
 
 
