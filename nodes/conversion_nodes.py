@@ -15,6 +15,23 @@ from core.types     import PinDescriptor, PinDirection, PinType
 
 
 _VAL_COLOR = "#80cbc4"
+_NUMERIC_EDGE_CHARS = frozenset("+-0123456789.eE")
+
+
+def _trim_numeric_edges(value: Any) -> Any:
+    """Trim non-numeric wrapper text before numeric conversion."""
+    if not isinstance(value, str):
+        return value
+
+    start = 0
+    end = len(value)
+
+    while start < end and value[start] not in _NUMERIC_EDGE_CHARS:
+        start += 1
+    while end > start and value[end - 1] not in _NUMERIC_EDGE_CHARS:
+        end -= 1
+
+    return value[start:end]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -125,7 +142,7 @@ class IntToFloatNode(NodeBase):
         self._convert()
 
     def _convert(self) -> None:
-        v = self.get_input("input")
+        v = _trim_numeric_edges(self.get_input("input"))
         try:
             self.set_output("output", float(v) if v is not None else 0.0)
         except (TypeError, ValueError):
@@ -158,7 +175,7 @@ class FloatToIntNode(NodeBase):
         self._convert()
 
     def _convert(self) -> None:
-        v = self.get_input("input")
+        v = _trim_numeric_edges(self.get_input("input"))
         try:
             self.set_output("output", int(round(float(v))) if v is not None else 0)
         except (TypeError, ValueError):
