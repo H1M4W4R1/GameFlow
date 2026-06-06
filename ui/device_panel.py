@@ -168,6 +168,19 @@ class BatteryWidget(QWidget):
                    f"{self._level}%")
 
 
+class _LanguageComboBox(QComboBox):
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(QPen(QColor("#a59bbd"), 1.6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+
+        cx = self.width() - 14
+        cy = self.height() // 2 + 1
+        p.drawLine(cx - 4, cy - 2, cx, cy + 2)
+        p.drawLine(cx, cy + 2, cx + 4, cy - 2)
+
+
 # ── Device row ────────────────────────────────────────────────────────────────
 
 class DeviceRow(QFrame):
@@ -423,7 +436,7 @@ class DevicePanel(QWidget):
         fl = QHBoxLayout(footer)
         fl.setContentsMargins(8, 6, 8, 6)
 
-        self._lang_combo = QComboBox()
+        self._lang_combo = _LanguageComboBox()
         self._lang_combo.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
@@ -438,13 +451,11 @@ class DevicePanel(QWidget):
                 font-size: 9pt;
             }
             QComboBox:hover { border: 1px solid #8b5cf6; color: #f4f0ff; }
-            QComboBox::drop-down { border: none; width: 18px; }
+            QComboBox::drop-down { border: none; width: 24px; }
             QComboBox::down-arrow {
                 image: none;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid #a59bbd;
-                width: 0; height: 0;
+                width: 0;
+                height: 0;
             }
             QComboBox QAbstractItemView {
                 background: #161b22;
