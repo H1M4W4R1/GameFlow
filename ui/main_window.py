@@ -92,12 +92,12 @@ class MainWindow(QWidget):
         self._device_panel = DevicePanel(self._registry)
         body.addWidget(self._device_panel)
 
-        # Divider
-        div = QFrame()
-        div.setFrameShape(QFrame.Shape.VLine)
-        div.setStyleSheet("border: none; background: #30363d;")
-        div.setFixedWidth(1)
-        body.addWidget(div)
+        self._device_panel_toggle = _PanelToggleRail(
+            "<",
+            tr("ui.panel.devices.hide_tooltip"),
+        )
+        self._device_panel_toggle.clicked.connect(self._hide_device_panel)
+        body.addWidget(self._device_panel_toggle)
 
         self._canvas = NodeEditorCanvas(
             self._runtime,
@@ -108,6 +108,14 @@ class MainWindow(QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         body.addWidget(self._canvas)
+
+        self._device_panel_show_btn = _CanvasPanelButton(
+            ">",
+            tr("ui.panel.devices.show_tooltip"),
+            self._canvas,
+        )
+        self._device_panel_show_btn.clicked.connect(self._show_device_panel)
+        self._device_panel_show_btn.hide()
 
         body_widget = QWidget()
         body_widget.setLayout(body)
@@ -222,6 +230,24 @@ class MainWindow(QWidget):
         if self._debug_console is None:
             self._debug_console = DebugConsole(LOG_DIR / "gameflow.log", self)
         self._debug_console.show_and_raise()
+
+    def _hide_device_panel(self) -> None:
+        self._device_panel.hide()
+        self._device_panel_toggle.hide()
+        self._device_panel_show_btn.show()
+        self._device_panel_show_btn.raise_()
+        self._position_canvas_panel_button()
+
+    def _show_device_panel(self) -> None:
+        self._device_panel.show()
+        self._device_panel_toggle.show()
+        self._device_panel_show_btn.hide()
+
+    def _position_canvas_panel_button(self) -> None:
+        if hasattr(self, "_device_panel_show_btn"):
+            self._device_panel_show_btn.move(10, 10)
+            if self._device_panel_show_btn.isVisible():
+                self._device_panel_show_btn.raise_()
 
     def _connect_signals(self) -> None:
         self._new_btn.clicked.connect(self._on_new)
@@ -538,6 +564,7 @@ class MainWindow(QWidget):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        self._position_canvas_panel_button()
         if hasattr(self, "_resize_handle"):
             maximised = self.isMaximized()
             self._resize_handle.setVisible(not maximised)
@@ -571,6 +598,73 @@ class MainWindow(QWidget):
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 _ICON_DIR = Path(__file__).parent.parent / "assets" / "icons" / "ui"
+
+
+class _PanelToggleRail(QWidget):
+    clicked = pyqtSignal()
+
+    def __init__(self, label: str, tooltip: str) -> None:
+        super().__init__()
+        self.setFixedWidth(20)
+        self.setStyleSheet("background:#0d1117;")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addStretch()
+
+        self._btn = QPushButton(label)
+        self._btn.setFixedSize(20, 44)
+        self._btn.setToolTip(tooltip)
+        self._btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn.setStyleSheet("""
+            QPushButton {
+                background: #21262d;
+                color: #a78bfa;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                font-size: 11pt;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #30363d;
+                color: #f4f0ff;
+                border-color: #8b5cf6;
+            }
+        """)
+        self._btn.clicked.connect(self.clicked.emit)
+        layout.addWidget(self._btn)
+        layout.addStretch()
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        p = QPainter(self)
+        p.setPen(QPen(QColor("#30363d"), 1))
+        x = self.width() // 2
+        p.drawLine(x, 0, x, self.height())
+
+
+class _CanvasPanelButton(QPushButton):
+    def __init__(self, label: str, tooltip: str, parent: QWidget) -> None:
+        super().__init__(label, parent)
+        self.setFixedSize(34, 34)
+        self.setToolTip(tooltip)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet("""
+            QPushButton {
+                background: rgba(33, 38, 45, 220);
+                color: #a78bfa;
+                border: 1px solid #30363d;
+                border-radius: 8px;
+                font-size: 12pt;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #30363d;
+                color: #f4f0ff;
+                border-color: #8b5cf6;
+            }
+        """)
 
 
 class _ConfirmDialog(QDialog):

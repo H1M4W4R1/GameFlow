@@ -54,6 +54,8 @@ core.graph.tick_cycle,Tick cycle detected
 core.graph.infinite_loop,Infinite tick loop: {src}:{pin} already firing
 ui.panel.devices.title,DEVICES
 ui.panel.devices.add_tooltip,Add device
+ui.panel.devices.hide_tooltip,Hide devices panel
+ui.panel.devices.show_tooltip,Show devices panel
 ui.panel.devices.empty,No devices.\nClick + to add.
 ui.panel.devices.no_ble,⚠ No Bluetooth adapter found
 ui.panel.devices.no_ble_detail,⚠ No Bluetooth adapter found — BLE devices unavailable

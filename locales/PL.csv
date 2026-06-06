@@ -54,6 +54,8 @@ core.graph.tick_cycle,Wykryto cykl taktowania
 core.graph.infinite_loop,Nieskończona pętla taktowania: {src}:{pin} już aktywny
 ui.panel.devices.title,URZĄDZENIA
 ui.panel.devices.add_tooltip,Dodaj urządzenie
+ui.panel.devices.hide_tooltip,Ukryj panel urządzeń
+ui.panel.devices.show_tooltip,Pokaż panel urządzeń
 ui.panel.devices.empty,Brak urządzeń.\nKliknij +, aby dodać.
 ui.panel.devices.no_ble,⚠ Nie znaleziono adaptera Bluetooth
 ui.panel.devices.no_ble_detail,⚠ Nie znaleziono adaptera Bluetooth — urządzenia BLE niedostępne
