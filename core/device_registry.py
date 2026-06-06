@@ -154,6 +154,28 @@ class DeviceRegistry(QObject):
             structure.setdefault(cls.display_group(), []).append((cls.display_name(), key))
         return structure
 
+    def get_node_search_items(self) -> list[dict[str, str]]:
+        """Return rich, localized node metadata used by the quick-search popup."""
+        items: list[dict[str, str]] = []
+        for key, cls in self._node_classes.items():
+            if cls.__name__.startswith("_"):
+                continue
+            group = cls.NODE_GROUP
+            if group.startswith("Invalid"):
+                continue
+            description = (
+                getattr(cls, "NODE_DESCRIPTION", "")
+                or getattr(cls, "NODE_TOOLTIP", "")
+                or (cls.__doc__ or "")
+            )
+            items.append({
+                "key": key,
+                "name": cls.display_name(),
+                "group": cls.display_group(),
+                "description": " ".join(str(description).split()),
+            })
+        return items
+
 
 # ---------------------------------------------------------------------------
 # Generic subclass loader

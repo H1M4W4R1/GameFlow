@@ -31,20 +31,22 @@ Controls:
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from enum import Enum, auto
-from typing import Optional
+from typing import Callable, Optional
 
-from PyQt6.QtCore import Qt, QEvent, QObject, QPointF, QRectF, QPoint, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QEvent, QObject, QPointF, QRectF, QPoint, QSize, QTimer, pyqtSignal
 from PyQt6.QtGui import (
     QAction, QBrush, QColor, QCursor, QFont, QKeyEvent, QLinearGradient,
     QMouseEvent, QPaintEvent, QPainter, QPainterPath, QPen,
     QRadialGradient, QWheelEvent,
 )
 from PyQt6.QtWidgets import (
-    QFrame, QLineEdit, QListWidget, QListWidgetItem,
-    QMenu, QVBoxLayout, QWidget, QToolTip, QColorDialog,
+    QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QMenu, QSizePolicy, QVBoxLayout, QWidget, QToolTip, QColorDialog,
 )
 
 from core.localization import tr
@@ -186,6 +188,46 @@ class NodeGroup:
                       self.width, self.height - GROUP_TITLE_H)
 
 
+@dataclass(frozen=True)
+class NodeSearchEntry:
+    key: str
+    name: str
+    group: str
+    description: str = ""
+    search_name: str = field(init=False, repr=False)
+    search_group: str = field(init=False, repr=False)
+    search_description: str = field(init=False, repr=False)
+    search_name_words: tuple[str, ...] = field(init=False, repr=False)
+    search_group_words: tuple[str, ...] = field(init=False, repr=False)
+    search_words: tuple[str, ...] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        search_name = _normalize_search_text(self.name)
+        search_group = _normalize_search_text(self.group)
+        search_description = _normalize_search_text(self.description)
+        search_name_words = tuple(search_name.split())
+        search_group_words = tuple(search_group.split())
+        search_words = tuple(dict.fromkeys(
+            search_name_words + search_group_words + tuple(search_description.split())
+        ))
+        object.__setattr__(self, "search_name", search_name)
+        object.__setattr__(self, "search_group", search_group)
+        object.__setattr__(self, "search_description", search_description)
+        object.__setattr__(self, "search_name_words", search_name_words)
+        object.__setattr__(self, "search_group_words", search_group_words)
+        object.__setattr__(self, "search_words", search_words)
+
+    @property
+    def badge(self) -> str:
+        return re.split(r"\s*/\s*|\s+›\s+", self.group, maxsplit=1)[0].strip() or self.group
+
+    @property
+    def tooltip(self) -> str:
+        if self.description:
+            return f"{self.group}\n{self.description}"
+        return self.group
+
+
 # ── Layout builder ────────────────────────────────────────────────────────────
 
 def _build_rows(node: NodeBase, body_top: float) -> list[_Row]:
@@ -308,11 +350,14 @@ class NodeEditorCanvas(QWidget):
         self,
         runtime:      GraphRuntime,
         node_menu_fn,
+        node_search_fn: Optional[Callable[[], list[dict[str, str]]]] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
         self._runtime      = runtime
         self._node_menu_fn = node_menu_fn
+        self._node_search_fn = node_search_fn
+        self._node_search_entries: Optional[list[NodeSearchEntry]] = None
 
         self._offset = QPointF(0, 0)
         self._zoom   = 1.0
@@ -2410,14 +2455,26 @@ class NodeEditorCanvas(QWidget):
 
     def _open_node_search(self, global_pos: QPoint, scene_pos: QPointF) -> None:
         """Open the floating node search popup."""
-        structure = self._node_menu_fn()
-        flat_nodes: list[tuple[str, str]] = []
-        for group, items in sorted(structure.items()):
-            display_group = group.replace("/", " › ")
-            for name, key in sorted(items):
-                flat_nodes.append((f"{display_group} / {name}", key))
+        if self._node_search_entries is None:
+            if self._node_search_fn is not None:
+                self._node_search_entries = [
+                    NodeSearchEntry(
+                        key=str(item.get("key", "")),
+                        name=str(item.get("name", "")),
+                        group=str(item.get("group", "")),
+                        description=str(item.get("description", "")),
+                    )
+                    for item in self._node_search_fn()
+                ]
+            else:
+                structure = self._node_menu_fn()
+                self._node_search_entries = [
+                    NodeSearchEntry(key=key, name=name, group=group)
+                    for group, items in sorted(structure.items())
+                    for name, key in sorted(items)
+                ]
 
-        popup = _NodeSearchPopup(flat_nodes, scene_pos, self)
+        popup = _NodeSearchPopup(self._node_search_entries, scene_pos, self)
         popup.node_selected.connect(self._add_node_at)
         popup.move(global_pos)
         popup.show()
@@ -2495,6 +2552,62 @@ QScrollBar::handle:vertical { background: #30363d; border-radius: 3px; min-heigh
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 """
 
+_SEARCH_RESULT_LIMIT = 120
+
+
+def _normalize_search_text(value: str) -> str:
+    return " ".join(re.findall(r"\w+", value.casefold(), flags=re.UNICODE))
+
+
+def _subsequence_score(query: str, value: str) -> float:
+    if not query or not value or len(query) > len(value):
+        return 0.0
+    pos = -1
+    gaps = 0
+    for char in query:
+        next_pos = value.find(char, pos + 1)
+        if next_pos < 0:
+            return 0.0
+        if pos >= 0:
+            gaps += max(0, next_pos - pos - 1)
+        pos = next_pos
+    return max(0.0, 0.78 - gaps * 0.03)
+
+
+def _field_match_score(query: str, field: str, words: tuple[str, ...]) -> float:
+    if not query or not field:
+        return 0.0
+    if query in field:
+        return 1.0 + min(len(query) / max(len(field), 1), 0.25)
+
+    prefix_score = max((0.95 for word in words if word.startswith(query)), default=0.0)
+    if prefix_score:
+        return prefix_score
+
+    subsequence_score = max((_subsequence_score(query, word) for word in words), default=0.0)
+    if subsequence_score >= 0.68:
+        return subsequence_score
+
+    word_score = max((SequenceMatcher(None, query, word).ratio() for word in words), default=0.0)
+    return word_score
+
+
+def _node_search_score(query: str, entry: NodeSearchEntry) -> float:
+    tokens = _normalize_search_text(query).split()
+    if not tokens:
+        return 1.0
+
+    total = 0.0
+    for token in tokens:
+        name_score = _field_match_score(token, entry.search_name, entry.search_name_words)
+        group_score = _field_match_score(token, entry.search_group, entry.search_group_words) * 0.9
+        description_score = _field_match_score(token, entry.search_description, entry.search_words) * 0.75
+        best = max(name_score, group_score, description_score)
+        if best < 0.58:
+            return 0.0
+        total += best
+    return total
+
 
 class _NodeSearchPopup(QFrame):
     """Floating search popup for quick node addition via the right-click menu."""
@@ -2503,12 +2616,12 @@ class _NodeSearchPopup(QFrame):
 
     def __init__(
         self,
-        flat_nodes: list[tuple[str, str]],
+        flat_nodes: list[NodeSearchEntry],
         scene_pos: QPointF,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
-        self._flat_nodes = flat_nodes
+        self._flat_nodes = sorted(flat_nodes, key=lambda item: (item.group.casefold(), item.name.casefold()))
         self._scene_pos = scene_pos
 
         self.setStyleSheet(_SEARCH_POPUP_STYLE)
@@ -2531,27 +2644,61 @@ class _NodeSearchPopup(QFrame):
         self._search.installEventFilter(self)
         self._list.installEventFilter(self)
 
-        self.setFixedWidth(320)
-        self._populate(flat_nodes)
+        self.setFixedWidth(360)
+        self._populate(self._flat_nodes)
 
     # ── population / filtering ─────────────────────────────────────────────
 
-    def _populate(self, nodes: list[tuple[str, str]]) -> None:
+    def _populate(self, nodes: list[NodeSearchEntry]) -> None:
         self._list.clear()
-        for label, key in nodes:
-            item = QListWidgetItem(label)
-            item.setData(Qt.ItemDataRole.UserRole, key)
+        for entry in nodes[:_SEARCH_RESULT_LIMIT]:
+            item = QListWidgetItem()
+            item.setData(Qt.ItemDataRole.UserRole, entry.key)
+            item.setToolTip(entry.tooltip)
+            item.setSizeHint(QSize(330, 30))
             self._list.addItem(item)
+            self._list.setItemWidget(item, self._make_result_widget(entry))
         if self._list.count():
             self._list.setCurrentRow(0)
 
+    def _make_result_widget(self, entry: NodeSearchEntry) -> QWidget:
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(10, 2, 8, 2)
+        layout.setSpacing(8)
+
+        display_name = entry.name if len(entry.name) <= 44 else f"{entry.name[:41]}..."
+        name = QLabel(display_name)
+        name.setTextFormat(Qt.TextFormat.PlainText)
+        name.setStyleSheet("color: #f4f0ff; background: transparent; border: none;")
+        name.setMinimumWidth(0)
+        name.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+        badge = QLabel(entry.badge)
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badge.setTextFormat(Qt.TextFormat.PlainText)
+        badge.setStyleSheet(
+            "color: #d9ccff; background: #2d2542; border: 1px solid #453860; "
+            "border-radius: 8px; padding: 1px 7px; font-size: 8pt;"
+        )
+
+        layout.addWidget(name)
+        layout.addWidget(badge)
+        return row
+
     def _filter(self, text: str) -> None:
-        q = text.strip().lower()
-        filtered = [
-            (lbl, key) for lbl, key in self._flat_nodes
-            if not q or q in lbl.lower()
-        ]
-        self._populate(filtered)
+        query = text.strip()
+        if not query:
+            self._populate(self._flat_nodes)
+            return
+
+        ranked: list[tuple[float, NodeSearchEntry]] = []
+        for entry in self._flat_nodes:
+            score = _node_search_score(query, entry)
+            if score > 0:
+                ranked.append((score, entry))
+        ranked.sort(key=lambda item: (-item[0], item[1].name.casefold()))
+        self._populate([entry for _, entry in ranked])
 
     # ── selection ──────────────────────────────────────────────────────────
 

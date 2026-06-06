@@ -102,6 +102,7 @@ class MainWindow(QWidget):
         self._canvas = NodeEditorCanvas(
             self._runtime,
             self._registry.get_node_menu_structure,
+            self._registry.get_node_search_items,
         )
         self._canvas.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
