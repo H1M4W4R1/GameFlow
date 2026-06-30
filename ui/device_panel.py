@@ -909,8 +909,20 @@ class AddDeviceDialog(QDialog):
         else:
             visible_keys = set(self._all_visible_keys)
 
+        first_match_idx = -1
+        current_tab_has_matches = False
         for mfr in self._tab_mfrs:
-            self._tabs_by_mfr[mfr].set_visible_keys(visible_keys)
+            tab = self._tabs_by_mfr[mfr]
+            tab.set_visible_keys(visible_keys)
+            idx = self._tabs.indexOf(tab)
+            if tab.visible_count() > 0:
+                if first_match_idx < 0:
+                    first_match_idx = idx
+                if idx == self._tabs.currentIndex():
+                    current_tab_has_matches = True
+
+        if query and first_match_idx >= 0 and not current_tab_has_matches:
+            self._tabs.setCurrentIndex(first_match_idx)
 
         if self._selected_key and self._selected_key not in visible_keys:
             old_tab = self._tabs_by_key.get(self._selected_key)
