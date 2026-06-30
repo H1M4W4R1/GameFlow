@@ -86,10 +86,12 @@ class BLEScanner(QObject):
     def __init__(
         self,
         device_classes: dict,
+        emit_family_unknowns: bool = False,
         parent: Optional[QObject] = None,
     ) -> None:
         super().__init__(parent)
         self._device_classes = device_classes
+        self._emit_family_unknowns = emit_family_unknowns
         self._loop:    Optional[asyncio.AbstractEventLoop] = None
         self._thread:  Optional[threading.Thread]          = None
         self._running: bool = False
@@ -98,6 +100,7 @@ class BLEScanner(QObject):
         # Built once per scan from device_classes
         self._prefix_map:  dict[str, str] = {}   # name_prefix_upper → class_key
         self._prefix_list: list[tuple[str, str]] = []  # sorted descending by length
+        self._family_prefixes: set[str] = set()
         self._service_map: dict[str, str] = {}   # service_uuid_lower → class_key
 
     # ── Public API ─────────────────────────────────────────────────────────────
@@ -141,12 +144,17 @@ class BLEScanner(QObject):
         """
         self._prefix_map.clear()
         self._service_map.clear()
+        self._family_prefixes.clear()
 
         for key, cls in self._device_classes.items():
             # Name prefix(es)
             prefixes = getattr(cls, "BLE_NAME_PREFIXES", ())
             for pfx in prefixes:
-                self._prefix_map[pfx.upper()] = key
+                prefix = str(pfx).upper()
+                self._prefix_map[prefix] = key
+                dash_idx = prefix.find("-")
+                if dash_idx >= 0:
+                    self._family_prefixes.add(prefix[:dash_idx + 1])
 
             # Primary GATT service UUID
             svc = getattr(cls, "BLE_SERVICE_UUID", None)
@@ -236,7 +244,10 @@ class BLEScanner(QObject):
                     break
 
         # ── Only emit if we matched a known device ─────────────────────────────
-        if not class_key:
+        if not class_key and not (
+            self._emit_family_unknowns
+            and any(name_upper.startswith(prefix) for prefix in self._family_prefixes)
+        ):
             return
 
         disc = DiscoveredDevice(

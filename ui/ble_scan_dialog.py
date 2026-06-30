@@ -10,8 +10,8 @@ Flow:
        • Click a discovered device row → it is highlighted, "Connect" activates.
        • Click "Scan Again" to restart the scan.
        • Press Escape / click Cancel to abort.
-  5. On Connect the dialog resolves the most specific device class key it can
-     from the advertisement name, falls back to the pre-selected tile key.
+  5. On Connect the dialog uses the pre-selected tile key when present. BLE
+     names are not authoritative because some devices share prefixes.
 
 BLE identifier → device class matching:
   "LVS-Z011"   → strip "LVS-", alpha="Z"   → DEVICE_IDENTIFIER "Z" → Hush
@@ -165,7 +165,7 @@ class BLEScanDialog(QDialog):
     Parameters
     ----------
     device_classes  : all registered device classes (for identifier resolution)
-    preselected_key : class key from tile picker — fallback if scan can't identify
+    preselected_key : class key from tile picker; authoritative when present
     """
 
     AUTO_CONNECT_SINGLE: bool = False   # if True, auto-connects when exactly 1 found
@@ -296,7 +296,10 @@ class BLEScanDialog(QDialog):
 
         # Use the generic BLEScanner from core — it knows about ALL device classes
         # (Lovense, Coyote, H1M4W4R1, …) via BLE_NAME_PREFIXES / BLE_SERVICE_UUID.
-        self._scanner = BLEScanner(self._device_classes)
+        self._scanner = BLEScanner(
+            self._device_classes,
+            emit_family_unknowns=bool(self._preselected_key),
+        )
         self._scanner.device_found.connect(self._on_ble_found)
         self._scanner.device_updated.connect(self._on_ble_updated)
         self._scanner.scan_finished.connect(self._on_scan_finished)
@@ -305,13 +308,7 @@ class BLEScanDialog(QDialog):
 
     def _on_ble_found(self, disc) -> None:
         """Convert DiscoveredDevice → BLECandidate and route to existing slot."""
-        # If user preselected a specific tile, use that as the matched key
-        # as long as the class_key from the scan is either the preselected one
-        # or empty (unknown).
-        matched = disc.class_key or self._preselected_key or ""
-        if self._preselected_key and disc.class_key and disc.class_key != self._preselected_key:
-            # Scanner found it belongs to a different device type — trust the scanner
-            matched = disc.class_key
+        matched = self._matched_key_for_discovery(disc)
 
         c = BLECandidate(
             address       = disc.address,
@@ -321,6 +318,10 @@ class BLEScanDialog(QDialog):
             matched_key   = matched,
         )
         self._bridge.device_found.emit(c)
+
+    def _matched_key_for_discovery(self, disc) -> str:
+        """Use the user's selected device type when BLE names are ambiguous."""
+        return self._preselected_key or disc.class_key or ""
 
     def _on_ble_updated(self, disc) -> None:
         """Update RSSI for an already-shown device."""
