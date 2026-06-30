@@ -78,6 +78,8 @@ ui.button.connect,Connect →
 ui.button.remove,Remove
 ui.button.close,Close
 ui.dialog.add_device.title,Add Device
+ui.dialog.add_device.search_placeholder,Search devices...
+ui.dialog.add_device.no_matches,No matching devices.
 ui.dialog.device_detail.title,Device: {name}
 ui.dialog.device_address.title,Device Address
 ui.dialog.device_address.message,Enter the connection address for {name}.

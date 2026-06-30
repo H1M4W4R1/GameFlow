@@ -19,7 +19,9 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
+from difflib import SequenceMatcher
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QSize, QPoint, QMimeData, pyqtSignal, QRectF
@@ -91,6 +93,89 @@ QPushButton#cancel:hover { background: #6e7681; }
 QScrollBar:vertical    { background: #0d1117; width: 6px; }
 QScrollBar::handle:vertical { background: #30363d; border-radius: 3px; min-height: 20px; }
 """
+
+_DEVICE_SEARCH_RESULT_LIMIT = 240
+
+
+def _normalize_search_text(value: str) -> str:
+    return " ".join(re.findall(r"\w+", value.casefold(), flags=re.UNICODE))
+
+
+def _subsequence_score(query: str, value: str) -> float:
+    if not query or not value or len(query) > len(value):
+        return 0.0
+    pos = -1
+    gaps = 0
+    for char in query:
+        next_pos = value.find(char, pos + 1)
+        if next_pos < 0:
+            return 0.0
+        if pos >= 0:
+            gaps += max(0, next_pos - pos - 1)
+        pos = next_pos
+    return max(0.0, 0.78 - gaps * 0.03)
+
+
+def _field_match_score(query: str, field: str, words: tuple[str, ...]) -> float:
+    if not query or not field:
+        return 0.0
+    if query in field:
+        return 1.0 + min(len(query) / max(len(field), 1), 0.25)
+
+    prefix_score = max((0.95 for word in words if word.startswith(query)), default=0.0)
+    if prefix_score:
+        return prefix_score
+
+    subsequence_score = max((_subsequence_score(query, word) for word in words), default=0.0)
+    if subsequence_score >= 0.68:
+        return subsequence_score
+
+    return max((SequenceMatcher(None, query, word).ratio() for word in words), default=0.0)
+
+
+class _DeviceSearchEntry:
+    def __init__(self, key: str, cls: type, manufacturer: str) -> None:
+        self.key = key
+        self.cls = cls
+        self.manufacturer = manufacturer
+        prefix = getattr(cls, "DEVICE_TR_PREFIX", None)
+        self.name = (
+            tr(f"device.{prefix}.name", default=cls.DEVICE_NAME)
+            if prefix else cls.DEVICE_NAME
+        )
+        self.description = (
+            tr(f"device.{prefix}.description", default=getattr(cls, "DEVICE_DESCRIPTION", ""))
+            if prefix else getattr(cls, "DEVICE_DESCRIPTION", "")
+        )
+        self.class_name = cls.__name__
+        self.search_name = _normalize_search_text(self.name)
+        self.search_manufacturer = _normalize_search_text(manufacturer)
+        self.search_description = _normalize_search_text(self.description)
+        self.search_key = _normalize_search_text(key.replace(".", " "))
+        self.search_class_name = _normalize_search_text(self.class_name)
+        self.name_words = tuple(self.search_name.split())
+        self.manufacturer_words = tuple(self.search_manufacturer.split())
+        self.description_words = tuple(self.search_description.split())
+        self.key_words = tuple(self.search_key.split())
+        self.class_words = tuple(self.search_class_name.split())
+
+    def score(self, query: str) -> float:
+        tokens = _normalize_search_text(query).split()
+        if not tokens:
+            return 1.0
+
+        total = 0.0
+        for token in tokens:
+            name_score = _field_match_score(token, self.search_name, self.name_words)
+            class_score = _field_match_score(token, self.search_class_name, self.class_words) * 0.95
+            manufacturer_score = _field_match_score(token, self.search_manufacturer, self.manufacturer_words) * 0.9
+            key_score = _field_match_score(token, self.search_key, self.key_words) * 0.8
+            description_score = _field_match_score(token, self.search_description, self.description_words) * 0.7
+            best = max(name_score, class_score, manufacturer_score, key_score, description_score)
+            if best < 0.58:
+                return 0.0
+            total += best
+        return total
 
 
 # ── Status dot ────────────────────────────────────────────────────────────────
@@ -681,7 +766,11 @@ class AddDeviceDialog(QDialog):
         self._device_classes = {k: v for k, v in device_classes.items()
                                  if not v.__name__.startswith("_")}
         self._selected_key: Optional[str] = None
-        self._tiles:         dict[str, _DeviceTile] = {}
+        self._tabs_by_key:    dict[str, _ManufacturerTab] = {}
+        self._tabs_by_mfr:    dict[str, _ManufacturerTab] = {}
+        self._tab_mfrs:       list[str] = []
+        self._search_entries: list[_DeviceSearchEntry] = []
+        self._all_visible_keys: set[str] = set()
         self._result:        Optional[tuple[str, ConnectionDescriptor]] = None
         self._setup_ui()
 
@@ -690,24 +779,43 @@ class AddDeviceDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(10)
 
+        self._search_edit = QLineEdit(self)
+        self._search_edit.setPlaceholderText(tr("ui.dialog.add_device.search_placeholder"))
+        self._search_edit.setClearButtonEnabled(True)
+        self._search_edit.textChanged.connect(self._filter_devices)
+        root.addWidget(self._search_edit)
+
         # Manufacturer tabs
         self._tabs = QTabWidget()
         self._tabs.setDocumentMode(True)
 
         manufacturers: dict[str, list[tuple[str, type]]] = {}
+        entries_by_key: dict[str, _DeviceSearchEntry] = {}
         for key, cls in self._device_classes.items():
             mfr = getattr(cls, "MANUFACTURER", "Generic")
             if mfr.lower() in ("unknown", "generic"):
                 continue   # hide abstraction/placeholder devices
             manufacturers.setdefault(mfr, []).append((key, cls))
+            entries_by_key[key] = _DeviceSearchEntry(key, cls, mfr)
 
         for mfr in sorted(manufacturers.keys()):
-            tab = _ManufacturerTab(manufacturers[mfr])
+            items = sorted(
+                manufacturers[mfr],
+                key=lambda item: entries_by_key[item[0]].name.casefold(),
+            )
+            tab = _ManufacturerTab(items)
             tab.tile_selected.connect(self._on_tile_selected)
             self._tabs.addTab(tab, mfr)
-            for key, _ in manufacturers[mfr]:
-                self._tiles[key] = tab.tile(key)
+            self._tabs_by_mfr[mfr] = tab
+            self._tab_mfrs.append(mfr)
+            for key, _ in items:
+                self._tabs_by_key[key] = tab
+                self._all_visible_keys.add(key)
 
+        self._search_entries = sorted(
+            entries_by_key.values(),
+            key=lambda item: (item.manufacturer.casefold(), item.name.casefold()),
+        )
         root.addWidget(self._tabs)
 
         # Info bar
@@ -742,12 +850,58 @@ class AddDeviceDialog(QDialog):
         btn_row.addWidget(self._next_btn)
         root.addLayout(btn_row)
 
+    def _filter_devices(self, text: str) -> None:
+        query = text.strip()
+        if query:
+            ranked: list[tuple[float, _DeviceSearchEntry]] = []
+            for entry in self._search_entries:
+                score = entry.score(query)
+                if score > 0:
+                    ranked.append((score, entry))
+            ranked.sort(
+                key=lambda item: (
+                    -item[0],
+                    item[1].manufacturer.casefold(),
+                    item[1].name.casefold(),
+                )
+            )
+            visible_keys = {
+                entry.key
+                for _, entry in ranked[:_DEVICE_SEARCH_RESULT_LIMIT]
+            }
+        else:
+            visible_keys = set(self._all_visible_keys)
+
+        for mfr in self._tab_mfrs:
+            self._tabs_by_mfr[mfr].set_visible_keys(visible_keys)
+
+        if self._selected_key and self._selected_key not in visible_keys:
+            old_tab = self._tabs_by_key.get(self._selected_key)
+            if old_tab:
+                old_tab.set_tile_active(self._selected_key, False)
+            self._selected_key = None
+            self._website_btn.setEnabled(False)
+            self._next_btn.setEnabled(False)
+            self._hint_lbl.setText("")
+            self._info_bar.setText(
+                tr("ui.dialog.add_device.no_matches")
+                if not visible_keys else tr("ui.panel.devices.select_continue")
+            )
+        elif not self._selected_key:
+            self._info_bar.setText(
+                tr("ui.dialog.add_device.no_matches")
+                if not visible_keys else tr("ui.panel.devices.select_continue")
+            )
+
     def _on_tile_selected(self, class_key: str) -> None:
-        old_tile = self._tiles.get(self._selected_key)
-        if old_tile:
-            old_tile.set_active(False)
+        if self._selected_key:
+            old_tab = self._tabs_by_key.get(self._selected_key)
+            if old_tab:
+                old_tab.set_tile_active(self._selected_key, False)
         self._selected_key = class_key
-        self._tiles[class_key].set_active(True)
+        new_tab = self._tabs_by_key.get(class_key)
+        if new_tab:
+            new_tab.set_tile_active(class_key, True)
 
         cls  = self._device_classes[class_key]
         prefix = getattr(cls, "DEVICE_TR_PREFIX", None)
@@ -893,6 +1047,7 @@ class _ReflowContainer(QWidget):
     def __init__(self, tile_items: list[tuple[str, "_DeviceTile"]], parent=None) -> None:
         super().__init__(parent)
         self._tile_items  = tile_items
+        self._visible_keys = {key for key, _ in tile_items}
         self._current_cols = 0
 
         self._grid = QGridLayout(self)
@@ -903,19 +1058,42 @@ class _ReflowContainer(QWidget):
         self._place_tiles(4)  # reasonable initial layout
 
     def _place_tiles(self, cols: int) -> None:
-        if cols == self._current_cols:
+        visible_items = [
+            (key, tile)
+            for key, tile in self._tile_items
+            if key in self._visible_keys
+        ]
+        if cols == self._current_cols and all(
+            self._grid.indexOf(tile) >= 0 for _, tile in visible_items
+        ):
             return
         self._current_cols = cols
-        for _, tile in self._tile_items:
+        for key, tile in self._tile_items:
             self._grid.removeWidget(tile)
-        for idx, (_, tile) in enumerate(self._tile_items):
+            if key not in self._visible_keys:
+                tile.setVisible(False)
+        for idx, (_, tile) in enumerate(visible_items):
             self._grid.addWidget(tile, idx // cols, idx % cols)
+            tile.setVisible(True)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         avail = self.width() - self._MARGINS
         cols  = max(1, avail // (self._TILE_W + self._SPACING))
         self._place_tiles(cols)
+
+    def set_visible_keys(self, keys: set[str]) -> None:
+        visible_keys = {key for key, _ in self._tile_items if key in keys}
+        if visible_keys == self._visible_keys:
+            return
+        self._visible_keys = visible_keys
+        avail = self.width() - self._MARGINS
+        cols = max(1, avail // (self._TILE_W + self._SPACING))
+        self._current_cols = 0
+        self._place_tiles(cols)
+
+    def visible_count(self) -> int:
+        return len(self._visible_keys)
 
 
 class _ManufacturerTab(QWidget):
@@ -924,12 +1102,15 @@ class _ManufacturerTab(QWidget):
 
     def __init__(self, items: list[tuple[str, type]], parent=None) -> None:
         super().__init__(parent)
+        self._item_keys = {key for key, _ in items}
+        self._visible_keys = set(self._item_keys)
         self._tiles: dict[str, _DeviceTile] = {}
+        self._active_key = ""
 
-        scroll = QScrollArea(self)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("background:transparent;")
+        self._scroll = QScrollArea(self)
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setStyleSheet("background:transparent;")
 
         tile_items: list[tuple[str, _DeviceTile]] = []
         for key, cls in items:
@@ -940,14 +1121,28 @@ class _ManufacturerTab(QWidget):
 
         container = _ReflowContainer(tile_items)
         container.setStyleSheet("background:transparent;")
-        scroll.setWidget(container)
+        self._container = container
+        self._scroll.setWidget(container)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(scroll)
+        lay.addWidget(self._scroll)
 
-    def tile(self, key: str) -> _DeviceTile:
-        return self._tiles[key]
+    def set_visible_keys(self, keys: set[str]) -> None:
+        self._visible_keys = self._item_keys & keys
+        self._container.set_visible_keys(self._visible_keys)
+
+    def visible_count(self) -> int:
+        return len(self._visible_keys)
+
+    def set_tile_active(self, key: str, active: bool) -> None:
+        if active:
+            self._active_key = key
+        elif self._active_key == key:
+            self._active_key = ""
+        tile = self._tiles.get(key)
+        if tile:
+            tile.set_active(active)
 
 
 # ── Device detail dialog ──────────────────────────────────────────────────────

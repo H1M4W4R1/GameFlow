@@ -78,6 +78,8 @@ ui.button.connect,Połącz →
 ui.button.remove,Usuń
 ui.button.close,Zamknij
 ui.dialog.add_device.title,Dodaj Urządzenie
+ui.dialog.add_device.search_placeholder,Szukaj urządzeń...
+ui.dialog.add_device.no_matches,Brak pasujących urządzeń.
 ui.dialog.device_detail.title,Urządzenie: {name}
 ui.dialog.device_address.title,Adres urządzenia
 ui.dialog.device_address.message,Wpisz adres połączenia dla {name}.
