@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import ctypes
 from pathlib import Path
 
 from bleak.backends.winrt.util import allow_sta
@@ -25,6 +26,7 @@ os.environ.setdefault("QT_FFMPEG_DEBUG", "0")
 
 # Ensure project root is in path
 PROJECT_ROOT = Path(__file__).parent
+APP_ICON_PATH = PROJECT_ROOT / "assets" / "icons" / "app.svg"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -33,7 +35,7 @@ load_language(load_language_pref())
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore    import Qt
-from PyQt6.QtGui     import QFont
+from PyQt6.QtGui     import QFont, QIcon
 
 from core.device_registry import DeviceRegistry
 from core.graph_runtime   import GraphRuntime
@@ -41,6 +43,12 @@ from ui.debug_console     import configure_file_logging
 from ui.main_window       import MainWindow
 
 log = logging.getLogger(__name__)
+
+
+def _set_windows_app_user_model_id() -> None:
+    if sys.platform != "win32":
+        return
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SensoryFlow.GameFlow")
 
 
 def setup_logging() -> None:
@@ -59,9 +67,12 @@ def main() -> None:
     setup_logging()
     log = logging.getLogger("main")
 
+    _set_windows_app_user_model_id()
     app = QApplication(sys.argv)
     app.setApplicationName("GameFlow")
     app.setApplicationVersion("1.0.0")
+    if APP_ICON_PATH.exists():
+        app.setWindowIcon(QIcon(str(APP_ICON_PATH)))
 
     # ── Bootstrap ──────────────────────────────────────────────────────────────
     registry = DeviceRegistry()
