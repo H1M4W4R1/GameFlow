@@ -2,3 +2,4 @@ Nodes: exec_out should be always first OUTPUT. TICK OUTPUTs should be always on 
 Nodes: when creating or editing ensure translations in ./locales/*.csv are created
 Validation: Use AST ONLY
 Nodes: notification nodes should always provide TICK output when notification is received
+Locales: do not edit root locales when creating or updating a plugin

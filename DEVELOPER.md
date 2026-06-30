@@ -336,7 +336,7 @@ When 2+ devices of the same `DEVICE_TYPE_KEY` are connected, the canvas shows a 
 
 ## Translation System
 
-GameFlow uses a simple CSV-based system. Strings live in `locales/<LANG>.csv`. Each row is:
+GameFlow uses a simple CSV-based system. App-level strings live in `locales/<LANG>.csv`, plugin-level strings live only in plugins folder. Each row is:
 
 ```
 key,translated string
