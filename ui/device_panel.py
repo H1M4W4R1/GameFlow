@@ -693,6 +693,43 @@ class DevicePanel(QWidget):
 
 # ── Add Device dialog — manufacturer tiles ────────────────────────────────────
 
+class _LazyIconWidget(QWidget):
+    """Fixed-size tile icon slot that creates the SVG widget only when shown."""
+
+    def __init__(self, icon_path: Optional[str], size: int, parent=None) -> None:
+        super().__init__(parent)
+        self._icon_path = icon_path
+        self._size = size
+        self._loaded = False
+        self.setFixedSize(size, size)
+
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+
+        self._placeholder = QLabel("?")
+        self._placeholder.setFixedSize(size, size)
+        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._placeholder.setStyleSheet(
+            f"color:#30363d;font-size:{int(size*0.45)}pt;font-weight:bold;"
+            "background:transparent;border:none;"
+        )
+        self._layout.addWidget(self._placeholder)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._loaded:
+            self._load_icon()
+
+    def _load_icon(self) -> None:
+        self._loaded = True
+        self._layout.removeWidget(self._placeholder)
+        self._placeholder.deleteLater()
+
+        icon = _make_icon_widget(self._icon_path, self._size)
+        self._layout.addWidget(icon)
+
+
 class _DeviceTile(QFrame):
     """Clickable tile showing device icon + name."""
     selected = pyqtSignal(str)   # class_key
@@ -727,7 +764,7 @@ class _DeviceTile(QFrame):
         lay.setSpacing(4)
         lay.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
-        icon_w = _make_icon_widget(device_cls.ICON_PATH, 66)
+        icon_w = _LazyIconWidget(device_cls.ICON_PATH, 66)
         lay.addWidget(icon_w, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         name = QLabel(display_name)
