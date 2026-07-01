@@ -100,7 +100,9 @@ class BLEScanner(QObject):
         # Built once per scan from device_classes
         self._prefix_map:  dict[str, str] = {}   # name_prefix_upper → class_key
         self._prefix_list: list[tuple[str, str]] = []  # sorted descending by length
+        self._normalized_prefix_list: list[tuple[str, str]] = []
         self._family_prefixes: set[str] = set()
+        self._normalized_family_prefixes: set[str] = set()
         self._service_map: dict[str, str] = {}   # service_uuid_lower → class_key
 
     # ── Public API ─────────────────────────────────────────────────────────────
@@ -145,6 +147,7 @@ class BLEScanner(QObject):
         self._prefix_map.clear()
         self._service_map.clear()
         self._family_prefixes.clear()
+        self._normalized_family_prefixes.clear()
 
         for key, cls in self._device_classes.items():
             # Name prefix(es)
@@ -152,9 +155,15 @@ class BLEScanner(QObject):
             for pfx in prefixes:
                 prefix = str(pfx).upper()
                 self._prefix_map[prefix] = key
+                normalized = _normalize_ble_name(prefix)
+                if normalized:
+                    self._prefix_map[normalized] = key
                 dash_idx = prefix.find("-")
                 if dash_idx >= 0:
                     self._family_prefixes.add(prefix[:dash_idx + 1])
+                    family = _normalize_ble_name(prefix[:dash_idx])
+                    if family:
+                        self._normalized_family_prefixes.add(family)
 
             # Primary GATT service UUID
             svc = getattr(cls, "BLE_SERVICE_UUID", None)
@@ -165,6 +174,11 @@ class BLEScanner(QObject):
         self._prefix_list = sorted(
             self._prefix_map.items(), key=lambda kv: -len(kv[0])
         )
+        self._normalized_prefix_list = [
+            (prefix, key)
+            for prefix, key in self._prefix_list
+            if prefix == _normalize_ble_name(prefix)
+        ]
         log.debug("BLEScanner lookup: %d prefixes, %d service UUIDs",
                   len(self._prefix_map), len(self._service_map))
 
@@ -234,6 +248,15 @@ class BLEScanner(QObject):
                 display_name = cls.DEVICE_NAME if cls else name
                 break
 
+        normalized_name = _normalize_ble_name(name)
+        if not class_key:
+            for prefix, key in self._normalized_prefix_list:
+                if normalized_name.startswith(prefix):
+                    class_key = key
+                    cls = self._device_classes.get(key)
+                    display_name = cls.DEVICE_NAME if cls else name
+                    break
+
         # ── Step 2: GATT service UUID ──────────────────────────────────────────
         if not class_key:
             for svc_uuid in adv_uuids:
@@ -246,7 +269,13 @@ class BLEScanner(QObject):
         # ── Only emit if we matched a known device ─────────────────────────────
         if not class_key and not (
             self._emit_family_unknowns
-            and any(name_upper.startswith(prefix) for prefix in self._family_prefixes)
+            and (
+                any(name_upper.startswith(prefix) for prefix in self._family_prefixes)
+                or any(
+                    normalized_name.startswith(prefix)
+                    for prefix in self._normalized_family_prefixes
+                )
+            )
         ):
             return
 
@@ -270,3 +299,8 @@ class BLEScanner(QObject):
             log.info("Found device: %r  %s  class=%s  rssi=%d dBm",
                      name, addr, class_key, rssi)
             self.device_found.emit(disc)
+
+
+def _normalize_ble_name(value: str) -> str:
+    """Make BLE advertisement names tolerant of separators and casing."""
+    return "".join(ch for ch in value.upper() if ch.isalnum())
