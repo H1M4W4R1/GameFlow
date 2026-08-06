@@ -147,8 +147,6 @@ ui.canvas.menu.set_range,Set range…
 ui.canvas.menu.edit_event_name,Edit event name...
 ui.canvas.menu.websocket_server,WebSocket server...
 ui.canvas.menu.mqtt_server,MQTT server...
-ui.canvas.menu.voice_recognition,Voice recognition...
-ui.canvas.menu.voice_recognition_backend,Recognition backend
 ui.canvas.menu.select_sfx,Select SFX file...
 ui.canvas.menu.audio_output_device,Output audio device
 ui.canvas.menu.default_audio_device,Default output device
@@ -157,6 +155,8 @@ ui.canvas.menu.select_audio_stream_file,Select audio stream file...
 ui.canvas.menu.open_audio_stream_directory,Open Audio Stream Directory
 ui.canvas.menu.audio_input_device,Input audio device
 ui.canvas.menu.default_audio_input_device,Default input device
+ui.canvas.menu.audio_input_group.microphones,Microphones
+ui.canvas.menu.audio_input_group.speakers,Speakers
 ui.canvas.menu.loopback_hint,loopback
 ui.canvas.menu.scale_mode,Scale mode
 ui.canvas.menu.channel_count,Channel count
@@ -184,15 +184,6 @@ ui.dialog.websocket_server.port,Port:
 ui.dialog.mqtt_server.title,MQTT Server
 ui.dialog.mqtt_server.host,Host:
 ui.dialog.mqtt_server.port,Port:
-ui.dialog.voice_recognition.title,Voice Recognition
-ui.dialog.voice_recognition.microphone,Microphone:
-ui.dialog.voice_recognition.sensitivity,Sensitivity:
-ui.dialog.voice_recognition.backend,Backend:
-ui.dialog.voice_recognition.backend.vosk,Vosk (local)
-ui.dialog.voice_recognition.backend.google,Google (online)
-ui.dialog.voice_recognition.default_mic,Default microphone
-ui.dialog.voice_recognition.group.microphones,Microphones
-ui.dialog.voice_recognition.group.speakers,Speakers
 ui.dialog.sfx_file.title,Select SFX File
 ui.dialog.sfx_file.filter,Audio files (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.aiff *.opus *.wma);;All files (*.*)
 ui.dialog.audio_stream_file.title,Select Audio Stream File
@@ -209,7 +200,6 @@ node.mqtt_topic.name,MQTT Topic
 node.on_mqtt_message.name,On MQTT Message
 node.on_mqtt_topic.name,On MQTT Topic
 node.mqtt_send.name,MQTT Send
-node.voice_recognition.name,On Voice Detected
 node.play_sfx.name,Play SFX
 node.play_sfx.no_file,No file selected
 node.play_sfx.missing_file,Missing file

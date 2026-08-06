@@ -1088,7 +1088,7 @@ class AudioInputStreamNode(NodeBase):
                 kind = str(device.get("kind") or "")
                 if kind == "group":
                     label = tr(
-                        f"ui.dialog.voice_recognition.group.{str(device.get('name', '')).lower()}",
+                        f"ui.canvas.menu.audio_input_group.{str(device.get('name', '')).lower()}",
                         default=str(device.get("name") or ""),
                     )
                     group_act = QAction(label, device_menu)

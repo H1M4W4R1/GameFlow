@@ -147,8 +147,6 @@ ui.canvas.menu.set_range,Ustaw zakres…
 ui.canvas.menu.edit_event_name,Edytuj nazwę zdarzenia...
 ui.canvas.menu.websocket_server,Serwer WebSocket...
 ui.canvas.menu.mqtt_server,Serwer MQTT...
-ui.canvas.menu.voice_recognition,Rozpoznawanie mowy...
-ui.canvas.menu.voice_recognition_backend,Backend rozpoznawania
 ui.canvas.menu.select_sfx,Wybierz plik SFX...
 ui.canvas.menu.audio_output_device,Wyjściowe urządzenie audio
 ui.canvas.menu.default_audio_device,Domyślne urządzenie wyjściowe
@@ -179,15 +177,6 @@ ui.dialog.websocket_server.port,Port:
 ui.dialog.mqtt_server.title,Serwer MQTT
 ui.dialog.mqtt_server.host,Host:
 ui.dialog.mqtt_server.port,Port:
-ui.dialog.voice_recognition.title,Rozpoznawanie Mowy
-ui.dialog.voice_recognition.microphone,Mikrofon:
-ui.dialog.voice_recognition.sensitivity,Czułość:
-ui.dialog.voice_recognition.backend,Backend:
-ui.dialog.voice_recognition.backend.vosk,Vosk (lokalnie)
-ui.dialog.voice_recognition.backend.google,Google (online)
-ui.dialog.voice_recognition.default_mic,Domyślny mikrofon
-ui.dialog.voice_recognition.group.microphones,Mikrofony
-ui.dialog.voice_recognition.group.speakers,Głośniki
 ui.dialog.sfx_file.title,Wybierz plik SFX
 ui.dialog.sfx_file.filter,Pliki audio (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.aiff *.opus *.wma);;Wszystkie pliki (*.*)
 node.on_tick.name,Na Takt
@@ -202,7 +191,6 @@ node.mqtt_topic.name,Temat MQTT
 node.on_mqtt_message.name,Na wiadomość MQTT
 node.on_mqtt_topic.name,Na temat MQTT
 node.mqtt_send.name,Wyślij MQTT
-node.voice_recognition.name,Po Wykryciu Głosu
 node.play_sfx.name,Odtwórz SFX
 node.play_sfx.no_file,Nie wybrano pliku
 node.play_sfx.missing_file,Brak pliku
@@ -314,6 +302,8 @@ ui.canvas.menu.select_audio_stream_file,Wybierz plik strumienia audio...
 ui.canvas.menu.open_audio_stream_directory,Otwórz katalog strumieni audio
 ui.canvas.menu.audio_input_device,Wejściowe urządzenie audio
 ui.canvas.menu.default_audio_input_device,Domyślne urządzenie wejściowe
+ui.canvas.menu.audio_input_group.microphones,Mikrofony
+ui.canvas.menu.audio_input_group.speakers,Głośniki
 ui.canvas.menu.loopback_hint,loopback
 ui.dialog.audio_stream_file.title,Wybierz Plik Strumienia Audio
 ui.dialog.audio_stream_file.filter,Pliki audio (*.wav *.mp3 *.ogg *.flac *.m4a *.aac *.aiff *.opus *.wma);;Wszystkie pliki (*.*)
