@@ -35,7 +35,7 @@ class _SharedWebSocketServer:
         self._ready = threading.Event()
         self._startup_error: str | None = None
         self._host = "127.0.0.1"
-        self._port = 8765
+        self._port = 18765
         self._is_serving = False
         self._clients: set[Any] = set()
 
@@ -215,7 +215,7 @@ class WebSocketNodeBase(NodeBase):
         super().__init__(*args, **kwargs)
         self._messages: queue.Queue[Any] = queue.Queue()
         self._ws_host = "127.0.0.1"
-        self._ws_port = 8765
+        self._ws_port = 18765
 
     def on_start(self) -> None:
         _SHARED_SERVER.subscribe(self, self._configured_host(), self._configured_port())
@@ -344,10 +344,10 @@ class WebSocketNodeBase(NodeBase):
         legacy_fields = state.get("__fields__")
         if isinstance(ws_config, dict):
             self._ws_host = str(ws_config.get("host") or "127.0.0.1").strip() or "127.0.0.1"
-            self._ws_port = self._coerce_port(ws_config.get("port", 8765))
+            self._ws_port = self._coerce_port(ws_config.get("port", 18765))
         elif isinstance(legacy_fields, dict):
             self._ws_host = str(legacy_fields.get("host") or "127.0.0.1").strip() or "127.0.0.1"
-            self._ws_port = self._coerce_port(legacy_fields.get("port", 8765))
+            self._ws_port = self._coerce_port(legacy_fields.get("port", 18765))
         super().set_state(state)
 
     def _configured_host(self) -> str:
@@ -360,7 +360,7 @@ class WebSocketNodeBase(NodeBase):
         try:
             port = int(value)
         except (TypeError, ValueError):
-            port = 8765
+            port = 18765
         return max(1, min(65535, port))
 
 

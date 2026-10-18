@@ -18,7 +18,7 @@ class WebSocketDevice(DeviceBase):
 
     ConnectionDescriptor:
         kind    = PortKind.WEBSOCKET
-        address = "ws://192.168.1.1:8765/ws"
+        address = "ws://192.168.1.1:18765/ws"
     """
 
     DEVICE_NAME      = "WebSocket Device"
