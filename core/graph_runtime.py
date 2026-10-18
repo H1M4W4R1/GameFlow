@@ -69,6 +69,20 @@ class GraphRuntime(QObject):
         with self._lock:
             node._attach_runtime(self, self._push_data, self._fire_tick)
             self._nodes[node.node_id] = node
+        # Nodes inserted into a live graph need the same initialization as
+        # nodes present at start (e.g. WebSocket event subscriptions).
+        # Keep lifecycle hooks outside the topology lock: they may call back
+        # into the runtime or wait for a server thread.
+        if self._running:
+            try:
+                node.on_start()
+            except Exception as exc:
+                log.error("on_start error in %s: %s", node, exc)
+            if self._paused:
+                try:
+                    node.on_pause()
+                except Exception as exc:
+                    log.error("on_pause error in %s: %s", node, exc)
         self.node_added.emit(node.node_id)
 
     def remove_node(self, node_id: str) -> None:
@@ -80,7 +94,12 @@ class GraphRuntime(QObject):
             ]
             for wid in dead_wires:
                 self._remove_wire_locked(wid)
-            self._nodes.pop(node_id, None)
+            node = self._nodes.pop(node_id, None)
+        if node is not None and self._running:
+            try:
+                node.on_stop()
+            except Exception as exc:
+                log.error("on_stop error in %s: %s", node, exc)
         self.node_removed.emit(node_id)
 
     def get_node(self, node_id: str) -> Optional[NodeBase]:
