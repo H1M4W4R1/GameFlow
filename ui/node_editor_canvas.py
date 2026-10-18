@@ -36,12 +36,13 @@ import uuid
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from enum import Enum, auto
+from time import perf_counter
 from typing import Callable, Optional
 
 from PyQt6.QtCore import Qt, QEvent, QObject, QPointF, QRectF, QPoint, QSize, QTimer, pyqtSignal
 from PyQt6.QtGui import (
     QAction, QBrush, QColor, QCursor, QFont, QKeyEvent, QLinearGradient,
-    QMouseEvent, QPaintEvent, QPainter, QPainterPath, QPen,
+    QMouseEvent, QPaintEvent, QPainter, QPainterPath, QPainterPathStroker, QPen,
     QRadialGradient, QWheelEvent,
 )
 from PyQt6.QtWidgets import (
@@ -66,6 +67,8 @@ from core.types import (
     PIN_COLORS, PIN_COMPATIBILITY, PinDescriptor,
     PinDirection, PinType, WireDescriptor,
 )
+
+from ui.orthogonal_router import CORNER_RADIUS, OrthogonalRouter
 
 log = logging.getLogger(__name__)
 
@@ -383,6 +386,15 @@ class NodeEditorCanvas(QWidget):
         self._rendered_pins   : list[RenderedPin]   = []
         self._rendered_fields : list[RenderedField] = []
         self._rendered_wires  : list[tuple[str, QPainterPath]] = []  # (wire_id, path)
+        self._pin_lookup: dict[tuple[str, str], RenderedPin] = {}
+        self._routing_node_rects: dict[str, tuple[float, float, float, float]] = {}
+        self._wire_router = OrthogonalRouter()
+        self._wire_paths: dict[str, tuple[tuple, QPainterPath, QPainterPath]] = {}
+        self._routing_deadline = 0.0
+        self._routing_timer = QTimer(self)
+        self._routing_timer.setSingleShot(True)
+        self._routing_timer.setInterval(16)
+        self._routing_timer.timeout.connect(self.update)
         self._selected_wire   : Optional[str]       = None
         self._active_editor   : Optional[QLineEdit] = None
         self._clipboard       : Optional[dict] = None   # {"nodes": [...], "wires": [...]}
@@ -471,11 +483,18 @@ class NodeEditorCanvas(QWidget):
         self._rendered_device_selectors.clear()
         self._rendered_title_bars.clear()
         self._rendered_title_status.clear()
+        self._routing_node_rects.clear()
         for node in self._runtime.nodes.values():
             self._draw_node(p, node)
+        self._pin_lookup = {(pin.node_id, pin.pin_name): pin for pin in self._rendered_pins}
         self._draw_wires(p)
         if self._wire_src:
             self._draw_pending_wire(p)
+        if self._wire_router.pending:
+            if not self._routing_timer.isActive():
+                self._routing_timer.start()
+        else:
+            self._routing_timer.stop()
         p.restore()
         if self._rubber_band_active:
             self._draw_rubber_band(p)
@@ -584,6 +603,7 @@ class NodeEditorCanvas(QWidget):
         rows      = _build_rows(node, body_top)
         total_h   = _node_total_height(node)
         rect      = QRectF(node.x, node.y, width, total_h)
+        self._routing_node_rects[node.node_id] = (rect.left(), rect.top(), rect.right(), rect.bottom())
 
         # Shadow
         p.setPen(Qt.PenStyle.NoPen)
@@ -943,84 +963,98 @@ class NodeEditorCanvas(QWidget):
     def _draw_wires(self, p: QPainter) -> None:
         p.setBrush(Qt.BrushStyle.NoBrush)
         self._rendered_wires.clear()
-        for wire in self._runtime.wires.values():
+        self._wire_router.set_nodes(self._routing_node_rects)
+        wires = self._runtime.wires
+        active = {wire.wire_id for wire in wires.values()
+                  if (wire.src_node, wire.src_pin) in self._pin_lookup
+                  and (wire.dst_node, wire.dst_pin) in self._pin_lookup}
+        if self._wire_src and (self._wire_src.node_id, self._wire_src.pin_name) in self._pin_lookup:
+            active.add("__preview__")
+        self._wire_router.retain(active)
+        for wire_id in self._wire_paths.keys() - active:
+            del self._wire_paths[wire_id]
+        # One cooperative search budget shared by all wires in this frame.
+        self._routing_deadline = perf_counter() + 0.004
+        for wire in wires.values():
             sp = self._find_pin_pos(wire.src_node, wire.src_pin)
             dp = self._find_pin_pos(wire.dst_node, wire.dst_pin)
             if sp and dp:
                 selected   = wire.wire_id == self._selected_wire
-                self_loop  = wire.src_node == wire.dst_node
-                if self_loop:
-                    path = self._make_self_loop_path(sp.scene_pos, dp.scene_pos,
-                                                     wire.src_node)
-                else:
-                    path = self._make_bezier_path(sp.scene_pos, dp.scene_pos)
+                path, complete = self._routed_wire_path(
+                    wire.wire_id, sp.scene_pos, dp.scene_pos, wire.src_node, wire.dst_node,
+                    wire.src_pin, wire.dst_pin)
                 self._rendered_wires.append((wire.wire_id, path))
                 self._draw_wire_path(p, path, sp.pin_type,
                                      alpha=240 if selected else 220,
                                      width=3.5 if selected else 2.5,
-                                     highlight=selected)
+                                     highlight=selected, dashed=not complete)
 
-    def _make_bezier_path(self, p1: QPointF, p2: QPointF) -> QPainterPath:
-        dx   = abs(p2.x() - p1.x()) * 0.5 + 40
-        path = QPainterPath(p1)
-        path.cubicTo(QPointF(p1.x() + dx, p1.y()),
-                     QPointF(p2.x() - dx, p2.y()), p2)
-        return path
+    def _routed_wire_path(self, wire_id: str, p1: QPointF, p2: QPointF,
+                          source: str, target: Optional[str], source_pin: Optional[str] = None,
+                          target_pin: Optional[str] = None) -> tuple[QPainterPath, bool]:
+        start, end = (p1.x(), p1.y()), (p2.x(), p2.y())
+        points = self._wire_router.route(wire_id, start, end, source, target,
+                                         self._routing_deadline, source_pin=source_pin,
+                                         target_pin=target_pin)
+        segments = (points,) if points else self._wire_router.stubs(start, end, source, target)
+        cached = self._wire_paths.get(wire_id)
+        if cached is None or cached[0] != segments:
+            path = QPainterPath()
+            for segment in segments:
+                path.addPath(self._rounded_wire_path(segment))
+            stroker = QPainterPathStroker()
+            stroker.setWidth(12.0)
+            self._wire_paths[wire_id] = (segments, path, stroker.createStroke(path))
+        return self._wire_paths[wire_id][1], bool(points)
 
-    def _make_self_loop_path(self, p1: QPointF, p2: QPointF,
-                               node_id: str) -> QPainterPath:
-        """
-        Route a self-loop wire cleanly around the outside of the node.
-
-        The wire exits the right edge of the output pin, curves down and
-        around below the node, then enters the left edge at the input pin.
-        This avoids the wire passing through the node body.
-
-        Layout:
-                  [OUTPUT pin] ──► ctrl1
-                                       │
-                                  (arc below node)
-                                       │
-                  [INPUT  pin] ◄── ctrl2
-        """
-        node = self._runtime.get_node(node_id)
-        if node is None:
-            return self._make_bezier_path(p1, p2)
-
-        nw   = _node_width(node)
-        nh   = _node_total_height(node)
-        # Bottom-centre of node in scene coords
-        bot_y   = node.y + nh + 24      # 24 px clearance below node
-        right_x = node.x + nw + 32      # 32 px clearance to the right
-
-        path = QPainterPath(p1)
-        path.cubicTo(
-            QPointF(right_x,     p1.y()),       # ctrl1: swing right from output
-            QPointF(right_x,     bot_y),         # ctrl2: drop below node
-            QPointF((p1.x() + p2.x()) / 2, bot_y),  # mid-bottom
-        )
-        path.cubicTo(
-            QPointF(node.x - 24, bot_y),         # ctrl3: come back from left
-            QPointF(node.x - 24, p2.y()),         # ctrl4: rise to input height
-            p2,
-        )
+    @staticmethod
+    def _rounded_wire_path(points: tuple) -> QPainterPath:
+        path = QPainterPath(QPointF(*points[0]))
+        for previous, corner, following in zip(points, points[1:], points[2:]):
+            incoming = abs(corner[0]-previous[0]) + abs(corner[1]-previous[1])
+            outgoing = abs(following[0]-corner[0]) + abs(following[1]-corner[1])
+            radius = min(CORNER_RADIUS, incoming / 2, outgoing / 2)
+            if not radius:
+                continue
+            before = QPointF(corner[0] + (previous[0]-corner[0]) * radius / incoming,
+                             corner[1] + (previous[1]-corner[1]) * radius / incoming)
+            after = QPointF(corner[0] + (following[0]-corner[0]) * radius / outgoing,
+                            corner[1] + (following[1]-corner[1]) * radius / outgoing)
+            path.lineTo(before)
+            path.quadTo(QPointF(*corner), after)
+        path.lineTo(QPointF(*points[-1]))
         return path
 
     def _draw_wire_path(self, p: QPainter, path: QPainterPath,
                         pt: PinType, alpha: int = 220,
-                        width: float = 2.5, highlight: bool = False) -> None:
+                        width: float = 2.5, highlight: bool = False,
+                        dashed: bool = False) -> None:
         col = _pin_color(pt)
         col.setAlpha(alpha)
         p.setPen(QPen(COL_WIRE_SHADOW, width + 2)); p.drawPath(path)
         if highlight:
             glow = QColor("#a78bfa"); glow.setAlpha(80)
             p.setPen(QPen(glow, width + 6)); p.drawPath(path)
-        p.setPen(QPen(col, width)); p.drawPath(path)
+        pen = QPen(col, width)
+        if dashed:
+            pen.setStyle(Qt.PenStyle.DashLine)
+        p.setPen(pen); p.drawPath(path)
 
     def _draw_pending_wire(self, p: QPainter) -> None:
         if self._wire_src:
-            path = self._make_bezier_path(self._wire_src.scene_pos, self._wire_mouse)
-            self._draw_wire_path(p, path, self._wire_src.pin_type, alpha=160, width=2.0)
+            source = self._find_pin_pos(self._wire_src.node_id, self._wire_src.pin_name)
+            if source is None:
+                return
+            target = self._hit_pin(self._wire_mouse)
+            if target is not None and target.direction != PinDirection.INPUT:
+                target = None
+            path, complete = self._routed_wire_path(
+                "__preview__", source.scene_pos,
+                target.scene_pos if target else self._wire_mouse,
+                source.node_id, target.node_id if target else None,
+                source.pin_name, target.pin_name if target else None)
+            self._draw_wire_path(p, path, source.pin_type, alpha=160, width=2.0,
+                                 dashed=not complete)
 
     # ── Hit testing ───────────────────────────────────────────────────────────
 
@@ -1135,28 +1169,23 @@ class NodeEditorCanvas(QWidget):
         self.update()
 
     def _hit_wire(self, scene_pos: QPointF, threshold: float = 6.0) -> Optional[str]:
-        """Return wire_id of the wire closest to scene_pos within threshold px."""
-        best_id   : Optional[str] = None
-        best_dist : float         = threshold
-        for wire_id, path in self._rendered_wires:
-            # Sample path at intervals to find min distance to click point
-            total = path.length()
-            steps = max(20, int(total / 8))
-            for i in range(steps + 1):
-                pt = path.pointAtPercent(i / steps)
-                dx = pt.x() - scene_pos.x()
-                dy = pt.y() - scene_pos.y()
-                dist = (dx * dx + dy * dy) ** 0.5
-                if dist < best_dist:
-                    best_dist = dist
-                    best_id   = wire_id
-        return best_id
+        """Hit the topmost wire using cached native Qt stroke geometry."""
+        for wire_id, path in reversed(self._rendered_wires):
+            bounds = path.boundingRect().adjusted(-threshold, -threshold, threshold, threshold)
+            if not bounds.contains(scene_pos):
+                continue
+            if threshold == 6.0:
+                hit_path = self._wire_paths[wire_id][2]
+            else:
+                stroker = QPainterPathStroker()
+                stroker.setWidth(threshold * 2)
+                hit_path = stroker.createStroke(path)
+            if hit_path.contains(scene_pos):
+                return wire_id
+        return None
 
     def _find_pin_pos(self, node_id: str, pin_name: str) -> Optional[RenderedPin]:
-        for rp in self._rendered_pins:
-            if rp.node_id == node_id and rp.pin_name == pin_name:
-                return rp
-        return None
+        return self._pin_lookup.get((node_id, pin_name))
 
     # ── Group membership ──────────────────────────────────────────────────────
 

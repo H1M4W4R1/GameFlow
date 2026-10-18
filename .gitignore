@@ -1,7 +1,8 @@
 /.idea/
 /.venv/
 /{core,devices,nodes,ui,assets}/
-/tests/
+/tests/*
+!/tests/test_wire_routing.py
 /.claude/
 /CLAUDE.md
 /debug/

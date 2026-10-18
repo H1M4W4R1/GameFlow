@@ -54,6 +54,53 @@ GameFlow/
 
 ---
 
+## Canvas wire routing
+
+`ui/orthogonal_router.py` routes wires around node rectangles in scene coordinates.
+The canvas supplies the actual painted bounds, so movement, group dragging,
+dynamic resizing, undo/redo, and graph replacement are detected without separate
+event handlers. Routes use horizontal/vertical segments, 18-unit obstacle
+clearance, and corners rounded to at most 8 units. Source and destination port
+leads are the only segments allowed inside their own node's clearance region.
+
+Unrelated wires reserve parallel tracks with 12-unit spacing, including space
+around end-to-end touches that could otherwise look like junctions. Only wires
+sharing an actual source or destination pin may bundle; using different pins on
+the same node does not qualify. Perpendicular crossings remain allowed. The
+canvas passes pin identities to the router, including for connection previews.
+
+Lane separation uses indexed parallel segments and bounded local adjustments
+(at most 64 candidates across 16 passes per wire), rechecking node clearance
+after each adjustment. It shares the cooperative routing budget. If local
+adjustments cannot separate a crowded route, the valid connection remains
+visible. Removing or rerouting a wire releases its reservations; a mouse preview
+never reserves tracks. Cached frames do not repeat separation work.
+
+The router caches completed routes and uses spatial buckets plus segment checks
+to invalidate only routes near changed obstacles. Straight/dogleg paths and
+shared clear rows/columns are tried before a lazy, weighted A* search. Searches
+share a soft 4 ms budget per paint and resume on subsequent frames; this is not
+a hard limit on total frame time. Search state is capped at 65,536 entries per
+wire. Pending, obstructed, or search-limited connections show safe dashed port
+stubs rather than crossing nodes. Their runtime connections remain unchanged.
+Move overlapping nodes apart to make room for a complete route.
+
+The canvas caches Qt's rounded drawing paths and stroked hit areas. Pan, zoom, selection,
+and runtime ticks reuse route geometry. Python does not sample curves for wire
+selection. No additional runtime dependencies or native build step are required.
+
+Run the offscreen rendering and routing checks:
+
+```powershell
+.\.venv\Scripts\python.exe -B -m unittest discover -s tests -p test_wire_routing.py -v
+.\.venv\Scripts\python.exe -B -c "import runpy; runpy.run_path('tests/test_wire_routing.py')['benchmark'](50)"
+```
+
+The deterministic benchmark uses 300 nodes and 600 wires with irregular offsets.
+It reports initial routing batches, cached geometry/lookup time, and rerouting
+after moving an obstacle. These timings exclude node/wire painting; they are
+measurements for the current machine, not frame-rate guarantees.
+
 ## Plugin Structure
 
 Custom nodes and devices should live in `plugins/<plugin_name>/`. The application scans `plugins/` recursively at startup, imports every `.py` file except `__init__.py`, and registers concrete subclasses of `NodeBase` and `DeviceBase`.
