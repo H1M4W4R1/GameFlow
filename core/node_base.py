@@ -167,6 +167,10 @@ class NodeBase(QObject):
         # User-assigned custom title (None = use NODE_NAME)
         self.custom_name: Optional[str] = None
 
+        # Node-local display preferences; graph preferences are applied by the canvas.
+        self.hide_unused_ports: bool = False
+        self.hide_input_fields: bool = False
+
         # Runtime reference (set by GraphRuntime after construction)
         self._runtime: Optional["GraphRuntime"] = None
 
@@ -360,10 +364,17 @@ class NodeBase(QObject):
         # Persist custom title if set
         if self.custom_name is not None:
             state["__custom_name__"] = self.custom_name
+        state["__visibility__"] = {
+            "hide_unused_ports": self.hide_unused_ports,
+            "hide_input_fields": self.hide_input_fields,
+        }
         return state
 
     def set_state(self, state: dict[str, Any]) -> None:
         """Restore state loaded from disk. Override alongside get_state()."""
+        visibility = state.pop("__visibility__", {})
+        self.hide_unused_ports = bool(visibility.get("hide_unused_ports", False))
+        self.hide_input_fields = bool(visibility.get("hide_input_fields", False))
         fields = state.pop("__fields__", {})
         for key, val in fields.items():
             if key in self.EDITABLE_FIELDS:

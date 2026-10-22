@@ -59,7 +59,7 @@ from core.command_history import (
     GroupCreateCmd, GroupDeleteCmd, GroupMoveCmd, GroupResizeCmd, GroupRenameCmd,
     NodeAddCmd, NodeDeleteCmd, NodeMoveCmd, NodeRenameCmd,
     PasteCmd,
-    WireAddCmd, WireDeleteCmd,
+    VisibilityCmd, WireAddCmd, WireDeleteCmd,
 )
 from core.graph_runtime import GraphRuntime
 from core.node_base import NodeBase
@@ -233,7 +233,9 @@ class NodeSearchEntry:
 
 # ── Layout builder ────────────────────────────────────────────────────────────
 
-def _build_rows(node: NodeBase, body_top: float) -> list[_Row]:
+def _build_rows(node: NodeBase, body_top: float, *,
+                hide_unused_ports: bool = False, hide_input_fields: bool = False,
+                connected_ports: Optional[set[tuple[PinDirection, str]]] = None) -> list[_Row]:
     """
     Build the ordered row list for a node.
 
@@ -265,6 +267,7 @@ def _build_rows(node: NodeBase, body_top: float) -> list[_Row]:
                 if p.direction == PinDirection.INPUT  and p.pin_type == PinType.TICK]
     out_pins = [p for p in node.PINS
                 if p.direction == PinDirection.OUTPUT and p.name not in dynamic_pin_names]
+    out_pins.sort(key=lambda p: (p.name != "exec_out", p.pin_type != PinType.TICK))
 
     # Pair inputs and outputs on the same row where possible
     n_paired = max(len(in_pins) + len(in_ticks), len(out_pins))
@@ -311,6 +314,38 @@ def _build_rows(node: NodeBase, body_top: float) -> list[_Row]:
             rows.append(r)
             y += ROW_H + ROW_PAD
 
+    # Filter port circles and field editors independently, then compact the rows.
+    if hide_unused_ports or hide_input_fields:
+        connected_ports = connected_ports or set()
+
+        def visible_pin(pin: Optional[PinDescriptor]) -> Optional[PinDescriptor]:
+            if pin is None or (hide_unused_ports and
+                               (pin.direction, pin.name) not in connected_ports):
+                return None
+            return pin
+
+        visible_rows: list[_Row] = []
+        y = body_top + ROW_MARGIN
+        for row in rows:
+            row.in_pin = visible_pin(row.in_pin)
+            row.out_pin = visible_pin(row.out_pin)
+            row.var_pin = visible_pin(row.var_pin)
+            if row.kind == _RowKind.VAR and hide_input_fields:
+                row.kind = _RowKind.PIN
+                row.in_pin = row.var_pin
+                row.var_pin = None
+            elif row.kind == _RowKind.DYN_FIELD and hide_input_fields:
+                row.kind = _RowKind.PIN
+            elif row.kind == _RowKind.FIELD and hide_input_fields:
+                continue
+            if row.kind == _RowKind.PIN and row.in_pin is None and row.out_pin is None:
+                continue
+            row.y = y
+            row.pin_cy = y + row.h / 2
+            visible_rows.append(row)
+            y += row.h + ROW_PAD
+        rows = visible_rows
+
     # CUSTOM zone — only if node requests extra MIN_HEIGHT
     custom_budget = node.MIN_HEIGHT - 60.0
     if custom_budget > 0:
@@ -328,9 +363,9 @@ def _device_sel_extra(node: NodeBase) -> float:
     return DEVICE_SEL_H if len(get_instances(node.DEVICE_TYPE_KEY)) >= 2 else 0.0
 
 
-def _node_total_height(node: NodeBase) -> float:
+def _node_total_height(node: NodeBase, **visibility) -> float:
     extra = _device_sel_extra(node)
-    rows  = _build_rows(node, TITLE_H + extra)
+    rows  = _build_rows(node, TITLE_H + extra, **visibility)
     if not rows:
         return TITLE_H + extra + ROW_MARGIN * 2
     last = rows[-1]
@@ -347,6 +382,7 @@ class NodeEditorCanvas(QWidget):
     wire_created      = pyqtSignal(object)
     node_selected     = pyqtSignal(str)
     status_message    = pyqtSignal(str)
+    visibility_changed = pyqtSignal()
     device_highlighted = pyqtSignal(object)   # Optional[str] — device_id or None
 
     def __init__(
@@ -358,6 +394,9 @@ class NodeEditorCanvas(QWidget):
     ) -> None:
         super().__init__(parent)
         self._runtime      = runtime
+        self.hide_unused_ports: bool = False
+        self.hide_input_fields: bool = False
+        self._connected_ports: dict[str, set[tuple[PinDirection, str]]] = {}
         self._node_menu_fn = node_menu_fn
         self._node_search_fn = node_search_fn
         self._node_search_entries: Optional[list[NodeSearchEntry]] = None
@@ -452,9 +491,74 @@ class NodeEditorCanvas(QWidget):
         self._runtime.node_added.connect(lambda _: self.update())
         self._runtime.node_removed.connect(self._on_node_removed_from_groups)
         self._runtime.node_removed.connect(lambda _: self.update())
-        self._runtime.wire_added.connect(lambda _: self.update())
-        self._runtime.wire_removed.connect(lambda _: self.update())
+        self._runtime.wire_added.connect(self._refresh_connected_ports)
+        self._runtime.wire_removed.connect(self._refresh_connected_ports)
+        self._runtime.node_removed.connect(self._refresh_connected_ports)
         self._runtime.tick_fired.connect(self.update)
+        self._refresh_connected_ports()
+
+    def _refresh_connected_ports(self, *_args) -> None:
+        connected: dict[str, set[tuple[PinDirection, str]]] = {}
+        for wire in self._runtime.wires.values():
+            connected.setdefault(wire.src_node, set()).add((PinDirection.OUTPUT, wire.src_pin))
+            connected.setdefault(wire.dst_node, set()).add((PinDirection.INPUT, wire.dst_pin))
+        self._connected_ports = connected
+        self.update()
+
+    def _visibility_options(self, node: NodeBase) -> dict:
+        # Graph hiding supplements node hiding without changing node preferences.
+        return {
+            "hide_unused_ports": self.hide_unused_ports or node.hide_unused_ports,
+            "hide_input_fields": self.hide_input_fields or node.hide_input_fields,
+            "connected_ports": self._connected_ports.get(node.node_id, set()),
+        }
+
+    def _node_rows(self, node: NodeBase, body_top: float) -> list[_Row]:
+        return _build_rows(node, body_top, **self._visibility_options(node))
+
+    def _node_height(self, node: NodeBase) -> float:
+        return _node_total_height(node, **self._visibility_options(node))
+
+    def get_visibility_settings(self) -> dict[str, bool]:
+        return {
+            "hide_unused_ports": self.hide_unused_ports,
+            "hide_input_fields": self.hide_input_fields,
+        }
+
+    def load_visibility_settings(self, settings: dict[str, bool]) -> None:
+        self.hide_unused_ports = bool(settings.get("hide_unused_ports", False))
+        self.hide_input_fields = bool(settings.get("hide_input_fields", False))
+        self._close_editor()
+        self.update()
+
+    def _on_visibility_changed(self) -> None:
+        self._close_editor()
+        self._wire_src = None
+        self._hovered_pin = None
+        self._tooltip_timer.stop()
+        QToolTip.hideText()
+        self.visibility_changed.emit()
+        self.update()
+
+    def _set_visibility(self, target, setting: str, checked: bool) -> None:
+        before = getattr(target, setting)
+        if before == checked:
+            return
+        cmd = VisibilityCmd(target, setting, before, checked,
+                            self._on_visibility_changed, tr(f"ui.canvas.menu.{setting}"))
+        cmd.redo()
+        self._history.push(cmd)
+
+    def _add_visibility_actions(self, menu: QMenu, node: Optional[NodeBase] = None) -> None:
+        target = node if node is not None else self
+        for setting in ("hide_unused_ports", "hide_input_fields"):
+            action = QAction(tr(f"ui.canvas.menu.{setting}"), menu)
+            action.setCheckable(True)
+            action.setChecked(getattr(target, setting))
+            action.triggered.connect(
+                lambda checked, name=setting: self._set_visibility(target, name, checked)
+            )
+            menu.addAction(action)
 
     # ── Coordinate helpers ────────────────────────────────────────────────────
 
@@ -600,8 +704,8 @@ class NodeEditorCanvas(QWidget):
         width     = _node_width(node)
         extra     = _device_sel_extra(node)
         body_top  = node.y + TITLE_H + extra
-        rows      = _build_rows(node, body_top)
-        total_h   = _node_total_height(node)
+        rows      = self._node_rows(node, body_top)
+        total_h   = self._node_height(node)
         rect      = QRectF(node.x, node.y, width, total_h)
         self._routing_node_rects[node.node_id] = (rect.left(), rect.top(), rect.right(), rect.bottom())
 
@@ -1075,7 +1179,7 @@ class NodeEditorCanvas(QWidget):
     def _hit_node(self, sp: QPointF) -> Optional[str]:
         for node in reversed(list(self._runtime.nodes.values())):
             w = _node_width(node)
-            h = _node_total_height(node)
+            h = self._node_height(node)
             if QRectF(node.x, node.y, w, h).contains(sp):
                 return node.node_id
         return None
@@ -1092,7 +1196,7 @@ class NodeEditorCanvas(QWidget):
         for node in self._runtime.nodes.values():
             extra    = _device_sel_extra(node)
             body_top = node.y + TITLE_H + extra
-            rows     = _build_rows(node, body_top)
+            rows     = self._node_rows(node, body_top)
             width    = _node_width(node)
             for row in rows:
                 if row.kind == _RowKind.CUSTOM:
@@ -1195,7 +1299,7 @@ class NodeEditorCanvas(QWidget):
         if not node:
             return
         cx = node.x + _node_width(node) / 2
-        cy = node.y + _node_total_height(node) / 2
+        cy = node.y + self._node_height(node) / 2
         center = QPointF(cx, cy)
         for grp in self._groups.values():
             grp.node_ids.discard(node_id)
@@ -1213,7 +1317,7 @@ class NodeEditorCanvas(QWidget):
         inner = grp.inner_rect()
         for node in self._runtime.nodes.values():
             cx = node.x + _node_width(node) / 2
-            cy = node.y + _node_total_height(node) / 2
+            cy = node.y + self._node_height(node) / 2
             center = QPointF(cx, cy)
             if inner.contains(center):
                 for g in self._groups.values():
@@ -1514,7 +1618,7 @@ class NodeEditorCanvas(QWidget):
             )
             new_sel: set = set()
             for node in self._runtime.nodes.values():
-                nr = QRectF(node.x, node.y, _node_width(node), _node_total_height(node))
+                nr = QRectF(node.x, node.y, _node_width(node), self._node_height(node))
                 if sel_rect.intersects(nr):
                     new_sel.add(node.node_id)
             self._selected_nodes = new_sel
@@ -1658,7 +1762,7 @@ class NodeEditorCanvas(QWidget):
         if type_key:
             for node in reversed(list(self._runtime.nodes.values())):
                 w = _node_width(node)
-                h = _node_total_height(node)
+                h = self._node_height(node)
                 if QRectF(node.x, node.y, w, h).contains(scene):
                     if isinstance(node, DeviceNodeBase) and node.DEVICE_TYPE_KEY == type_key:
                         new_target = node.node_id
@@ -2286,7 +2390,7 @@ class NodeEditorCanvas(QWidget):
         node = nodes[self._tab_index]
         self._selected_node = node.node_id
         self._center_scene(QPointF(node.x + _node_width(node) / 2,
-                                   node.y + _node_total_height(node) / 2))
+                                   node.y + self._node_height(node) / 2))
         self.update()
 
     def _center_origin(self) -> None:
@@ -2331,7 +2435,7 @@ class NodeEditorCanvas(QWidget):
             return None
         extra    = _device_sel_extra(node)
         body_top = node.y + TITLE_H + extra
-        rows     = _build_rows(node, body_top)
+        rows     = self._node_rows(node, body_top)
         width    = _node_width(node)
         for row in rows:
             if row.kind == _RowKind.CUSTOM:
@@ -2349,6 +2453,9 @@ class NodeEditorCanvas(QWidget):
         rename_act = QAction(tr("ui.canvas.menu.rename"), menu)
         rename_act.triggered.connect(lambda: self._open_node_rename_editor(node_id))
         menu.addAction(rename_act)
+
+        self._add_visibility_actions(menu, node)
+        menu.addSeparator()
 
         before_node_actions = len(menu.actions())
         node._get_context_menu(self, menu, field_hit)
@@ -2428,6 +2535,9 @@ class NodeEditorCanvas(QWidget):
         add_grp = QAction(tr("ui.canvas.menu.add_group"), menu)
         add_grp.triggered.connect(lambda: self._add_group(scene_pos))
         menu.addAction(add_grp)
+        menu.addSeparator()
+
+        self._add_visibility_actions(menu)
         menu.addSeparator()
 
         structure = self._node_menu_fn()

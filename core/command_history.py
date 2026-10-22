@@ -19,7 +19,7 @@ Usage::
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.graph_runtime import GraphRuntime
@@ -118,6 +118,29 @@ class CommandHistory:
 
 
 # ── Node commands ─────────────────────────────────────────────────────────────
+
+class VisibilityCmd(Command):
+    """An independent node or graph display preference."""
+
+    def __init__(self, target: Any, setting: str, before: bool, after: bool,
+                 changed: Callable[[], None], description: str) -> None:
+        self._target = target
+        self._setting = setting
+        self._before = before
+        self._after = after
+        self._changed = changed
+        self.description = description
+
+    def _apply(self, value: bool) -> None:
+        setattr(self._target, self._setting, value)
+        self._changed()
+
+    def undo(self) -> None:
+        self._apply(self._before)
+
+    def redo(self) -> None:
+        self._apply(self._after)
+
 
 class NodeAddCmd(Command):
     def __init__(self, runtime: "GraphRuntime", node: "NodeBase") -> None:

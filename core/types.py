@@ -254,6 +254,7 @@ class SavedGraph:
     wires:          list[WireDescriptor] = field(default_factory=list)
     device_aliases: dict[str, str]       = field(default_factory=dict)
     groups:         list[SavedGroup]     = field(default_factory=list)
+    visibility:     dict[str, bool]      = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -262,6 +263,7 @@ class SavedGraph:
             "wires":          [w.to_dict() for w in self.wires],
             "device_aliases": self.device_aliases,
             "groups":         [g.to_dict() for g in self.groups],
+            "visibility":     dict(self.visibility),
         }
 
     @classmethod
@@ -272,4 +274,5 @@ class SavedGraph:
             wires          = [WireDescriptor.from_dict(w) for w in d.get("wires", [])],
             device_aliases = d.get("device_aliases", {}),
             groups         = [SavedGroup.from_dict(g) for g in d.get("groups", [])],
+            visibility     = dict(d.get("visibility", {})),
         )

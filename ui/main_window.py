@@ -284,6 +284,7 @@ class MainWindow(QWidget):
         )
 
         self._canvas.status_message.connect(self._handle_canvas_message)
+        self._canvas.visibility_changed.connect(self._mark_dirty)
         self._canvas.device_highlighted.connect(self._device_panel.highlight_device)
         self._runtime.runtime_error.connect(
             lambda msg: self._status_bar.setText(f"⚠ {msg}")
@@ -404,6 +405,7 @@ class MainWindow(QWidget):
         self._loading = True
         try:
             self._canvas.load_saved_groups([])
+            self._canvas.load_visibility_settings({})
             for nid in list(self._runtime.nodes.keys()):
                 self._runtime.remove_node(nid)
         finally:
@@ -431,6 +433,7 @@ class MainWindow(QWidget):
         name  = self._graph_path.stem
         graph = self._runtime.to_saved_graph(name)
         graph.groups = self._canvas.get_saved_groups()
+        graph.visibility = self._canvas.get_visibility_settings()
         try:
             self._graph_path.write_text(
                 json.dumps(graph.to_dict(), indent=2), encoding="utf-8"
@@ -490,6 +493,7 @@ class MainWindow(QWidget):
 
             # Restore groups
             self._canvas.load_saved_groups(graph.groups)
+            self._canvas.load_visibility_settings(graph.visibility)
 
             # Restore device aliases
             if graph.device_aliases:
