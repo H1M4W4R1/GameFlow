@@ -105,6 +105,75 @@ The full node list is intentionally not maintained here because GameFlow has bui
 
 Tick output ordering matters for node authors: an `exec_out` output should be the first output pin, and all `TICK` outputs should be listed before data outputs. This keeps rendering and execution behavior predictable.
 
+### Script Node
+
+Add **Utility → Script Node**, then double-click its Script field or right-click
+and choose **Edit script…**. The editor previews the inferred inputs and outputs
+without executing the source. For example:
+
+```python
+value = read("value")
+gain = read("gain")
+if value > 0:
+    write("result", value * gain)
+else:
+    write("result", 0)
+```
+
+Every literal `read("name")` creates an `ANY` input and every literal
+`write("name", value)` creates an `ANY` output, including calls inside branches
+and loops. Names must be nonempty strings of up to 80 characters; computed pin
+names are rejected. Input and output names can match. Internal wire identifiers
+use separate `input:` and `output:` prefixes; the canvas displays the script names.
+
+Wire values into the inputs and send a TICK to `exec_in` to run the script.
+Locals start fresh on each run. All writes are staged until the script succeeds;
+then data outputs are published before `exec_out` fires. An output not written
+on that run becomes `None`. Unwired inputs read as `None`.
+
+Scripts use a bounded subset of Python: assignments, arithmetic, comparisons,
+boolean expressions, conditional expressions, `if/else`, `for`, `while`,
+`break`, `continue`, lists, tuples, dictionaries, indexing and slicing.
+Available helpers include `range`, `len`, `sum`, `abs`, `min`, `max`, `round`,
+`pow`, `int`, `float`, `bool`, `str`, and the math functions listed below.
+Imports, custom function/class definitions, comprehensions, arbitrary attributes
+and object method calls are unavailable. Inputs accept numbers, booleans, text,
+`None`, and nested lists/tuples/dictionaries; engine-specific objects must first
+be converted to those types. Scripts cannot mutate upstream values.
+
+Execution stops after 20,000 interpreter steps or 50 ms. Collections, strings,
+integer sizes and powers also have limits. A failure publishes no staged writes
+and no success TICK, retains the last successful outputs, and disables further
+runs until the source is edited, the graph restarts, or **Reset error** is chosen
+from the context menu. A red **!** appears in the title; **View error…** shows a
+copyable message with the failing source line for execution errors.
+
+### Formula Node
+
+Add **Math / Arithmetic → Formula Node** and edit its Formula field. For example:
+
+```text
+gain * sin(2 * pi * frequency * time) + offset
+```
+
+`gain`, `frequency`, `time` and `offset` become numeric inputs. Each input accepts
+a wire or an inline constant (initially `0`). The single `result` output updates
+when inputs, constants or the formula change, when the graph starts, or when an
+output wire is added. This node has no TICK pins.
+
+Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, and `^` (power). Functions:
+`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh`,
+`sqrt`, `exp`, `log`, `log2`, `log10`, `floor`, `ceil`, `trunc`, `fabs`, `fmod`,
+`hypot`, `degrees`, `radians`, `isfinite`, `isinf`, `isnan`, `abs`, `min`, `max`,
+`round`, and two-argument `pow`. Math names also accept the `math.` prefix.
+Constants are `pi`, `e`, and `tau`. Decimal numbers use a dot.
+
+Invalid formulas and calculation errors show the same title marker and error
+menu. The last valid result remains available; changing an input or correcting
+the formula retries calculation automatically. Edits preserve matching wires
+and constants, remove wires for deleted ports, and support undo/redo. Source,
+ports and constants are saved with the graph for both node types.
+
 ---
 
 ## Extending GameFlow

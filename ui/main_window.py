@@ -285,6 +285,7 @@ class MainWindow(QWidget):
 
         self._canvas.status_message.connect(self._handle_canvas_message)
         self._canvas.visibility_changed.connect(self._mark_dirty)
+        self._canvas.configuration_changed.connect(self._mark_dirty)
         self._canvas.device_highlighted.connect(self._device_panel.highlight_device)
         self._runtime.runtime_error.connect(
             lambda msg: self._status_bar.setText(f"⚠ {msg}")

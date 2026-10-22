@@ -146,6 +146,7 @@ class PinDescriptor:
     optional:   bool = False
     default:    Any  = None
     tooltip:    str  = ""       # hover text; auto-generated if empty
+    label:      str  = ""       # optional display text, independent of wire identity
 
 
 def pin_tooltip(description: str):

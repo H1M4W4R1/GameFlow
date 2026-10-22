@@ -383,6 +383,7 @@ class NodeEditorCanvas(QWidget):
     node_selected     = pyqtSignal(str)
     status_message    = pyqtSignal(str)
     visibility_changed = pyqtSignal()
+    configuration_changed = pyqtSignal()
     device_highlighted = pyqtSignal(object)   # Optional[str] — device_id or None
 
     def __init__(
@@ -749,8 +750,9 @@ class NodeEditorCanvas(QWidget):
 
         p.setPen(COL_TITLE_TEXT)
         p.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        status_width = 16 if hasattr(node, "paint_title_status") else 0
         p.drawText(
-            QRectF(node.x + PIN_RADIUS + 6, node.y, width - PIN_RADIUS * 2 - 12, TITLE_H),
+            QRectF(node.x + PIN_RADIUS + 6, node.y, width - PIN_RADIUS * 2 - 12 - status_width, TITLE_H),
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
             node.custom_name or _node_display_name(node.__class__),
         )
@@ -817,7 +819,7 @@ class NodeEditorCanvas(QWidget):
             p.drawText(
                 QRectF(node.x + PIN_RADIUS + 4, row.y, width / 2 - PIN_RADIUS - 6, row.h),
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                pin.name,
+                pin.label or pin.name,
             )
 
         if row.out_pin:
@@ -836,7 +838,7 @@ class NodeEditorCanvas(QWidget):
             p.drawText(
                 QRectF(node.x + width / 2, row.y, width / 2 - PIN_RADIUS - 6, row.h),
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
-                pin.name,
+                pin.label or pin.name,
             )
 
     def _draw_var_row(self, p: QPainter, node: NodeBase, row: _Row, width: float) -> None:
@@ -875,7 +877,8 @@ class NodeEditorCanvas(QWidget):
         p.drawRoundedRect(pill_rect, 4, 4)
 
         # Label
-        label = row.var_name.replace("_", " ")
+        label = (row.var_pin.label if row.var_pin and row.var_pin.label
+                 else row.var_name.replace("_", " "))
         p.setPen(QColor("#606875" if connected else "#8b949e"))
         p.setFont(QFont("Segoe UI", 7))
         p.drawText(
@@ -917,7 +920,7 @@ class NodeEditorCanvas(QWidget):
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(pill_rect, 4, 4)
 
-        label = row.field_name.replace("_", " ")
+        label = tr(f"node.field.{row.field_name}", default=row.field_name.replace("_", " "))
         p.setPen(QColor("#7d8590"))
         p.setFont(QFont("Segoe UI", 7))
         p.drawText(
@@ -1893,6 +1896,10 @@ class NodeEditorCanvas(QWidget):
         node = self._runtime.get_node(rf.node_id)
         if not node:
             return
+        if (not rf.is_var and not rf.is_dynamic
+                and rf.field_name == getattr(node, "SOURCE_FIELD", None)):
+            node.edit_source(self)
+            return
         # ColorPicker: for editable field named "color" (str), open QColorDialog
         if not rf.is_var and rf.field_name == "color":
             old_color = node.get_field("color") or "#ffffff"
@@ -1955,6 +1962,7 @@ class NodeEditorCanvas(QWidget):
                 self._history.push(FieldEditCmd(
                     self._runtime, rf.node_id, rf.field_name, rf.is_var, old_val, new_val
                 ))
+                self.configuration_changed.emit()
             self._close_editor()
             self.update()
 

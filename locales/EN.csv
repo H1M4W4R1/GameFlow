@@ -321,3 +321,17 @@ ui.debug_console.title,Debug Console
 ui.debug_console.status_tooltip,Double-click to open the debug console.
 ui.debug_console.level_tooltip,Show {level} logs
 ui.debug_console.search_placeholder,Search logs...
+node.script_node.name,Script Node
+node.formula_node.name,Formula Node
+node.field.script,Script
+node.field.formula,Formula
+node.script.edit,Edit script…
+node.formula.edit,Edit formula…
+node.script.help,"Python syntax: read(""name"") creates an input; write(""name"", value) creates an output. Runs on exec_in; exec_out fires after success. Assignments, if/else, for/while, lists, dictionaries and math functions are supported. No imports or arbitrary object access. Limit: 20,000 steps / 50 ms."
+node.formula.help,"Enter a numeric expression such as a * sin(x) + b or sqrt(x^2 + y^2). Parameters become inputs with editable constants. Supports + - * / // % ** ^, math functions, pi, e and tau."
+node.source.ports,Inputs: {inputs} | Outputs: {outputs}
+node.source.error_title,Node error details
+node.source.view_error,View error…
+node.script.retry,Reset error (retry on next TICK)
+node.script.tooltip,"Python script: read(""name"") and write(""name"", value). Right-click to edit or inspect errors."
+node.formula.tooltip,Math formula with automatic parameter inputs and one result output. Right-click to edit.
