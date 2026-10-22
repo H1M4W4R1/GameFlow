@@ -65,7 +65,6 @@ class _SourceNode(NodeBase):
         self._outputs: tuple[str, ...] = ()
         self._event_inputs: tuple[str, ...] = ()
         self._event_outputs: tuple[str, ...] = ()
-        self._script_globals: dict[str, Any] = {}
         self._error = ""
         self._faulted = False
         self._source_revision = 0
@@ -107,7 +106,6 @@ class _SourceNode(NodeBase):
         self._program = None
         self._faulted = False
         self._source_revision += 1
-        self._script_globals = {}
         try:
             program = parse_program(str(self.get_field(self.SOURCE_FIELD)), formula=self.IS_FORMULA)
         except Exception as exc:
@@ -124,10 +122,7 @@ class _SourceNode(NodeBase):
             self._event_inputs, self._event_outputs = program.event_inputs, program.event_outputs
             self._set_error("")
 
-        pins = [] if self.IS_FORMULA else [
-            PinDescriptor("exec_in", PinDirection.INPUT, PinType.TICK),
-            PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
-        ]
+        pins: list[PinDescriptor] = []
         if not self.IS_FORMULA:
             pins += [PinDescriptor(self._event_input_pin(name), PinDirection.INPUT, PinType.TICK,
                                    label=name) for name in self._event_inputs]
@@ -350,12 +345,12 @@ class _SourceNode(NodeBase):
 
 
 class ScriptNode(_SourceNode):
-    """Run bounded Python scripts and named handlers through inferred data/event ports."""
+    """Run bounded Python event handlers through inferred data/event ports."""
     NODE_NAME = "Script Node"
     NODE_GROUP = "Utility"
     SOURCE_FIELD = "script"
-    EDITABLE_FIELDS = {"script": (str, 'value = read("value")\nwrite("result", value)')}
-    NODE_TOOLTIP = "Python script: read/write data and emit/on_name events. Right-click to edit or inspect errors."
+    EDITABLE_FIELDS = {"script": (str, 'def on_tick():\n    value = read("value")\n    write("result", value)\n    emit("done")')}
+    NODE_TOOLTIP = "Python event handlers: read/write data and emit/on_name events. Right-click to edit or inspect errors."
 
     def on_start(self) -> None:
         with self._source_lock:
@@ -371,11 +366,14 @@ class ScriptNode(_SourceNode):
         with self._source_lock:
             if self._program is None or self._faulted or self._evaluating:
                 return
+            if not trigger_pin.startswith("event_in:"):
+                return
+            event = trigger_pin.removeprefix("event_in:")
+            if event not in self._program.event_inputs:
+                return
             self._evaluating = True
             revision = self._source_revision
-            event = trigger_pin.removeprefix("event_in:") if trigger_pin.startswith("event_in:") else None
-            variables = dict(self._script_globals) if event is not None else {}
-            interpreter = Interpreter(variables, lambda name: self.get_input(self._input_pin(name)))
+            interpreter = Interpreter({}, lambda name: self.get_input(self._input_pin(name)))
             try:
                 outputs = interpreter.run(self._program, event=event)
             except Exception as exc:
@@ -384,11 +382,8 @@ class ScriptNode(_SourceNode):
                 self._evaluating = False
                 return
             self._set_error("")
-            if event is None:
-                self._script_globals = dict(interpreter.variables)
-            # No output or success TICK is published until the whole script succeeds.
-            staged = ({self._output_pin(name): outputs.get(name) for name in self._outputs} if event is None else
-                      {self._output_pin(name): value for name, value in outputs.items()})
+            # No data or named event is published until the whole handler succeeds.
+            staged = {self._output_pin(name): value for name, value in outputs.items()}
             events = tuple(interpreter.events)
             self._data.update(staged)
         # Never hold a node lock while invoking another node through a wire.
@@ -401,8 +396,6 @@ class ScriptNode(_SourceNode):
                 if revision != self._source_revision:
                     return
                 self.fire_tick(self._event_output_pin(name))
-            if revision == self._source_revision:
-                self.fire_tick("exec_out")
         finally:
             with self._source_lock:
                 self._evaluating = False
@@ -415,25 +408,16 @@ class FormulaNode(_SourceNode):
     SOURCE_FIELD = "formula"
     IS_FORMULA = True
     EDITABLE_FIELDS = {"formula": (str, "a * x + b")}
-    NODE_TOOLTIP = "Math formula with automatic parameter inputs and one result output. Right-click to edit."
-    MIN_HEIGHT = 60.0 + VALUE_HEIGHT + 28.0
+    NODE_TOOLTIP = "Formula preview with automatic parameter inputs and one result output. Right-click to edit."
+    MIN_HEIGHT = 60.0 + VALUE_HEIGHT
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._compute()
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#aeb9cc"))
-        painter.setFont(QFont("Courier New", 9))
         formula = " ".join(str(self.get_field(self.SOURCE_FIELD)).split())
-        formula = painter.fontMetrics().elidedText(formula, Qt.TextElideMode.ElideRight,
-                                                   max(1, int(rect.width() - 12)))
-        painter.drawText(QRectF(rect.x() + 6, rect.y(), rect.width() - 12, 22),
-                         Qt.AlignmentFlag.AlignCenter, formula)
-        result = self._data.get("result")
-        paint_value(painter, QRectF(rect.x(), rect.y() + 24, rect.width(), VALUE_HEIGHT),
-                    "—" if result is None else f"{result:.8g}",
-                    "#ef5350" if self._error else "#4fc3f7")
+        paint_value(painter, rect, formula or "—", "#ef5350" if self._error else "#aeb9cc")
 
     def on_start(self) -> None:
         self._compute()

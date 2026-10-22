@@ -82,6 +82,12 @@ def parse_program(source: str, *, formula: bool = False) -> Program:
     tree = ast.parse(source.replace("^", "**") if formula else source,
                      filename="<formula>" if formula else "<script>",
                      mode="eval" if formula else "exec")
+    if not formula:
+        for statement in tree.body:
+            is_docstring = (isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant)
+                            and isinstance(statement.value.value, str))
+            if not isinstance(statement, ast.FunctionDef) and not is_docstring:
+                raise ExpressionError(f"Line {statement.lineno}: Place script code inside def on_<event>():")
     nodes = list(ast.walk(tree))
     if len(nodes) > MAX_ITEMS:
         raise ExpressionError("Source is too complex")
@@ -360,15 +366,14 @@ class Interpreter:
             if isinstance(program.tree, ast.Expression):
                 return self.expression(program.tree.body)
             if event is None:
-                self.statements(program.tree.body)
-            else:
-                handler = next((handler for handler in program.handlers if handler.name == f"on_{event}"), None)
-                if handler is None:
-                    raise ExpressionError(f"Unknown event: {event}")
-                try:
-                    self.statements(handler.body)
-                except _ReturnControl:
-                    pass
+                raise ExpressionError("Scripts run only through named event inputs")
+            handler = next((handler for handler in program.handlers if handler.name == f"on_{event}"), None)
+            if handler is None:
+                raise ExpressionError(f"Unknown event: {event}")
+            try:
+                self.statements(handler.body)
+            except _ReturnControl:
+                pass
             return self.outputs
         except Exception as exc:
             raise ExpressionError(f"Line {self.line}: {type(exc).__name__}: {exc}") from exc

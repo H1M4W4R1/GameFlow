@@ -113,12 +113,14 @@ The editor highlights Python syntax and previews inferred data and event ports
 without executing the source. For example:
 
 ```python
-value = read("value")
-gain = read("gain")
-if value > 0:
-    write("result", value * gain)
-else:
-    write("result", 0)
+def on_tick():
+    value = read("value")
+    gain = read("gain")
+    if value > 0:
+        write("result", value * gain)
+    else:
+        write("result", 0)
+    emit("done")
 ```
 
 Every literal `read("name")` creates an `ANY` input and every literal
@@ -127,10 +129,12 @@ and loops. Names must be nonempty strings of up to 80 characters; computed pin
 names are rejected. Input and output names can match. Internal wire identifiers
 use separate `input:` and `output:` prefixes; the canvas displays the script names.
 
-Wire values into the inputs and send a TICK to `exec_in` to run the script.
-Locals start fresh on each run. All writes are staged until the script succeeds;
-then data outputs are published before `exec_out` fires. An output not written
-on that run becomes `None`. Unwired inputs read as `None`.
+Wire values into the data inputs and send a TICK to a named event input such as
+`tick` to run its handler. Only event handler definitions are executable entry
+points; script code must be inside `def on_name():` functions. Locals start fresh
+on each event. All writes and emitted events are staged until the handler succeeds.
+Data outputs are published before explicitly emitted events. An output not
+written on that run keeps its previous value. Unwired inputs read as `None`.
 
 #### Script events
 
@@ -149,16 +153,15 @@ def on_reset():
 
 This creates event inputs `start` and `reset`, an event output `done`, a data
 input `value`, and a data output `result`. A TICK on `start` runs only `on_start`;
-it does not run `on_reset` or the top-level statements. Data writes publish
-first, followed by emitted events in call order, then `exec_out`. Events are
+it does not run `on_reset`. Data writes publish first, followed by explicitly
+emitted events in call order. There is no implicit completion event. Events are
 staged with the writes: a failing handler sends neither. Handlers only update
 the data outputs they write; other outputs keep their previous values.
 
 Handler definitions take no parameters, decorators or annotations. `return`
-can exit a handler early. Each invocation starts with fresh locals; handlers
-can also read variables from the last successful top-level `exec_in` run.
-Run `exec_in` before an event if its handler needs those initial values.
-Editing the script or restarting the graph clears that initialization.
+can exit a handler early. Each invocation starts with fresh locals. Place
+initial values and calculations inside the handler that uses them; top-level
+executable statements are rejected with an editor error.
 Event names passed to `emit` must be literal strings, just like read/write names.
 Event ports use separate `event_in:` / `event_out:` wire identifiers, so event
 and data names can match. Event ports are saved and restored with the source;
@@ -176,7 +179,7 @@ be converted to those types. Scripts cannot mutate upstream values.
 
 Execution stops after 20,000 interpreter steps or 50 ms. Collections, strings,
 integer sizes and powers also have limits. A failure publishes no staged writes
-or events and no success TICK, retains the last successful outputs, and disables further
+or events, retains the last successful outputs, and disables further
 runs until the source is edited, the graph restarts, or **Reset error** is chosen
 from the context menu. A red **!** appears in the title; **View error…** shows a
 copyable message with the failing source line for execution errors.
@@ -184,8 +187,9 @@ copyable message with the failing source line for execution errors.
 ### Formula Node
 
 Add **Math / Arithmetic → Formula Node**, then right-click → **Edit formula…**.
-The expression and its live result appear on the canvas in a read-only preview,
-with the same large value style as timer nodes. For example:
+Only the formula expression appears on the canvas in a read-only preview,
+using the same fitted text style as timer nodes. The calculated result is
+available through the `result` output and is not displayed in the node. For example:
 
 ```text
 gain * sin(2 * pi * frequency * time) + offset
