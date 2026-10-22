@@ -24,6 +24,36 @@ python main.py
 
 On first launch the app opens an empty graph canvas.
 
+### Build a Windows distribution
+
+Run from PowerShell on Windows with Python 3.11 or newer:
+
+```powershell
+.\build.ps1
+```
+
+The script uses the project's `.venv` (creating it if needed), installs
+`requirements-build.txt`, and builds the standalone `dist\GameFlow.exe` with
+`GameFlow.spec`. To use a specific existing Python environment, run
+`.\build.ps1 -Python C:\path\to\python.exe`. Once dependencies are installed,
+use `.\build.ps1 -SkipInstall` to rebuild without installing them again.
+The script can also be invoked by its full path from another directory.
+The build generates a Windows icon from `assets/icons/app.svg` and isolates
+DLL discovery from external tools on `PATH`. Windows supplies its own ICU
+libraries; incompatible third-party copies are excluded from the executable.
+
+Launch or share **`dist\GameFlow.exe` by itself**. Python, Qt, dependencies,
+discoverable node/device/plugin sources, translations, icons, and existing
+audio assets are embedded in the executable. Python does not need to be
+installed on the receiving computer.
+
+The executable extracts its bundled files to a temporary directory at launch.
+Changes to those extracted files, including audio imported into the bundled
+audio folders, do not survive app exit. Include permanent audio assets and
+plugins in the source project before rebuilding; new third-party Python
+dependencies must also be installed in the build environment. Settings and
+logs are stored separately in `%USERPROFILE%\.gameflow` and persist normally.
+
 ---
 
 ## Devices

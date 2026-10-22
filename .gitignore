@@ -8,3 +8,6 @@
 /debug/
 /assets/audio/
 build/
+dist/
+__pycache__/
+*.py[cod]
