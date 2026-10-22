@@ -6,6 +6,7 @@ DateTime pin type carries epoch seconds (float) for compatibility with math.
 """
 from __future__ import annotations
 
+import math
 import time
 from typing import Any
 
@@ -13,7 +14,52 @@ from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui  import QPainter, QColor, QFont, QBrush
 
 from core.node_base import NodeBase
+from core.localization import tr
+from core.node_preview import VALUE_HEIGHT, paint_value
 from core.types     import PinDescriptor, PinDirection, PinType
+
+
+def _preview_now(node: DelayNode | TimerNode | CountdownNode) -> float:
+    """Freeze the preview at the first hold or graph pause boundary."""
+    now = time.monotonic()
+    for boundary in (node._pause_start, node._hold_start):
+        if boundary is not None:
+            now = min(now, boundary)
+    return now
+
+
+def _paint_countdown(
+    painter: QPainter, rect: QRectF, remaining: float, duration: float, held: bool
+) -> None:
+    """Draw a draining bar and a large HH:MM:SS remaining-time value."""
+    remaining = max(0.0, remaining)
+    fraction = min(1.0, remaining / max(0.001, duration))
+    track = QRectF(rect.x() + 4, rect.y() + 4, rect.width() - 8, 8)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QBrush(QColor("#12060e")))
+    painter.drawRoundedRect(track, 3, 3)
+    if fraction > 0:
+        painter.setBrush(QBrush(QColor("#888888" if held else "#f95979")))
+        painter.drawRoundedRect(
+            QRectF(track.x(), track.y(), track.width() * fraction, track.height()),
+            3, 3,
+        )
+    # Round up so a running countdown reaches 00:00:00 only when it expires.
+    hours, rest = divmod(math.ceil(remaining), 3600)
+    minutes, seconds = divmod(rest, 60)
+    paint_value(
+        painter,
+        QRectF(rect.x(), rect.y() + 16, rect.width(), VALUE_HEIGHT),
+        f"{hours:02d}:{minutes:02d}:{seconds:02d}",
+    )
+    if held:
+        painter.setPen(QColor("#c8889a"))
+        painter.setFont(QFont("Courier New", 8))
+        painter.drawText(
+            QRectF(rect.x(), rect.y() + 54, rect.width(), 18),
+            Qt.AlignmentFlag.AlignCenter,
+            tr("node.preview.hold", default="HOLD"),
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -161,8 +207,8 @@ class DelayNode(NodeBase):
     VARIABLE_INPUTS = {
         "delay_s": (float, 1.0),
     }
-    MIN_WIDTH  = 180.0
-    MIN_HEIGHT = 110.0
+    MIN_WIDTH  = 200.0
+    MIN_HEIGHT = 140.0
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -216,28 +262,13 @@ class DelayNode(NodeBase):
             self.node_changed.emit()
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        if not self._active:
-            return
         delay_s = float(self.get_var_input("delay_s") or 1.0)
-        held    = bool(self.get_input("hold"))
-        if held and self._hold_start is not None:
-            elapsed = self._hold_start - self._start_time
+        held = self._active and bool(self.get_input("hold"))
+        if self._active:
+            remaining = delay_s - (_preview_now(self) - self._start_time)
         else:
-            elapsed = time.monotonic() - self._start_time
-        pct      = min(1.0, elapsed / max(0.001, delay_s))
-        bar_w    = (rect.width() - 8) * pct
-        bar_rect = QRectF(rect.x() + 4, rect.y() + 4, bar_w, 8)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(QColor("#f95979") if not held else QColor("#888888")))
-        painter.drawRoundedRect(bar_rect, 3, 3)
-        painter.setPen(QColor("#c8889a"))
-        painter.setFont(QFont("Courier New", 8))
-        label = f"{elapsed:.2f} / {delay_s:.2f} s" + (" [HOLD]" if held else "")
-        painter.drawText(
-            QRectF(rect.x(), rect.y() + 14, rect.width(), 18),
-            Qt.AlignmentFlag.AlignCenter,
-            label,
-        )
+            remaining = delay_s if self._start_time == 0.0 else 0.0
+        _paint_countdown(painter, rect, remaining, delay_s, held)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -262,8 +293,8 @@ class TimerNode(NodeBase):
     VARIABLE_INPUTS = {
         "interval_s": (float, 1.0),
     }
-    MIN_WIDTH  = 180.0
-    MIN_HEIGHT = 100.0
+    MIN_WIDTH  = 200.0
+    MIN_HEIGHT = 140.0
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -317,30 +348,9 @@ class TimerNode(NodeBase):
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         interval_s = max(0.001, float(self.get_var_input("interval_s") or 1.0))
-        if self._active:
-            held = bool(self.get_input("hold"))
-            now  = time.monotonic()
-            if held and self._hold_start is not None:
-                now = self._hold_start
-            elapsed = now - (self._next_fire - interval_s)
-            pct     = min(1.0, max(0.0, elapsed / interval_s))
-            bar_w   = (rect.width() - 8) * pct
-            bar_rect = QRectF(rect.x() + 4, rect.y() + 4, bar_w, 8)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QBrush(QColor("#f95979") if not held else QColor("#888888")))
-            painter.drawRoundedRect(bar_rect, 3, 3)
-            painter.setPen(QColor("#c8889a"))
-            painter.setFont(QFont("Courier New", 8))
-            label = f"{elapsed:.2f} / {interval_s:.2f} s" + (" [HOLD]" if held else "")
-            painter.drawText(
-                QRectF(rect.x(), rect.y() + 14, rect.width(), 18),
-                Qt.AlignmentFlag.AlignCenter,
-                label,
-            )
-        else:
-            painter.setPen(QColor("#f95979"))
-            painter.setFont(QFont("Courier New", 8))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"every {interval_s:.2f} s")
+        held = self._active and bool(self.get_input("hold"))
+        remaining = self._next_fire - _preview_now(self) if self._active else interval_s
+        _paint_countdown(painter, rect, remaining, interval_s, held)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -424,8 +434,8 @@ class CountdownNode(NodeBase):
     VARIABLE_INPUTS = {
         "duration_s": (float, 1.0),
     }
-    MIN_WIDTH  = 190.0
-    MIN_HEIGHT = 110.0
+    MIN_WIDTH  = 200.0
+    MIN_HEIGHT = 140.0
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -485,30 +495,9 @@ class CountdownNode(NodeBase):
             self.node_changed.emit()
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        if not self._active:
-            remaining = self.get_output("remaining_s") or 0.0
-            painter.setPen(QColor("#f95979"))
-            painter.setFont(QFont("Courier New", 8))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter,
-                             f"{remaining:.2f} s left" if remaining > 0 else "done")
-            return
-        held = bool(self.get_input("hold"))
-        if held and self._hold_start is not None:
-            elapsed = self._hold_start - self._start_time
+        held = self._active and bool(self.get_input("hold"))
+        if self._active:
+            remaining = self._duration_s - (_preview_now(self) - self._start_time)
         else:
-            elapsed = time.monotonic() - self._start_time
-        remaining_s = max(0.0, self._duration_s - elapsed)
-        pct         = min(1.0, elapsed / max(0.001, self._duration_s))
-        bar_w    = (rect.width() - 8) * (1.0 - pct)
-        bar_rect = QRectF(rect.x() + 4, rect.y() + 4, bar_w, 8)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(QColor("#f95979") if not held else QColor("#888888")))
-        painter.drawRoundedRect(bar_rect, 3, 3)
-        painter.setPen(QColor("#c8889a"))
-        painter.setFont(QFont("Courier New", 8))
-        label = f"{remaining_s:.2f} / {self._duration_s:.2f} s" + (" [HOLD]" if held else "")
-        painter.drawText(
-            QRectF(rect.x(), rect.y() + 14, rect.width(), 18),
-            Qt.AlignmentFlag.AlignCenter,
-            label,
-        )
+            remaining = self.get_output("remaining_s") or 0.0
+        _paint_countdown(painter, rect, remaining, self._duration_s, held)

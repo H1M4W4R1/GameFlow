@@ -17,6 +17,7 @@ from PyQt6.QtGui  import QAction, QPainter, QColor, QFont
 from PyQt6.QtWidgets import QMenu
 
 from core.node_base import NodeBase
+from core.node_preview import VALUE_HEIGHT, paint_value
 from core.localization import tr
 from core.types     import PinDescriptor, PinDirection, PinType
 
@@ -104,11 +105,9 @@ class CounterNode(NodeBase):
         self._count = int(state.get("_count", 0))
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#f95979"))
-        painter.setFont(QFont("Courier New", 22, QFont.Weight.Bold))
         # Draw count in the top portion; fields render below automatically
-        count_rect = QRectF(rect.x(), rect.y(), rect.width(), 36)
-        painter.drawText(count_rect, Qt.AlignmentFlag.AlignCenter, str(self._count))
+        count_rect = QRectF(rect.x(), rect.y(), rect.width(), VALUE_HEIGHT)
+        paint_value(painter, count_rect, str(self._count))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

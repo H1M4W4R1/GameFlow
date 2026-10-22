@@ -10,6 +10,7 @@ from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui  import QPainter, QColor, QFont
 
 from core.node_base import NodeBase
+from core.node_preview import paint_value
 from core.types     import PinDescriptor, PinDirection, PinType
 
 
@@ -25,15 +26,13 @@ class TickNode(NodeBase):
         PinDescriptor("tick", PinDirection.OUTPUT, PinType.TICK),
     ]
     MIN_WIDTH  = 140.0
-    MIN_HEIGHT = 60.0
+    MIN_HEIGHT = 100.0
 
     def execute(self, trigger_pin: str) -> None:
         self.fire_tick("tick")
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setPen(QColor("#f95979"))
-        painter.setFont(QFont("Courier New", 8))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "10 ms")
+        paint_value(painter, rect, "10 ms")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -55,7 +54,7 @@ class ConfigurableTickNode(NodeBase):
         "interval_ms": (float, 100.0),
     }
     MIN_WIDTH  = 160.0
-    MIN_HEIGHT = 80.0
+    MIN_HEIGHT = 100.0
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -84,9 +83,7 @@ class ConfigurableTickNode(NodeBase):
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         ms = float(self.get_field("interval_ms") or 100.0)
-        painter.setPen(QColor("#f95979"))
-        painter.setFont(QFont("Courier New", 9))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"{ms:.0f} ms")
+        paint_value(painter, rect, f"{ms:.0f} ms")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -233,7 +230,7 @@ class LoopNode(NodeBase):
         "count": (int, 1),
     }
     MIN_WIDTH  = 180.0
-    MIN_HEIGHT = 90.0
+    MIN_HEIGHT = 100.0
 
     def execute(self, trigger_pin: str) -> None:
         n = max(0, int(self.get_var_input("count") or 1))
@@ -244,13 +241,7 @@ class LoopNode(NodeBase):
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         n = max(0, int(self.get_var_input("count") or 1))
-        painter.setPen(QColor("#f95979"))
-        painter.setFont(QFont("Courier New", 12, QFont.Weight.Bold))
-        painter.drawText(
-            QRectF(rect.x(), rect.y(), rect.width(), 30),
-            Qt.AlignmentFlag.AlignCenter,
-            f"↻  ×{n}",
-        )
+        paint_value(painter, rect, f"↻ ×{n}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -14,13 +14,14 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui  import QAction, QPainter, QColor, QFont
+from PyQt6.QtCore import QRectF
+from PyQt6.QtGui  import QAction, QPainter
 from PyQt6.QtWidgets import QMenu
 
 from core.command_history import WireDeleteCmd
 from core.localization import tr
 from core.node_base import NodeBase
+from core.node_preview import paint_value
 from core.types     import PinDescriptor, PinDirection, PinType
 
 if False:
@@ -29,9 +30,6 @@ if False:
 _MIN_CHANNELS = 2
 _MAX_CHANNELS = 8
 _DEFAULT_CHANNELS = 4
-
-_COLOR_ACTIVE = QColor("#f95979")
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared base helpers
@@ -178,7 +176,7 @@ class MuxNode(_RoutingNodeBase):
     """
     NODE_NAME  = "Multiplexer"
     MIN_WIDTH  = 190.0
-    MIN_HEIGHT = 80.0
+    MIN_HEIGHT = 100.0
 
     def _build_pins(self, n: int) -> list[PinDescriptor]:
         pins: list[PinDescriptor] = [
@@ -200,9 +198,7 @@ class MuxNode(_RoutingNodeBase):
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         ch = self._active_channel()
-        painter.setPen(_COLOR_ACTIVE)
-        painter.setFont(QFont("Courier New", 11, QFont.Weight.Bold))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"CH{ch}")
+        paint_value(painter, rect, tr("node.preview.channel", default="CH{channel}").format(channel=ch))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -217,7 +213,7 @@ class DemuxNode(_RoutingNodeBase):
     """
     NODE_NAME  = "Demultiplexer"
     MIN_WIDTH  = 190.0
-    MIN_HEIGHT = 80.0
+    MIN_HEIGHT = 100.0
 
     def _build_pins(self, n: int) -> list[PinDescriptor]:
         pins: list[PinDescriptor] = [
@@ -240,6 +236,4 @@ class DemuxNode(_RoutingNodeBase):
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         ch = self._active_channel()
-        painter.setPen(_COLOR_ACTIVE)
-        painter.setFont(QFont("Courier New", 11, QFont.Weight.Bold))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"CH{ch}")
+        paint_value(painter, rect, tr("node.preview.channel", default="CH{channel}").format(channel=ch))

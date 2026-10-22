@@ -128,6 +128,8 @@ node.current_datetime.name,Current DateTime
 node.specified_datetime.name,Specified DateTime
 node.delay.name,Delay
 node.timer.name,Timer
+node.preview.hold,HOLD
+node.preview.channel,CH{channel}
 node.after_x_seconds.name,After X Seconds
 node.counter.name,Counter
 node.randomizer.name,Randomizer

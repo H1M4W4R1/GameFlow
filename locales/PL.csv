@@ -128,6 +128,8 @@ node.current_datetime.name,Bieżąca Data i Czas
 node.specified_datetime.name,Podana Data i Czas
 node.delay.name,Opóźnienie
 node.timer.name,Timer
+node.preview.hold,WSTRZYMANO
+node.preview.channel,K{channel}
 node.after_x_seconds.name,Po X Sekundach
 node.counter.name,Licznik
 node.randomizer.name,Randomizer
