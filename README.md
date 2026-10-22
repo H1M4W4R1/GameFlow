@@ -107,8 +107,9 @@ Tick output ordering matters for node authors: an `exec_out` output should be th
 
 ### Script Node
 
-Add **Utility → Script Node**, then double-click its Script field or right-click
-and choose **Edit script…**. The editor previews the inferred inputs and outputs
+Add **Utility → Script Node**, then right-click and choose **Edit script…**.
+Configuration is available through the context menu; there are no inline fields.
+The editor highlights Python syntax and previews inferred data and event ports
 without executing the source. For example:
 
 ```python
@@ -131,33 +132,69 @@ Locals start fresh on each run. All writes are staged until the script succeeds;
 then data outputs are published before `exec_out` fires. An output not written
 on that run becomes `None`. Unwired inputs read as `None`.
 
+#### Script events
+
+`emit("name")` creates a named TICK output. A top-level, zero-argument
+`def on_name():` creates a matching named TICK input. Connect these event ports
+with ordinary TICK wires, including between Script Nodes. For example:
+
+```python
+def on_start():
+    write("result", read("value") * 2)
+    emit("done")
+
+def on_reset():
+    write("result", 0)
+```
+
+This creates event inputs `start` and `reset`, an event output `done`, a data
+input `value`, and a data output `result`. A TICK on `start` runs only `on_start`;
+it does not run `on_reset` or the top-level statements. Data writes publish
+first, followed by emitted events in call order, then `exec_out`. Events are
+staged with the writes: a failing handler sends neither. Handlers only update
+the data outputs they write; other outputs keep their previous values.
+
+Handler definitions take no parameters, decorators or annotations. `return`
+can exit a handler early. Each invocation starts with fresh locals; handlers
+can also read variables from the last successful top-level `exec_in` run.
+Run `exec_in` before an event if its handler needs those initial values.
+Editing the script or restarting the graph clears that initialization.
+Event names passed to `emit` must be literal strings, just like read/write names.
+Event ports use separate `event_in:` / `event_out:` wire identifiers, so event
+and data names can match. Event ports are saved and restored with the source;
+source edits support undo/redo for event wires too.
+
 Scripts use a bounded subset of Python: assignments, arithmetic, comparisons,
 boolean expressions, conditional expressions, `if/else`, `for`, `while`,
 `break`, `continue`, lists, tuples, dictionaries, indexing and slicing.
 Available helpers include `range`, `len`, `sum`, `abs`, `min`, `max`, `round`,
 `pow`, `int`, `float`, `bool`, `str`, and the math functions listed below.
-Imports, custom function/class definitions, comprehensions, arbitrary attributes
+Imports, function definitions other than event handlers, class definitions, comprehensions, arbitrary attributes
 and object method calls are unavailable. Inputs accept numbers, booleans, text,
 `None`, and nested lists/tuples/dictionaries; engine-specific objects must first
 be converted to those types. Scripts cannot mutate upstream values.
 
 Execution stops after 20,000 interpreter steps or 50 ms. Collections, strings,
 integer sizes and powers also have limits. A failure publishes no staged writes
-and no success TICK, retains the last successful outputs, and disables further
+or events and no success TICK, retains the last successful outputs, and disables further
 runs until the source is edited, the graph restarts, or **Reset error** is chosen
 from the context menu. A red **!** appears in the title; **View error…** shows a
 copyable message with the failing source line for execution errors.
 
 ### Formula Node
 
-Add **Math / Arithmetic → Formula Node** and edit its Formula field. For example:
+Add **Math / Arithmetic → Formula Node**, then right-click → **Edit formula…**.
+The expression and its live result appear on the canvas in a read-only preview,
+with the same large value style as timer nodes. For example:
 
 ```text
 gain * sin(2 * pi * frequency * time) + offset
 ```
 
 `gain`, `frequency`, `time` and `offset` become numeric inputs. Each input accepts
-a wire or an inline constant (initially `0`). The single `result` output updates
+a wire or a constant (initially `0`) configured in the context-menu editor.
+Source and constant edits are applied together when the dialog is accepted;
+Cancel leaves the node unchanged. The single `result` output updates
 when inputs, constants or the formula change, when the graph starts, or when an
 output wire is added. This node has no TICK pins.
 

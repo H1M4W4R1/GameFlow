@@ -40,7 +40,7 @@ _EXPRESSIONS = (ast.Constant, ast.Name, ast.BinOp, ast.UnaryOp, ast.BoolOp,
                 ast.Compare, ast.IfExp, ast.Call, ast.Attribute, ast.Subscript,
                 ast.Slice, ast.List, ast.Tuple, ast.Dict)
 _STATEMENTS = (ast.Assign, ast.AugAssign, ast.Expr, ast.If, ast.For, ast.While,
-               ast.Break, ast.Continue, ast.Pass)
+               ast.Break, ast.Continue, ast.Pass, ast.FunctionDef, ast.Return)
 _OPERATORS = tuple(_BINARY) + tuple(_COMPARE) + (
     ast.UAdd, ast.USub, ast.Not, ast.And, ast.Or, ast.Load, ast.Store,
 )
@@ -51,8 +51,8 @@ class ExpressionError(ValueError):
 
 
 def _io_arguments(call: ast.Call) -> list[ast.AST]:
-    """Bind read(name) / write(name, value), including explicit keywords."""
-    fields = ["name"] if call.func.id == "read" else ["name", "value"]
+    """Bind read/emit(name) or write(name, value), including keywords."""
+    fields = ["name", "value"] if call.func.id == "write" else ["name"]
     if len(call.args) > len(fields):
         raise ExpressionError(f"{call.func.id} expects {len(fields)} arguments")
     bound = dict(zip(fields, call.args))
@@ -70,6 +70,9 @@ class Program:
     tree: ast.Module | ast.Expression
     inputs: tuple[str, ...] = ()
     outputs: tuple[str, ...] = ()
+    event_inputs: tuple[str, ...] = ()
+    event_outputs: tuple[str, ...] = ()
+    handlers: tuple[ast.FunctionDef, ...] = ()
 
 
 def parse_program(source: str, *, formula: bool = False) -> Program:
@@ -85,11 +88,12 @@ def parse_program(source: str, *, formula: bool = False) -> Program:
     inputs: dict[str, None] = {}
     outputs: dict[str, None] = {}
     functions = FORMULA_FUNCTIONS if formula else {**FUNCTIONS, "range": range,
-                                                   "pow": pow, "read": None, "write": None}
+                                                   "pow": pow, "read": None, "write": None, "emit": None}
     parents = {child: parent for parent in nodes for child in ast.iter_child_nodes(parent)}
+    handlers: dict[str, ast.FunctionDef] = {}
     for node in nodes:
         if not isinstance(node, _EXPRESSIONS + _OPERATORS + (ast.Module, ast.Expression,
-                                                            ast.keyword) + (() if formula else _STATEMENTS)):
+                                                            ast.keyword) + (() if formula else _STATEMENTS + (ast.arguments,))):
             raise ExpressionError(f"Line {getattr(node, 'lineno', 1)}: {type(node).__name__} is not supported")
         if formula and isinstance(node, (ast.List, ast.Tuple, ast.Dict, ast.Subscript, ast.Slice)):
             raise ExpressionError("Formulas accept numeric expressions only")
@@ -121,13 +125,33 @@ def parse_program(source: str, *, formula: bool = False) -> Program:
                 raise ExpressionError(f"Unsupported function: {name or ast.unparse(node.func)}")
             if any(keyword.arg is None for keyword in node.keywords):
                 raise ExpressionError("Expanded keyword arguments are not supported")
-            if name in ("read", "write"):
+            if name in ("read", "write", "emit"):
                 args = _io_arguments(node)
                 pin = args[0]
                 if not (isinstance(pin, ast.Constant) and isinstance(pin.value, str)
                         and pin.value.strip() and len(pin.value) <= 80):
-                    raise ExpressionError("read/write names must be literal nonempty strings (up to 80 characters)")
-                (inputs if name == "read" else outputs).setdefault(pin.value, None)
+                    raise ExpressionError("read/write/emit names must be literal nonempty strings (up to 80 characters)")
+                if name in ("read", "write"):
+                    (inputs if name == "read" else outputs).setdefault(pin.value, None)
+        if isinstance(node, ast.FunctionDef):
+            args = node.args
+            if (parents.get(node) is not tree or not node.name.startswith("on_")
+                    or not node.name[3:] or len(node.name[3:]) > 80):
+                raise ExpressionError("Event handlers must be top-level functions named on_<event>()")
+            if (args.posonlyargs or args.args or args.kwonlyargs or args.vararg or args.kwarg
+                    or args.defaults or args.kw_defaults or node.decorator_list or node.returns
+                    or getattr(node, "type_params", ())):
+                raise ExpressionError("Event handlers take no arguments, decorators or annotations")
+            event_name = node.name[3:]
+            if event_name in handlers:
+                raise ExpressionError(f"Duplicate event handler: {node.name}")
+            handlers[event_name] = node
+        if isinstance(node, ast.Return):
+            parent = parents.get(node)
+            while parent is not None and not isinstance(parent, ast.FunctionDef):
+                parent = parents.get(parent)
+            if parent is None:
+                raise ExpressionError("return requires an event handler")
         if isinstance(node, (ast.Assign, ast.AugAssign, ast.For)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             if any(not isinstance(target, ast.Name) for target in targets):
@@ -144,18 +168,25 @@ def parse_program(source: str, *, formula: bool = False) -> Program:
     ordered_names = sorted((n for n in nodes if isinstance(n, ast.Name)),
                            key=lambda n: (n.lineno, n.col_offset))
     calls = sorted((n for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
-                    and n.func.id in ("read", "write")), key=lambda n: (n.lineno, n.col_offset))
+                    and n.func.id in ("read", "write", "emit")), key=lambda n: (n.lineno, n.col_offset))
     if formula:
         inputs = dict.fromkeys(n.id for n in ordered_names if n.id in inputs)
     else:
         inputs = dict.fromkeys(_io_arguments(n)[0].value for n in calls if n.func.id == "read")
         outputs = dict.fromkeys(_io_arguments(n)[0].value for n in calls if n.func.id == "write")
-    return Program(tree, tuple(inputs), tuple(outputs))
+    event_outputs = tuple(dict.fromkeys(_io_arguments(n)[0].value for n in calls if n.func.id == "emit"))
+    ordered_handlers = sorted(handlers.items(), key=lambda item: item[1].lineno)
+    return Program(tree, tuple(inputs), tuple(outputs), tuple(name for name, _ in ordered_handlers),
+                   event_outputs, tuple(handler for _, handler in ordered_handlers))
 
 
 class _LoopControl(Exception):
     def __init__(self, is_break: bool) -> None:
         self.is_break = is_break
+
+
+class _ReturnControl(Exception):
+    """Return from an event handler without escaping the interpreter."""
 
 
 class Interpreter:
@@ -168,6 +199,7 @@ class Interpreter:
         self.variables = variables
         self.read = read
         self.outputs: dict[str, Any] = {}
+        self.events: list[str] = []
 
     def _step(self) -> None:
         self.remaining -= 1
@@ -259,10 +291,15 @@ class Interpreter:
             return self.value(self.expression(node.value)[self.expression(node.slice)])
         if isinstance(node, ast.Call):
             name = node.func.id if isinstance(node.func, ast.Name) else node.func.attr
-            if name in ("read", "write"):
+            if name in ("read", "write", "emit"):
                 args = [self.expression(arg) for arg in _io_arguments(node)]
                 if name == "read":
                     return self.value(self.read(args[0]))
+                if name == "emit":
+                    if len(self.events) >= MAX_ITEMS:
+                        raise ExpressionError("Event emission limit exceeded")
+                    self.events.append(args[0])
+                    return None
                 self.outputs[args[0]] = self.value(args[1])
                 return None
             args = [self.expression(arg) for arg in node.args]
@@ -311,12 +348,27 @@ class Interpreter:
                             break
             elif isinstance(node, (ast.Break, ast.Continue)):
                 raise _LoopControl(isinstance(node, ast.Break))
+            elif isinstance(node, ast.Return):
+                if node.value is not None:
+                    self.expression(node.value)
+                raise _ReturnControl()
+            elif isinstance(node, (ast.FunctionDef, ast.Pass)):
+                continue  # handlers run only when their event input receives a TICK
 
-    def run(self, program: Program) -> Any:
+    def run(self, program: Program, event: str | None = None) -> Any:
         try:
             if isinstance(program.tree, ast.Expression):
                 return self.expression(program.tree.body)
-            self.statements(program.tree.body)
+            if event is None:
+                self.statements(program.tree.body)
+            else:
+                handler = next((handler for handler in program.handlers if handler.name == f"on_{event}"), None)
+                if handler is None:
+                    raise ExpressionError(f"Unknown event: {event}")
+                try:
+                    self.statements(handler.body)
+                except _ReturnControl:
+                    pass
             return self.outputs
         except Exception as exc:
             raise ExpressionError(f"Line {self.line}: {type(exc).__name__}: {exc}") from exc

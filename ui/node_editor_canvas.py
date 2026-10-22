@@ -246,6 +246,7 @@ def _build_rows(node: NodeBase, body_top: float, *,
       3. After var rows: one FIELD row per EDITABLE_FIELD.
       4. If paint_custom requests extra height: a CUSTOM row at the bottom.
     """
+    hide_input_fields = hide_input_fields or getattr(node, "CONTEXT_ONLY_FIELDS", False)
     var_names = set(node.VARIABLE_INPUTS.keys())
     dynamic_pin_names: set[str] = set()
     for method_name in ("get_dynamic_output_pin_names", "get_dynamic_input_pin_names"):
@@ -553,6 +554,8 @@ class NodeEditorCanvas(QWidget):
     def _add_visibility_actions(self, menu: QMenu, node: Optional[NodeBase] = None) -> None:
         target = node if node is not None else self
         for setting in ("hide_unused_ports", "hide_input_fields"):
+            if setting == "hide_input_fields" and getattr(target, "CONTEXT_ONLY_FIELDS", False):
+                continue
             action = QAction(tr(f"ui.canvas.menu.{setting}"), menu)
             action.setCheckable(True)
             action.setChecked(getattr(target, setting))

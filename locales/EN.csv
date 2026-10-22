@@ -327,11 +327,14 @@ node.field.script,Script
 node.field.formula,Formula
 node.script.edit,Edit script…
 node.formula.edit,Edit formula…
-node.script.help,"Python syntax: read(""name"") creates an input; write(""name"", value) creates an output. Runs on exec_in; exec_out fires after success. Assignments, if/else, for/while, lists, dictionaries and math functions are supported. No imports or arbitrary object access. Limit: 20,000 steps / 50 ms."
+node.script.help,"Python: read(""name"") creates a data input; write(""name"", value) creates a data output. emit(""name"") creates an event output; def on_name(): creates an event input. Connect event pins with TICK wires. exec_in runs top-level code; an event runs its handler. Writes and events publish only after success; then exec_out fires. No imports. Limit: 20,000 steps / 50 ms."
 node.formula.help,"Enter a numeric expression such as a * sin(x) + b or sqrt(x^2 + y^2). Parameters become inputs with editable constants. Supports + - * / // % ** ^, math functions, pi, e and tau."
 node.source.ports,Inputs: {inputs} | Outputs: {outputs}
 node.source.error_title,Node error details
 node.source.view_error,View error…
 node.script.retry,Reset error (retry on next TICK)
-node.script.tooltip,"Python script: read(""name"") and write(""name"", value). Right-click to edit or inspect errors."
+node.script.tooltip,"Python script: read/write data and emit/on_name events. Right-click to edit or inspect errors."
 node.formula.tooltip,Math formula with automatic parameter inputs and one result output. Right-click to edit.
+node.source.events,Event inputs: {inputs} | Event outputs: {outputs}
+node.formula.constants_help,Constant values are used when the parameter has no wire. Connected inputs use their wired values.
+node.formula.invalid_constant,Enter a finite number for {name}.

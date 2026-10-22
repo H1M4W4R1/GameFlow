@@ -10,14 +10,17 @@ from typing import Any
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QColor, QFont, QPainter
 from PyQt6.QtWidgets import (
-    QDialog, QDialogButtonBox, QLabel, QPlainTextEdit, QVBoxLayout,
+    QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit, QPlainTextEdit,
+    QScrollArea, QVBoxLayout, QWidget,
 )
 
 from core.command_history import Command
 from core.expression_engine import ExpressionError, Interpreter, Program, parse_program
 from core.localization import tr
 from core.node_base import NodeBase
+from core.node_preview import VALUE_HEIGHT, paint_value
 from core.types import PinDescriptor, PinDirection, PinType
+from ui.script_highlighter import PythonHighlighter
 
 
 class _SourceEditCmd(Command):
@@ -50,6 +53,7 @@ class _SourceEditCmd(Command):
 
 class _SourceNode(NodeBase):
     MIN_WIDTH = 280.0
+    CONTEXT_ONLY_FIELDS = True
     SOURCE_FIELD = ""
     IS_FORMULA = False
 
@@ -59,6 +63,9 @@ class _SourceNode(NodeBase):
         self._program: Program | None = None
         self._inputs: tuple[str, ...] = ()
         self._outputs: tuple[str, ...] = ()
+        self._event_inputs: tuple[str, ...] = ()
+        self._event_outputs: tuple[str, ...] = ()
+        self._script_globals: dict[str, Any] = {}
         self._error = ""
         self._faulted = False
         self._source_revision = 0
@@ -80,6 +87,14 @@ class _SourceNode(NodeBase):
     def _output_pin(name: str) -> str:
         return f"output:{name}"
 
+    @staticmethod
+    def _event_input_pin(name: str) -> str:
+        return f"event_in:{name}"
+
+    @staticmethod
+    def _event_output_pin(name: str) -> str:
+        return f"event_out:{name}"
+
     def _set_error(self, message: str) -> None:
         if message != self._error:
             self._error = message
@@ -92,6 +107,7 @@ class _SourceNode(NodeBase):
         self._program = None
         self._faulted = False
         self._source_revision += 1
+        self._script_globals = {}
         try:
             program = parse_program(str(self.get_field(self.SOURCE_FIELD)), formula=self.IS_FORMULA)
         except Exception as exc:
@@ -101,15 +117,22 @@ class _SourceNode(NodeBase):
                     return tuple(dict.fromkeys(str(name) for name in fallback.get(key, [])
                                                if isinstance(name, str) and name.strip() and len(name) <= 80))[:2000]
                 self._inputs, self._outputs = names("inputs"), names("outputs")
+                self._event_inputs, self._event_outputs = names("event_inputs"), names("event_outputs")
         else:
             self._program = program
             self._inputs, self._outputs = program.inputs, program.outputs
+            self._event_inputs, self._event_outputs = program.event_inputs, program.event_outputs
             self._set_error("")
 
         pins = [] if self.IS_FORMULA else [
             PinDescriptor("exec_in", PinDirection.INPUT, PinType.TICK),
             PinDescriptor("exec_out", PinDirection.OUTPUT, PinType.TICK),
         ]
+        if not self.IS_FORMULA:
+            pins += [PinDescriptor(self._event_input_pin(name), PinDirection.INPUT, PinType.TICK,
+                                   label=name) for name in self._event_inputs]
+            pins += [PinDescriptor(self._event_output_pin(name), PinDirection.OUTPUT, PinType.TICK,
+                                   label=name) for name in self._event_outputs]
         pins += [PinDescriptor(self._input_pin(name), PinDirection.INPUT,
                                PinType.FLOAT if self.IS_FORMULA else PinType.ANY,
                                default=0.0 if self.IS_FORMULA else None, label=name)
@@ -145,7 +168,10 @@ class _SourceNode(NodeBase):
     def get_state(self) -> dict[str, Any]:
         with self._source_lock:
             state = super().get_state()
-            state["__source_ports__"] = {"inputs": list(self._inputs), "outputs": list(self._outputs)}
+            state["__source_ports__"] = {
+                "inputs": list(self._inputs), "outputs": list(self._outputs),
+                "event_inputs": list(self._event_inputs), "event_outputs": list(self._event_outputs),
+            }
             return state
 
     def set_state(self, state: dict[str, Any]) -> None:
@@ -172,7 +198,7 @@ class _SourceNode(NodeBase):
     def edit_source(self, canvas) -> None:
         dialog = QDialog(canvas)
         dialog.setWindowTitle(tr(f"node.{self.SOURCE_FIELD}.edit"))
-        dialog.resize(700, 480 if not self.IS_FORMULA else 300)
+        dialog.resize(700, 520 if not self.IS_FORMULA else 460)
         layout = QVBoxLayout(dialog)
         hint = QLabel(tr(f"node.{self.SOURCE_FIELD}.help"), dialog)
         hint.setWordWrap(True)
@@ -180,13 +206,47 @@ class _SourceNode(NodeBase):
         layout.addWidget(hint)
         editor = QPlainTextEdit(dialog)
         editor.setFont(QFont("Courier New", 10))
+        editor.setStyleSheet("QPlainTextEdit { background: #0d1117; color: #d6deeb; selection-background-color: #334b70; }")
         editor.setPlainText(str(self.get_field(self.SOURCE_FIELD)))
         editor.setTabStopDistance(editor.fontMetrics().horizontalAdvance(" ") * 4)
+        if not self.IS_FORMULA:
+            editor.highlighter = PythonHighlighter(editor.document())
         layout.addWidget(editor)
         preview = QLabel(dialog)
         preview.setWordWrap(True)
         preview.setTextFormat(Qt.TextFormat.PlainText)
         layout.addWidget(preview)
+        constant_editors: dict[str, QLineEdit] = {}
+        constant_text: dict[str, str] = {
+            name: str(self._var_inputs.get(self._input_pin(name), 0.0)) for name in self._inputs
+        }
+        constant_names: tuple[str, ...] | None = None
+        if self.IS_FORMULA:
+            constants_hint = QLabel(tr("node.formula.constants_help"), dialog)
+            constants_hint.setWordWrap(True)
+            layout.addWidget(constants_hint)
+            constants_area = QScrollArea(dialog)
+            constants_area.setWidgetResizable(True)
+            constants_area.setMinimumHeight(100)
+            layout.addWidget(constants_area)
+
+        def sync_constants(names: tuple[str, ...]) -> None:
+            nonlocal constant_names
+            if not self.IS_FORMULA or names == constant_names:
+                return
+            constant_text.update({name: field.text() for name, field in constant_editors.items()})
+            constant_editors.clear()
+            old = constants_area.takeWidget()
+            if old is not None:
+                old.deleteLater()
+            body = QWidget(constants_area)
+            form = QFormLayout(body)
+            for name in names:
+                field = QLineEdit(constant_text.get(name, "0"), body)
+                constant_editors[name] = field
+                form.addRow(QLabel(name, body), field)
+            constants_area.setWidget(body)
+            constant_names = names
 
         def validate():
             try:
@@ -194,6 +254,11 @@ class _SourceNode(NodeBase):
                 outputs = ("result",) if self.IS_FORMULA else program.outputs
                 preview.setText(tr("node.source.ports").format(
                     inputs=", ".join(program.inputs) or "—", outputs=", ".join(outputs) or "—"))
+                if not self.IS_FORMULA:
+                    preview.setText(preview.text() + "\n" + tr("node.source.events").format(
+                        inputs=", ".join(program.event_inputs) or "—",
+                        outputs=", ".join(program.event_outputs) or "—"))
+                sync_constants(program.inputs)
                 preview.setStyleSheet("color: #66bb6a")
             except Exception as exc:
                 preview.setText(str(exc))
@@ -201,15 +266,47 @@ class _SourceNode(NodeBase):
 
         editor.textChanged.connect(validate)
         validate()
+        if self.IS_FORMULA and constant_names is None:
+            sync_constants(self._inputs)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, dialog)
-        buttons.accepted.connect(dialog.accept)
+        constants: dict[str, float] = {}
+
+        def accept() -> None:
+            constants.clear()
+            for name, field in constant_editors.items():
+                try:
+                    value = float(field.text())
+                    if not math.isfinite(value):
+                        raise ValueError()
+                except ValueError:
+                    preview.setText(tr("node.formula.invalid_constant").format(name=name))
+                    preview.setStyleSheet("color: #ef5350")
+                    field.setFocus()
+                    field.selectAll()
+                    return
+                constants[name] = value
+            dialog.accept()
+
+        buttons.accepted.connect(accept)
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             source = editor.toPlainText()
-            if source != self.get_field(self.SOURCE_FIELD):
+            source_changed = source != self.get_field(self.SOURCE_FIELD)
+            constants_changed = any(value != self._var_inputs.get(self._input_pin(name), 0.0)
+                                    for name, value in constants.items())
+            if source_changed or constants_changed:
                 before = self._snapshot()
-                self.set_field(self.SOURCE_FIELD, source)
+                with self._source_lock:
+                    if source_changed:
+                        self._fields[self.SOURCE_FIELD] = source
+                        self._rebuild()
+                    for name, value in constants.items():
+                        pin = self._input_pin(name)
+                        if pin in self.VARIABLE_INPUTS:
+                            self._var_inputs[pin] = value
+                if self.IS_FORMULA:
+                    self._compute()
                 def changed():
                     canvas.configuration_changed.emit()
                     canvas.update()
@@ -253,12 +350,12 @@ class _SourceNode(NodeBase):
 
 
 class ScriptNode(_SourceNode):
-    """Run bounded Python scripts on TICK; infer ports from literal read/write calls."""
+    """Run bounded Python scripts and named handlers through inferred data/event ports."""
     NODE_NAME = "Script Node"
     NODE_GROUP = "Utility"
     SOURCE_FIELD = "script"
     EDITABLE_FIELDS = {"script": (str, 'value = read("value")\nwrite("result", value)')}
-    NODE_TOOLTIP = 'Python script: read("name") and write("name", value). Right-click to edit or inspect errors.'
+    NODE_TOOLTIP = "Python script: read/write data and emit/on_name events. Right-click to edit or inspect errors."
 
     def on_start(self) -> None:
         with self._source_lock:
@@ -276,17 +373,23 @@ class ScriptNode(_SourceNode):
                 return
             self._evaluating = True
             revision = self._source_revision
-            interpreter = Interpreter({}, lambda name: self.get_input(self._input_pin(name)))
+            event = trigger_pin.removeprefix("event_in:") if trigger_pin.startswith("event_in:") else None
+            variables = dict(self._script_globals) if event is not None else {}
+            interpreter = Interpreter(variables, lambda name: self.get_input(self._input_pin(name)))
             try:
-                outputs = interpreter.run(self._program)
+                outputs = interpreter.run(self._program, event=event)
             except Exception as exc:
                 self._faulted = True
                 self._set_error(str(exc))
                 self._evaluating = False
                 return
             self._set_error("")
+            if event is None:
+                self._script_globals = dict(interpreter.variables)
             # No output or success TICK is published until the whole script succeeds.
-            staged = {self._output_pin(name): outputs.get(name) for name in self._outputs}
+            staged = ({self._output_pin(name): outputs.get(name) for name in self._outputs} if event is None else
+                      {self._output_pin(name): value for name, value in outputs.items()})
+            events = tuple(interpreter.events)
             self._data.update(staged)
         # Never hold a node lock while invoking another node through a wire.
         try:
@@ -294,6 +397,10 @@ class ScriptNode(_SourceNode):
                 if revision != self._source_revision:
                     return
                 self.set_output(name, value)
+            for name in events:
+                if revision != self._source_revision:
+                    return
+                self.fire_tick(self._event_output_pin(name))
             if revision == self._source_revision:
                 self.fire_tick("exec_out")
         finally:
@@ -309,6 +416,24 @@ class FormulaNode(_SourceNode):
     IS_FORMULA = True
     EDITABLE_FIELDS = {"formula": (str, "a * x + b")}
     NODE_TOOLTIP = "Math formula with automatic parameter inputs and one result output. Right-click to edit."
+    MIN_HEIGHT = 60.0 + VALUE_HEIGHT + 28.0
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._compute()
+
+    def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QColor("#aeb9cc"))
+        painter.setFont(QFont("Courier New", 9))
+        formula = " ".join(str(self.get_field(self.SOURCE_FIELD)).split())
+        formula = painter.fontMetrics().elidedText(formula, Qt.TextElideMode.ElideRight,
+                                                   max(1, int(rect.width() - 12)))
+        painter.drawText(QRectF(rect.x() + 6, rect.y(), rect.width() - 12, 22),
+                         Qt.AlignmentFlag.AlignCenter, formula)
+        result = self._data.get("result")
+        paint_value(painter, QRectF(rect.x(), rect.y() + 24, rect.width(), VALUE_HEIGHT),
+                    "—" if result is None else f"{result:.8g}",
+                    "#ef5350" if self._error else "#4fc3f7")
 
     def on_start(self) -> None:
         self._compute()

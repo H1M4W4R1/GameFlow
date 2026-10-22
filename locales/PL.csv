@@ -327,11 +327,14 @@ node.field.script,Skrypt
 node.field.formula,Formuła
 node.script.edit,Edytuj skrypt…
 node.formula.edit,Edytuj formułę…
-node.script.help,"Składnia Pythona: read(""nazwa"") tworzy wejście; write(""nazwa"", wartość) tworzy wyjście. Uruchamiany przez exec_in; exec_out wysyła impuls po sukcesie. Obsługuje przypisania, if/else, for/while, listy, słowniki i funkcje matematyczne. Bez importów i dowolnego dostępu do obiektów. Limit: 20 000 kroków / 50 ms."
+node.script.help,"Python: read(""nazwa"") tworzy wejście danych; write(""nazwa"", wartość) tworzy wyjście danych. emit(""nazwa"") tworzy wyjście zdarzenia; def on_nazwa(): tworzy wejście zdarzenia. Połącz zdarzenia przewodami TICK. exec_in uruchamia kod główny; zdarzenie uruchamia swoją funkcję. Dane i zdarzenia są wysyłane po sukcesie; następnie wysyłany jest exec_out. Bez importów. Limit: 20 000 kroków / 50 ms."
 node.formula.help,"Wpisz wyrażenie liczbowe, np. a * sin(x) + b lub sqrt(x^2 + y^2). Parametry stają się wejściami z edytowalnymi stałymi. Obsługuje + - * / // % ** ^, funkcje matematyczne, pi, e i tau."
 node.source.ports,Wejścia: {inputs} | Wyjścia: {outputs}
 node.source.error_title,Szczegóły błędu węzła
 node.source.view_error,Pokaż błąd…
 node.script.retry,Zresetuj błąd (ponów przy następnym TICK)
-node.script.tooltip,"Skrypt Pythona: read(""nazwa"") i write(""nazwa"", wartość). Kliknij prawym przyciskiem, aby edytować lub sprawdzić błędy."
+node.script.tooltip,"Skrypt Pythona: dane read/write i zdarzenia emit/on_nazwa. Kliknij prawym przyciskiem, aby edytować lub sprawdzić błędy."
 node.formula.tooltip,Formuła matematyczna z automatycznymi wejściami parametrów i jednym wyjściem wyniku. Kliknij prawym przyciskiem aby edytować.
+node.source.events,Wejścia zdarzeń: {inputs} | Wyjścia zdarzeń: {outputs}
+node.formula.constants_help,Stałe są używane gdy parametr nie ma przewodu. Podłączone wejścia używają wartości z przewodów.
+node.formula.invalid_constant,Wpisz skończoną liczbę dla parametru {name}.
