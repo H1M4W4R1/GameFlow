@@ -103,9 +103,8 @@ class NodeBase(QObject):
     MIN_WIDTH:  float = 180.0
     MIN_HEIGHT: float = 60.0
 
-    # Optional hover tooltip shown when the user hovers over the node title bar.
-    # Leave empty ("") to show nothing (tooltip not yet implemented in canvas,
-    # placeholder for future use).
+    # Optional description appended below the original node type on hover.
+    # Leave empty ("") to show only the node type.
     NODE_TOOLTIP: str = ""
 
     # Custom title-bar gradient colour.  Leave empty to use the default palette.

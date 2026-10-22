@@ -24,6 +24,7 @@ ui.dialog.save_graph.title,Save Graph
 ui.dialog.save_graph.filter,GameFlow Graph (*.sfgraph);;JSON (*.json)
 ui.dialog.load_graph.title,Load Graph
 ui.untitled,Untitled
+ui.canvas.tooltip.node_type,Node type: {name}
 node.float.name,Float
 node.integer.name,Integer
 node.string.name,String

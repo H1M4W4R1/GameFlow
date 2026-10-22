@@ -536,9 +536,7 @@ class NodeEditorCanvas(QWidget):
     def _on_visibility_changed(self) -> None:
         self._close_editor()
         self._wire_src = None
-        self._hovered_pin = None
-        self._tooltip_timer.stop()
-        QToolTip.hideText()
+        self._clear_hover_tooltip()
         self.visibility_changed.emit()
         self.update()
 
@@ -1388,6 +1386,7 @@ class NodeEditorCanvas(QWidget):
     # ── Mouse ─────────────────────────────────────────────────────────────────
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
+        self._clear_hover_tooltip()
         scene = self._v2s(event.position())
 
         if event.button() == Qt.MouseButton.MiddleButton:
@@ -1545,7 +1544,8 @@ class NodeEditorCanvas(QWidget):
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self._last_mouse_view = event.position()
         # Update hover state for tooltips
-        if not self._panning and not self._dragging_node and not self._wire_src:
+        if (event.buttons() == Qt.MouseButton.NoButton
+                and not self._panning and not self._dragging_node and not self._wire_src):
             scene = self._v2s(event.position())
             hp = self._hit_pin(scene)
             hs = self._hit_title_status(scene)
@@ -1801,6 +1801,7 @@ class NodeEditorCanvas(QWidget):
         event.acceptProposedAction()
 
     def wheelEvent(self, event: QWheelEvent) -> None:
+        self._clear_hover_tooltip()
         factor    = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
         old_scene = self._v2s(event.position())
         self._zoom = max(0.2, min(4.0, self._zoom * factor))
@@ -1810,6 +1811,17 @@ class NodeEditorCanvas(QWidget):
         self.update()
 
     # ── Tooltip ───────────────────────────────────────────────────────────────
+
+    def _clear_hover_tooltip(self) -> None:
+        self._tooltip_timer.stop()
+        self._hovered_pin = None
+        self._hovered_node = None
+        self._hovered_title_status = None
+        QToolTip.hideText()
+
+    def leaveEvent(self, event: QEvent) -> None:
+        self._clear_hover_tooltip()
+        super().leaveEvent(event)
 
     def _show_hover_tooltip(self) -> None:
         """Called by _tooltip_timer — shows QToolTip for pin or node."""
@@ -1848,11 +1860,16 @@ class NodeEditorCanvas(QWidget):
                 QToolTip.showText(global_pos, tooltip, self)
             return
 
-        # Node tooltip — only when NODE_TOOLTIP is set
+        # Always identify the node type, even when its title has been renamed.
         if self._hovered_node:
             node = self._runtime.get_node(self._hovered_node)
-            if node and node.NODE_TOOLTIP:
-                QToolTip.showText(global_pos, node.NODE_TOOLTIP, self)
+            if node:
+                text = tr("ui.canvas.tooltip.node_type", default="Node type: {name}").format(
+                    name=_node_display_name(node)
+                )
+                if node.NODE_TOOLTIP:
+                    text += f"\n\n{node.NODE_TOOLTIP}"
+                QToolTip.showText(global_pos, text, self)
             return
 
         QToolTip.hideText()

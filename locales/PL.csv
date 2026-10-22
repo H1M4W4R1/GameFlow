@@ -24,6 +24,7 @@ ui.dialog.save_graph.title,Zapisz Flow
 ui.dialog.save_graph.filter,GameFlow Graph (*.sfgraph);;JSON (*.json)
 ui.dialog.load_graph.title,Wczytaj Flow
 ui.untitled,Bez tytułu
+ui.canvas.tooltip.node_type,Typ węzła: {name}
 node.float.name,Float
 node.integer.name,Integer
 node.string.name,String
