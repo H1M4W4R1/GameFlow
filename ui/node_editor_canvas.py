@@ -22,6 +22,7 @@ Controls:
   Scroll wheel         — zoom
   LMB drag output pin  — start wire; release on input pin to connect
   RMB on canvas        — add node context menu (cascading by group)
+  Click choice field   — dropdown (selection commits, Escape cancels)
   Double-click field   — inline editor (Enter commits, Escape cancels)
   Delete               — delete selected node
   Tab                  — cycle to next node
@@ -46,7 +47,7 @@ from PyQt6.QtGui import (
     QRadialGradient, QWheelEvent,
 )
 from PyQt6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMenu, QSizePolicy, QVBoxLayout, QWidget, QToolTip, QColorDialog,
 )
 
@@ -165,6 +166,14 @@ class RenderedField:
     is_var:     bool = False   # True → call set_var_input; False → set_field
     is_dynamic: bool = False
     dynamic_index: int = -1
+
+
+class _ChoiceEditor(QComboBox):
+    popup_closed = pyqtSignal()
+
+    def hidePopup(self) -> None:
+        super().hidePopup()
+        self.popup_closed.emit()
 
 
 # ── Group ─────────────────────────────────────────────────────────────────────
@@ -437,7 +446,7 @@ class NodeEditorCanvas(QWidget):
         self._routing_timer.setInterval(16)
         self._routing_timer.timeout.connect(self.update)
         self._selected_wire   : Optional[str]       = None
-        self._active_editor   : Optional[QLineEdit] = None
+        self._active_editor   : Optional[QWidget] = None
         self._clipboard       : Optional[dict] = None   # {"nodes": [...], "wires": [...]}
 
         self._tab_index = 0
@@ -879,7 +888,7 @@ class NodeEditorCanvas(QWidget):
 
         # Label
         label = (row.var_pin.label if row.var_pin and row.var_pin.label
-                 else row.var_name.replace("_", " "))
+                 else node.get_field_label(row.var_name))
         p.setPen(QColor("#606875" if connected else "#8b949e"))
         p.setFont(QFont("Segoe UI", 7))
         p.drawText(
@@ -890,17 +899,23 @@ class NodeEditorCanvas(QWidget):
 
         # Value
         display, val_color = _format_value(val, row.var_type, dim=connected)
+        choices = node.get_field_choices(row.var_name, is_var=True) if not connected else []
+        if choices:
+            display = next((label for value, label in choices if value == val), display)
         if connected:
             display += " 🔒"
         p.setPen(val_color)
         p.setFont(QFont("Courier New", 8 if connected else 9,
                         QFont.Weight.Normal if connected else QFont.Weight.Bold))
+        value_rect = QRectF(pill_rect.x() + LABEL_W + 2, row.y,
+                            pill_w - LABEL_W - 6 - (14 if choices else 0), row.h)
         p.drawText(
-            QRectF(pill_rect.x() + LABEL_W + 2, row.y,
-                   pill_w - LABEL_W - 6, row.h),
+            value_rect,
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
-            display,
+            p.fontMetrics().elidedText(display, Qt.TextElideMode.ElideRight, int(value_rect.width())),
         )
+        if choices:
+            self._draw_choice_arrow(p, pill_rect)
 
         if not connected:
             self._rendered_fields.append(
@@ -921,7 +936,7 @@ class NodeEditorCanvas(QWidget):
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(pill_rect, 4, 4)
 
-        label = tr(f"node.field.{row.field_name}", default=row.field_name.replace("_", " "))
+        label = node.get_field_label(row.field_name)
         p.setPen(QColor("#7d8590"))
         p.setFont(QFont("Segoe UI", 7))
         p.drawText(
@@ -931,18 +946,30 @@ class NodeEditorCanvas(QWidget):
         )
 
         display, val_color = _format_value(val, row.field_type, dim=False)
+        choices = node.get_field_choices(row.field_name)
+        if choices:
+            display = next((label for value, label in choices if value == val), display)
         p.setPen(val_color)
         p.setFont(QFont("Courier New", 9, QFont.Weight.Bold))
+        value_rect = QRectF(pill_rect.x() + LABEL_W + 2, row.y,
+                            pill_rect.width() - LABEL_W - 6 - (14 if choices else 0), row.h)
         p.drawText(
-            QRectF(pill_rect.x() + LABEL_W + 2, row.y,
-                   pill_rect.width() - LABEL_W - 6, row.h),
+            value_rect,
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
-            display,
+            p.fontMetrics().elidedText(display, Qt.TextElideMode.ElideRight, int(value_rect.width())),
         )
+        if choices:
+            self._draw_choice_arrow(p, pill_rect)
 
         self._rendered_fields.append(
             RenderedField(node.node_id, row.field_name, row.field_type, pill_rect, is_var=False)
         )
+
+    def _draw_choice_arrow(self, painter: QPainter, rect: QRectF) -> None:
+        painter.setPen(QPen(QColor("#a78bfa"), 1.5))
+        center = QPointF(rect.right() - 8, rect.center().y())
+        painter.drawLine(center + QPointF(-3, -2), center + QPointF(0, 1))
+        painter.drawLine(center + QPointF(0, 1), center + QPointF(3, -2))
 
     def _draw_dynamic_field_row(self, p: QPainter, node: NodeBase, row: _Row, width: float) -> None:
         """Node-owned dynamic text field with one optional output pin on the right."""
@@ -1475,6 +1502,13 @@ class NodeEditorCanvas(QWidget):
                 self.update()
                 return
 
+            rf = self._hit_field(scene)
+            if rf and not rf.is_dynamic and not self._wire_src:
+                field_node = self._runtime.get_node(rf.node_id)
+                if field_node and field_node.get_field_choices(rf.field_name, is_var=rf.is_var):
+                    self._open_editor(rf, event.position())
+                    return
+
             nid = self._hit_node(scene)
             if nid:
                 shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
@@ -1937,13 +1971,19 @@ class NodeEditorCanvas(QWidget):
         tl = self._s2v(rf.scene_rect.topLeft())
         br = self._s2v(rf.scene_rect.bottomRight())
 
-        editor = QLineEdit(self)
+        choices = [] if rf.is_dynamic else node.get_field_choices(rf.field_name, is_var=rf.is_var)
+        editor = _ChoiceEditor(self) if choices else QLineEdit(self)
         editor.setObjectName("FieldEditor")
         editor.setStyleSheet("""
-            QLineEdit#FieldEditor {
+            QLineEdit#FieldEditor, QComboBox#FieldEditor {
                 background: #0d1117; color: #f4f0ff;
                 border: 1px solid #a78bfa; border-radius: 4px;
                 padding: 0 4px; font-family: 'Courier New'; font-size: 9pt;
+            }
+            QComboBox QAbstractItemView {
+                background: #161b22; color: #f4f0ff;
+                selection-background-color: #6d4ba0;
+                border: 1px solid #a78bfa;
             }
         """)
         if rf.is_dynamic and hasattr(node, "get_dynamic_field_value"):
@@ -1951,20 +1991,27 @@ class NodeEditorCanvas(QWidget):
         else:
             old_val = (node.get_var_input(rf.field_name) if rf.is_var
                        else node.get_field(rf.field_name))
-        editor.setText(str(old_val) if old_val is not None else "")
-        editor.selectAll()
+        if choices:
+            for value, label in choices:
+                editor.addItem(label, value)
+            editor.setCurrentIndex(next((i for i, (value, _) in enumerate(choices)
+                                         if value == old_val), -1))
+            editor.setPlaceholderText(str(old_val) if old_val is not None else "")
+            editor.setMaxVisibleItems(16)
+            editor.view().setMinimumWidth(max(int(br.x() - tl.x()),
+                max(editor.fontMetrics().horizontalAdvance(label) for _, label in choices) + 40))
+        else:
+            editor.setText(str(old_val) if old_val is not None else "")
+            editor.selectAll()
         editor.setGeometry(int(tl.x()), int(tl.y()),
                            int(br.x() - tl.x()), int(br.y() - tl.y()))
-        editor.show()
-        editor.setFocus()
-
         _field_committed = [False]
 
         def _commit() -> None:
             if _field_committed[0]:
                 return
             _field_committed[0] = True
-            raw = editor.text()
+            raw = editor.currentData() if choices else editor.text()
             if rf.is_dynamic and hasattr(node, "set_dynamic_field_value"):
                 old_pins = self._dynamic_pin_names(node)
                 node.set_dynamic_field_value(rf.dynamic_index, raw)
@@ -1986,16 +2033,33 @@ class NodeEditorCanvas(QWidget):
             self._close_editor()
             self.update()
 
-        editor.returnPressed.connect(_commit)
-        editor.editingFinished.connect(_commit)
-        editor._cancel = self._close_editor  # type: ignore[attr-defined]
+        def _cancel() -> None:
+            if self._active_editor is editor:
+                _field_committed[0] = True
+                self._close_editor()
+
+        if choices:
+            editor.activated.connect(_commit)
+            # Qt hides the popup before emitting activated; defer cancellation
+            # so a selected value can commit first. Escape/outside click cancels.
+            editor.popup_closed.connect(lambda: QTimer.singleShot(0, _cancel))
+        else:
+            editor.returnPressed.connect(_commit)
+            editor.editingFinished.connect(_commit)
+        editor._cancel = _cancel  # type: ignore[attr-defined]
         editor.installEventFilter(self)
         self._active_editor = editor
+        editor.show()
+        editor.setFocus()
+        if choices:
+            editor.showPopup()
 
     def _close_editor(self) -> None:
         if self._active_editor:
             ed = self._active_editor
             self._active_editor = None   # clear first to block re-entrant calls
+            if isinstance(ed, QComboBox):
+                ed.hidePopup()
             ed.hide()
             ed.deleteLater()
 

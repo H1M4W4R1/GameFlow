@@ -326,6 +326,8 @@ class SampleAndHoldNode(NodeBase):
     VARIABLE_INPUTS = {
         "max_samples": (int, 100),
     }
+    EDITABLE_FIELDS = {"sample_mode": (str, "last")}
+    FIELD_CHOICES = {"sample_mode": tuple(_MODES)}
     MIN_WIDTH  = 210.0
     MIN_HEIGHT = 140.0
 
@@ -359,10 +361,15 @@ class SampleAndHoldNode(NodeBase):
     def get_sample_mode(self) -> str:
         return self._sample_mode
 
+    def on_field_changed(self, name: str, value: Any) -> None:
+        if name == "sample_mode":
+            self.set_sample_mode(value)
+
     def set_sample_mode(self, mode: str) -> None:
         if mode not in self._MODES:
             return
         self._sample_mode = mode
+        self._fields["sample_mode"] = mode
         self._publish()
         self.node_changed.emit()
 
@@ -380,7 +387,15 @@ class SampleAndHoldNode(NodeBase):
         menu.addMenu(mode_menu)
 
     def _set_sample_mode(self, canvas: Any, mode: str) -> None:
-        self.set_sample_mode(mode)
+        from core.command_history import FieldEditCmd
+
+        old_mode = self.get_field("sample_mode")
+        self.set_field("sample_mode", mode)
+        if old_mode != mode:
+            canvas._history.push(FieldEditCmd(
+                canvas._runtime, self.node_id, "sample_mode", False, old_mode, mode
+            ))
+            canvas.configuration_changed.emit()
         canvas.update()
 
     def _reset(self) -> None:
@@ -448,9 +463,11 @@ class SampleAndHoldNode(NodeBase):
         return state
 
     def set_state(self, state: dict[str, Any]) -> None:
-        mode = state.pop("_sample_mode", "last")
+        mode = state.pop("_sample_mode", None)
         super().set_state(state)
+        mode = self.get_field("sample_mode") if mode is None else mode
         self._sample_mode = mode if mode in self._MODES else "last"
+        self._fields["sample_mode"] = self._sample_mode
 
     def paint_custom(self, painter: QPainter, rect: QRectF) -> None:
         painter.setPen(QColor("#80cbc4"))

@@ -95,6 +95,45 @@ class NodeBase(QObject):
     # Use get_var_input(pin_name) to read the effective value.
     VARIABLE_INPUTS: dict[str, tuple[type, Any]] = {}
 
+    # Finite inline choices, stored as their original typed values. Boolean
+    # fields get False/True choices automatically. Labels are localized lazily.
+    FIELD_CHOICES: dict[str, tuple[Any, ...]] = {}
+    VARIABLE_INPUT_CHOICES: dict[str, tuple[Any, ...]] = {}
+    CHOICE_LABEL_PREFIXES: dict[str, str] = {}
+    FIELD_LABEL_KEYS: dict[str, str] = {}
+
+    def get_field_label(self, name: str) -> str:
+        from core.localization import tr
+
+        return tr(self.FIELD_LABEL_KEYS.get(name, f"node.field.{name}"),
+                  default=name.replace("_", " "))
+
+    def get_field_choices(self, name: str, *, is_var: bool = False) -> list[tuple[Any, str]]:
+        """Return (stored value, localized label) pairs, or [] for free text."""
+        from core.localization import tr
+
+        fields = self.VARIABLE_INPUTS if is_var else self.EDITABLE_FIELDS
+        if name not in fields:
+            return []
+        typ, default = fields[name]
+        values = (self.VARIABLE_INPUT_CHOICES if is_var else self.FIELD_CHOICES).get(name)
+        if values is None:
+            if typ is not bool:
+                return []
+            values = (None, False, True) if default is None else (False, True)
+        key = getattr(self, "_TR_KEY", None) or _node_name_to_tr_key(self.NODE_NAME)
+        prefix = self.CHOICE_LABEL_PREFIXES.get(name, f"node.{key}.choice.{name}")
+        choices = []
+        for value in values:
+            if value is None:
+                label = tr("node.choice.unset", default="Unset")
+            elif isinstance(value, bool):
+                label = tr(f"node.choice.{str(value).lower()}", default=str(value))
+            else:
+                label = tr(f"{prefix}.{value}", default=str(value).replace("_", " "))
+            choices.append((value, label))
+        return choices
+
     # For device-linked nodes
     DEVICE_TYPE_KEY: Optional[str] = None   # matches DeviceBase subclass name
     ICON_PATH:       Optional[str] = None
@@ -194,19 +233,21 @@ class NodeBase(QObject):
             return self.EDITABLE_FIELDS[name][1]
         return None
 
-    def set_field(self, name: str, raw_value: str) -> None:
+    def set_field(self, name: str, raw_value: Any) -> None:
         """
-        Set a field from a raw string (as typed by the user in the inline editor).
+        Set a field from text or a typed combobox/history value.
         Automatically coerces to the declared type.
         Emits node_changed to trigger a repaint.
         """
         if name not in self.EDITABLE_FIELDS:
             return
-        typ, _ = self.EDITABLE_FIELDS[name]
+        typ, default = self.EDITABLE_FIELDS[name]
         try:
-            if typ is bool:
+            if raw_value is None and default is None:
+                coerced: Any = None
+            elif typ is bool:
                 if isinstance(raw_value, bool): # Prevents fuck-up with history
-                    coerced: Any = raw_value
+                    coerced = raw_value
                 else:
                     coerced = str(raw_value).strip().lower() in ("1", "true", "yes", "on")
             else:
@@ -233,17 +274,20 @@ class NodeBase(QObject):
         return self._var_inputs.get(pin_name,
                self.VARIABLE_INPUTS.get(pin_name, (None, None))[1])
 
-    def set_var_input(self, pin_name: str, raw_value: str) -> None:
+    def set_var_input(self, pin_name: str, raw_value: Any) -> None:
         """
         Set the local default for a variable input (called by the inline editor
         in the canvas when the pin has no wire).  Coerces to declared type.
         """
         if pin_name not in self.VARIABLE_INPUTS:
             return
-        typ, _ = self.VARIABLE_INPUTS[pin_name]
+        typ, default = self.VARIABLE_INPUTS[pin_name]
         try:
-            if typ is bool:
-                coerced: Any = raw_value.strip().lower() in ("1", "true", "yes", "on")
+            if raw_value is None and default is None:
+                coerced: Any = None
+            elif typ is bool:
+                coerced = (raw_value if isinstance(raw_value, bool) else
+                           str(raw_value).strip().lower() in ("1", "true", "yes", "on"))
             else:
                 coerced = typ(raw_value)
         except (ValueError, TypeError):

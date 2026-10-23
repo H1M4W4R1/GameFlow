@@ -180,17 +180,24 @@ class MultiplyNode(NodeBase):
 
 ### Variable input pins
 
-Set `VARIABLE_INPUTS = True` to allow the user to add extra input pins at runtime (e.g. for AND/OR gates with N inputs).
+Declare `VARIABLE_INPUTS = {"speed": (float, 0.5)}` alongside an INPUT pin named `speed`. The inline default is editable while the pin has no wire; connected pins display their live value. Read it with `get_var_input("speed")`.
 
 ### Editable fields
 
-Use `EDITABLE_FIELDS` to expose settings the user can change in the node's property panel:
+Use `EDITABLE_FIELDS` for node-local configuration rendered in the node body:
 
 ```python
-EDITABLE_FIELDS = [
-    {"key": "step", "label": "Step", "type": "float", "default": 1.0},
-]
+EDITABLE_FIELDS = {"mode": (str, "manual")}
+FIELD_CHOICES = {"mode": ("manual", "automatic")}
+CHOICE_LABEL_PREFIXES = {"mode": "node.my_node.mode"}
+FIELD_LABEL_KEYS = {"mode": "node.my_node.field.mode"}
 ```
+
+`FIELD_CHOICES` replaces free text with a non-editable combobox. Use `VARIABLE_INPUT_CHOICES` for connectable inputs. Stored values keep their declared types; labels are translated when displayed. With the example above, add `node.my_node.mode.manual`, `node.my_node.mode.automatic`, and `node.my_node.field.mode` to the plugin's locale CSV files. Without a custom prefix, choice keys use `node.<node_translation_key>.choice.<field>.<value>`.
+
+Boolean fields and variable inputs automatically offer False/True; a boolean whose default is `None` also offers Unset. For changing choices, override `get_field_choices(name, *, is_var=False)` and return `(value, label)` pairs, delegating other fields to `super()`.
+
+Click a choice field to open its dropdown. Selection uses the existing field setters and undo history; Escape or clicking outside cancels. Comboboxes follow both node and graph Hide input fields settings. Hidden variable editors retain their connectable pins unless Hide unused ports also removes them.
 
 ### Translations
 

@@ -339,3 +339,22 @@ node.formula.tooltip,Formula preview with automatic parameter inputs and one res
 node.source.events,Event inputs: {inputs} | Event outputs: {outputs}
 node.formula.constants_help,Constant values are used when the parameter has no wire. Connected inputs use their wired values.
 node.formula.invalid_constant,Enter a finite number for {name}.
+node.choice.false,False
+node.choice.true,True
+node.choice.unset,Unset
+node.field.scale,Scale
+node.field.release_mode,Release mode
+node.field.sample_mode,Sample mode
+node.field.loop,Loop
+node.field.inverted,Inverted
+node.slider.choice.scale.linear,Linear
+node.slider.choice.scale.exponential,Exponential
+node.slider.choice.scale.logarithmic,Logarithmic
+node.touchpad.choice.release_mode.reset,"Reset to 0,0"
+node.touchpad.choice.release_mode.hold,Keep last value
+node.sample_hold.choice.sample_mode.max,Sample Max
+node.sample_hold.choice.sample_mode.min,Sample Min
+node.sample_hold.choice.sample_mode.avg,Sample Avg
+node.sample_hold.choice.sample_mode.last,Sample Last
+node.sample_hold.choice.sample_mode.median,Sample Median
+node.field.channel,Channel

@@ -73,6 +73,11 @@ class _RoutingNodeBase(NodeBase):
     def get_channel_count(self) -> int:
         return self._channel_count
 
+    def get_field_choices(self, name: str, *, is_var: bool = False) -> list[tuple[Any, str]]:
+        if is_var and name == "channel":
+            return [(index, str(index)) for index in range(self._channel_count)]
+        return super().get_field_choices(name, is_var=is_var)
+
     def set_channel_count(self, n: int) -> None:
         n = max(_MIN_CHANNELS, min(_MAX_CHANNELS, int(n)))
         if n == self._channel_count:

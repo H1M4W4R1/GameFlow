@@ -339,3 +339,22 @@ node.formula.tooltip,Podgląd formuły z automatycznymi wejściami parametrów i
 node.source.events,Wejścia zdarzeń: {inputs} | Wyjścia zdarzeń: {outputs}
 node.formula.constants_help,Stałe są używane gdy parametr nie ma przewodu. Podłączone wejścia używają wartości z przewodów.
 node.formula.invalid_constant,Wpisz skończoną liczbę dla parametru {name}.
+node.choice.false,Fałsz
+node.choice.true,Prawda
+node.choice.unset,Nie ustawiono
+node.field.scale,Skala
+node.field.release_mode,Po zwolnieniu
+node.field.sample_mode,Tryb próbkowania
+node.field.loop,Zapętlenie
+node.field.inverted,Odwrócony
+node.slider.choice.scale.linear,Liniowa
+node.slider.choice.scale.exponential,Wykładnicza
+node.slider.choice.scale.logarithmic,Logarytmiczna
+node.touchpad.choice.release_mode.reset,"Zeruj do 0,0"
+node.touchpad.choice.release_mode.hold,Zachowaj ostatnią wartość
+node.sample_hold.choice.sample_mode.max,Próbka maksymalna
+node.sample_hold.choice.sample_mode.min,Próbka minimalna
+node.sample_hold.choice.sample_mode.avg,Średnia próbek
+node.sample_hold.choice.sample_mode.last,Ostatnia próbka
+node.sample_hold.choice.sample_mode.median,Mediana próbek
+node.field.channel,Kanał

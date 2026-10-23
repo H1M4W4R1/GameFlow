@@ -38,6 +38,12 @@ class SliderNode(NodeBase):
     NODE_NAME        = "Slider"
     NODE_GROUP       = "Controls"
     NODE_TITLE_COLOR = "#1e3a5f"
+    EDITABLE_FIELDS = {"scale": (str, "linear")}
+    FIELD_CHOICES = {"scale": ("linear", "exponential", "logarithmic")}
+
+    def on_field_changed(self, name: str, value: Any) -> None:
+        if name == "scale":
+            self.set_ctrl_scale(value)
 
     PINS = [
         PinDescriptor("value", PinDirection.OUTPUT, PinType.FLOAT),
@@ -92,6 +98,7 @@ class SliderNode(NodeBase):
     def set_ctrl_scale(self, mode: str) -> None:
         if mode in ("linear", "exponential", "logarithmic"):
             self._scale = mode
+            self._fields["scale"] = mode
             self.set_output("value", self._compute_output())
             self.node_changed.emit()
 
@@ -305,7 +312,8 @@ class SliderNode(NodeBase):
         if v is not None:     self._value   = float(v)
         if mn is not None:    self._min_val = float(mn)
         if mx is not None:    self._max_val = float(mx)
-        if scale is not None: self._scale   = str(scale)
+        self._scale = str(scale) if scale is not None else self.get_field("scale")
+        self._fields["scale"] = self._scale
 
     def should_select_on_ctrl_press(self) -> bool:
         """Don't select the node when clicking on the control."""
@@ -754,6 +762,12 @@ class TouchpadNode(NodeBase):
     NODE_NAME        = "Touchpad"
     NODE_GROUP       = "Controls"
     NODE_TITLE_COLOR = "#1a3a5f"
+    EDITABLE_FIELDS = {"release_mode": (str, "reset")}
+    FIELD_CHOICES = {"release_mode": ("reset", "hold")}
+
+    def on_field_changed(self, name: str, value: Any) -> None:
+        if name == "release_mode":
+            self.set_touchpad_mode(value)
 
     PINS = [
         PinDescriptor("x", PinDirection.OUTPUT, PinType.FLOAT),
@@ -794,6 +808,7 @@ class TouchpadNode(NodeBase):
     def set_touchpad_mode(self, mode: str) -> None:
         if mode in ("reset", "hold"):
             self._mode = mode
+            self._fields["release_mode"] = mode
             self.node_changed.emit()
 
     def _get_context_menu(self, canvas: Any, menu: QMenu, field_hit: Any = None) -> None:
@@ -967,4 +982,5 @@ class TouchpadNode(NodeBase):
         super().set_state(state)
         if x is not None:    self._x_value = float(x)
         if y is not None:    self._y_value = float(y)
-        if mode is not None: self._mode    = str(mode)
+        self._mode = str(mode) if mode is not None else self.get_field("release_mode")
+        self._fields["release_mode"] = self._mode
