@@ -60,8 +60,9 @@ GameFlow/
 The canvas supplies the actual painted bounds, so movement, group dragging,
 dynamic resizing, undo/redo, and graph replacement are detected without separate
 event handlers. Routes use horizontal/vertical segments, 18-unit obstacle
-clearance, and corners rounded to at most 8 units. Source and destination port
-leads are the only segments allowed inside their own node's clearance region.
+clearance, and corners rounded to at most 8 units. When the usual clearance
+blocks a route, the router retries with 8 units and then with the painted node
+bounds and sharp corners. Port leads can cross their own node's clearance region.
 
 Unrelated wires reserve parallel tracks with 12-unit spacing, including space
 around end-to-end touches that could otherwise look like junctions. Only wires
@@ -81,8 +82,8 @@ to invalidate only routes near changed obstacles. Straight/dogleg paths and
 shared clear rows/columns are tried before a lazy, weighted A* search. Searches
 share a soft 4 ms budget per paint and resume on subsequent frames; this is not
 a hard limit on total frame time. Search state is capped at 65,536 entries per
-wire. Pending, obstructed, or search-limited connections show safe dashed port
-stubs rather than crossing nodes. Their runtime connections remain unchanged.
+clearance attempt. Pending, obstructed, or search-limited connections show safe
+dashed port stubs rather than crossing nodes. Their runtime connections remain unchanged.
 Move overlapping nodes apart to make room for a complete route.
 
 The canvas caches Qt's rounded drawing paths and stroked hit areas. Pan, zoom, selection,

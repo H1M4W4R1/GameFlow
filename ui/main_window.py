@@ -20,7 +20,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore  import Qt, QPointF, QPoint, QTimer, pyqtSignal
+from PyQt6.QtCore  import Qt, QPointF, QPoint, QSettings, QTimer, pyqtSignal
 from PyQt6.QtGui   import QIcon, QKeySequence, QShortcut, QFont, QColor, QMouseEvent, QPainter, QPen, QBrush
 from PyQt6.QtCore  import QRect, QSize, QPoint, QRectF
 from PyQt6.QtSvg   import QSvgRenderer
@@ -39,6 +39,7 @@ from ui.debug_console     import DebugConsole, LOG_DIR
 from ui.node_editor_canvas import NodeEditorCanvas
 
 log = logging.getLogger(__name__)
+LAST_SAVE_DIRECTORY = "graphs/last_save_directory"
 
 
 class MainWindow(QWidget):
@@ -51,6 +52,7 @@ class MainWindow(QWidget):
         self._registry   = registry
         self._runtime    = runtime
         self._graph_path: Optional[Path] = None
+        self._settings = QSettings("SensoryFlow", "GameFlow")
         self._dirty      = False
         self._loading    = False
         self._debug_console: Optional[DebugConsole] = None
@@ -422,28 +424,37 @@ class MainWindow(QWidget):
     # ── Save / load ───────────────────────────────────────────────────────────
 
     def _on_save(self) -> None:
-        if not self._graph_path:
+        graph_path = self._graph_path
+        if graph_path is None:
+            directory = self._settings.value(LAST_SAVE_DIRECTORY, "", type=str)
+            suggested = Path("untitled.sfgraph")
+            if directory and Path(directory).is_dir():
+                suggested = Path(directory) / suggested
             path, _ = QFileDialog.getSaveFileName(
-                self, tr("ui.dialog.save_graph.title"), "untitled.sfgraph",
+                self, tr("ui.dialog.save_graph.title"), str(suggested),
                 tr("ui.dialog.save_graph.filter")
             )
             if not path:
                 return
-            self._graph_path = Path(path)
+            graph_path = Path(path)
 
-        name  = self._graph_path.stem
-        graph = self._runtime.to_saved_graph(name)
+        graph = self._runtime.to_saved_graph(graph_path.stem)
         graph.groups = self._canvas.get_saved_groups()
         graph.visibility = self._canvas.get_visibility_settings()
         try:
-            self._graph_path.write_text(
+            graph_path.write_text(
                 json.dumps(graph.to_dict(), indent=2), encoding="utf-8"
             )
-            self._mark_clean()
-            self._status_bar.setText(tr("ui.status.graph_saved").format(path=self._graph_path))
         except Exception as exc:
             log.error("Save failed: %s", exc)
             self._status_bar.setText(tr("ui.status.save_failed").format(exc=exc))
+            return
+
+        self._graph_path = graph_path
+        self._settings.setValue(LAST_SAVE_DIRECTORY, str(graph_path.absolute().parent))
+        self._settings.sync()
+        self._mark_clean()
+        self._status_bar.setText(tr("ui.status.graph_saved").format(path=graph_path))
 
     def _on_load(self) -> None:
         if not self._confirm_discard_changes():

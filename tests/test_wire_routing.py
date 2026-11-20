@@ -16,7 +16,7 @@ from core.graph_runtime import GraphRuntime
 from core.node_base import NodeBase
 from core.types import PinDescriptor, PinDirection, PinType, WireDescriptor
 from ui.node_editor_canvas import NodeEditorCanvas
-from ui.orthogonal_router import OrthogonalRouter
+from ui.orthogonal_router import CORNER_RADIUS, OrthogonalRouter
 
 
 def complete(router, start, end, source="s", target="t", wire_id="w", **pins):
@@ -29,7 +29,7 @@ def complete(router, start, end, source="s", target="t", wire_id="w", **pins):
     raise AssertionError("Route did not finish")
 
 
-def assert_clear(test, points, nodes):
+def assert_clear(test, points, nodes, *, corner_radius=CORNER_RADIUS):
     test.assertTrue(points, "Expected a complete route")
     for a, b in zip(points, points[1:]):
         test.assertTrue(a[0] == b[0] or a[1] == b[1])
@@ -40,7 +40,7 @@ def assert_clear(test, points, nodes):
             else:
                 intersects = l < a[0] < r and min(a[1], b[1]) < bottom and max(a[1], b[1]) > t
             test.assertFalse(intersects, (key, a, b))
-    path = NodeEditorCanvas._rounded_wire_path(points)
+    path = NodeEditorCanvas._rounded_wire_path(points, corner_radius)
     # QPainterPath.intersects treats an open path as an implicitly closed fill.
     # Test the visible curve's thin stroke instead of that enclosed area.
     stroker = QPainterPathStroker()
@@ -120,6 +120,21 @@ class RouterTests(unittest.TestCase):
         self.router.set_nodes(self.nodes)
         points = complete(self.router, (250, 60), (600, 360))
         assert_clear(self, points, self.nodes)
+
+    def test_close_nodes_from_reported_graphs(self):
+        # Canvas bounds and connected pin centers from the two reported graphs.
+        layouts = {
+            "broken_nodes_1": ({"s": (60, 120, 250, 224), "t": (277, 117, 517, 447)},
+                               (250, 165), (277, 162)),
+            "broken_nodes_2": ({"s": (-3, 57, 187, 161), "t": (447, 57, 687, 387),
+                                "obstacle": (225, 46, 415, 108)}, (187, 102), (447, 102)),
+        }
+        for name, (nodes, start, end) in layouts.items():
+            with self.subTest(graph=name):
+                self.router.set_nodes(nodes)
+                points = complete(self.router, start, end)
+                assert_clear(self, points, nodes)
+                self.assertEqual((points[0], points[-1]), (start, end))
 
     def test_overlap_does_not_fall_back_to_crossing(self):
         self.nodes["obstacle"] = (185, 0, 400, 120)
@@ -369,6 +384,18 @@ class CanvasTests(unittest.TestCase):
         assert_clear(self, self.canvas._wire_router._routes["loop"].points,
                      self.canvas._routing_node_rects)
         self.assertNotIn("__preview__", self.canvas._wire_paths)
+
+    def test_render_a_gap_too_narrow_for_padded_routing(self):
+        target = self.runtime.get_node("t")
+        target.x, target.y = 234, 180  # Four units between the node bodies.
+        self.render()
+        router = self.canvas._wire_router
+        points = router._routes["w"].points
+        self.assertEqual(router.corner_radius("w"), 0)
+        assert_clear(self, points, self.canvas._routing_node_rects, corner_radius=0)
+        path = self.canvas._wire_paths["w"][1]
+        self.assertEqual(path.elementCount(), len(points))
+        self.assertEqual(self.canvas._hit_wire(path.pointAtPercent(.5)), "w")
 
 
 def benchmark(jitter=0):

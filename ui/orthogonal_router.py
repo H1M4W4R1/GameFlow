@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from bisect import bisect_left
 from dataclasses import dataclass
+from functools import partial
 from heapq import heappop, heappush
 from math import floor
 from time import perf_counter
@@ -18,6 +19,7 @@ Point = tuple[float, float]
 Rect = tuple[float, float, float, float]
 Route = tuple[Point, ...]
 CLEARANCE = 18.0
+NARROW_CLEARANCE = 8.0
 CORNER_RADIUS = 8.0
 WIRE_SPACING = 12.0
 BEND_COST = 24.0
@@ -31,6 +33,11 @@ def _overlaps(a: Rect, b: Rect) -> bool:
 def _bounds(points: Route) -> Rect:
     return (min(p[0] for p in points), min(p[1] for p in points),
             max(p[0] for p in points), max(p[1] for p in points))
+
+
+def _padded(rect: Rect, clearance: float) -> Rect:
+    l, t, r, b = rect
+    return (l-clearance, t-clearance, r+clearance, b+clearance)
 
 
 def _simplify(points: Route) -> Route:
@@ -104,17 +111,18 @@ class _Entry:
     search: Iterator | None
     terminals: frozenset
     points: Route | None = None
+    corner_radius: float = CORNER_RADIUS
 
 
 class OrthogonalRouter:
     def __init__(self) -> None:
         self._nodes: dict[str, Rect] = {}
-        self._obstacles = _SpatialIndex()
+        self._obstacles: dict[float, _SpatialIndex] = {CLEARANCE: _SpatialIndex()}
         self._route_bounds = _SpatialIndex()
         self._routes: dict[str, _Entry] = {}
         self._unfinished: set[str] = set()
         self._failed: set[str] = set()
-        self._lanes: tuple[list[float], list[float]] | None = None
+        self._lanes: dict[float, tuple[list[float], list[float]]] = {}
         # Parallel wires only compete with nearby parallel coordinates. These
         # 1-D bins avoid examining all perpendicular wires at every crossing.
         self._segment_tracks: tuple[dict[int, set], dict[int, set]] = ({}, {})
@@ -127,18 +135,21 @@ class OrthogonalRouter:
                    if self._nodes.get(key) != nodes.get(key)}
         if not changed:
             return
-        self._lanes = None
+        self._lanes.clear()
         invalid = self._unfinished | self._failed
+        primary = self._obstacles[CLEARANCE]
         for key in changed:
-            old = self._obstacles.rects.get(key)
+            old = primary.rects.get(key)
             if old is not None:
                 invalid.update(self._touching_routes(old))
-            self._obstacles.remove(key)
-            if key in nodes:
-                l, t, r, b = nodes[key]
-                rect = (l-CLEARANCE, t-CLEARANCE, r+CLEARANCE, b+CLEARANCE)
-                self._obstacles.put(key, rect)
-                invalid.update(self._touching_routes(rect))
+            rect = nodes.get(key)
+            for clearance, obstacles in self._obstacles.items():
+                if rect is None:
+                    obstacles.remove(key)
+                else:
+                    obstacles.put(key, _padded(rect, clearance))
+            if rect is not None:
+                invalid.update(self._touching_routes(primary.rects[key]))
         for key in invalid:
             self._discard(key)
         self._nodes = nodes.copy()
@@ -180,12 +191,23 @@ class OrthogonalRouter:
     def pending(self) -> bool:
         return bool(self._unfinished)
 
-    def _clear(self, a: Point, b: Point, ignore: str | None = None) -> bool:
+    def _obstacle_index(self, clearance: float) -> _SpatialIndex:
+        if clearance not in self._obstacles:
+            obstacles = _SpatialIndex()
+            for key, rect in self._nodes.items():
+                obstacles.put(key, _padded(rect, clearance))
+            self._obstacles[clearance] = obstacles
+        return self._obstacles[clearance]
+
+    def _clear(self, a: Point, b: Point, ignore: str | None = None, *,
+               obstacles: _SpatialIndex | None = None) -> bool:
+        if obstacles is None:
+            obstacles = self._obstacles[CLEARANCE]
         rect = (min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1]))
-        for key in self._obstacles.query(rect):
+        for key in obstacles.query(rect):
             if key == ignore:
                 continue
-            l, t, r, bottom = self._obstacles.rects[key]
+            l, t, r, bottom = obstacles.rects[key]
             if a[1] == b[1]:
                 if t < a[1] < bottom and rect[0] < r and rect[2] > l:
                     return False
@@ -223,7 +245,7 @@ class OrthogonalRouter:
             try:
                 next(entry.search)
             except StopIteration as done:
-                entry.points = done.value
+                entry.points, entry.corner_radius = done.value
                 entry.search = None
                 self._unfinished.discard(wire_id)
                 if entry.points:
@@ -235,6 +257,9 @@ class OrthogonalRouter:
                 else:
                     self._failed.add(wire_id)
         return entry.points
+
+    def corner_radius(self, wire_id: str) -> float:
+        return self._routes[wire_id].corner_radius
 
     def _reserve(self, wire_id: str, points: Route, terminals: frozenset) -> None:
         ids = []
@@ -269,24 +294,24 @@ class OrthogonalRouter:
         return conflicts
 
     @staticmethod
-    def _offset_segment(points: Route, index: int, offset: float) -> Route:
+    def _offset_segment(points: Route, index: int, offset: float, clearance: float) -> Route:
         a, b = points[index:index+2]
         axis, fixed = (0, 1) if a[1] == b[1] else (1, 0)
         before, after = list(points[:index]), list(points[index+2:])
         # Keep terminal positions and straight port leads fixed. Internal turns
         # move with the segment, extending or shortening their adjacent legs.
         if index == 0:
-            if abs(b[axis]-a[axis]) <= CLEARANCE * 2:
+            if abs(b[axis]-a[axis]) <= clearance * 2:
                 return points
             lead = list(a)
-            lead[axis] += CLEARANCE if b[axis] > a[axis] else -CLEARANCE
+            lead[axis] += clearance if b[axis] > a[axis] else -clearance
             before.extend((a, tuple(lead)))
             a = tuple(lead)
         if index == len(points)-2:
-            if abs(b[axis]-a[axis]) <= CLEARANCE * 2:
+            if abs(b[axis]-a[axis]) <= clearance * 2:
                 return points
             lead = list(b)
-            lead[axis] -= CLEARANCE if b[axis] > a[axis] else -CLEARANCE
+            lead[axis] -= clearance if b[axis] > a[axis] else -clearance
             after = [tuple(lead), b]
             b = tuple(lead)
         shifted_a, shifted_b = list(a), list(b)
@@ -294,34 +319,37 @@ class OrthogonalRouter:
         shifted_b[fixed] += offset
         return _simplify(tuple(before) + (tuple(shifted_a), tuple(shifted_b)) + tuple(after))
 
-    def _valid_route(self, points: Route, source: str, target: str | None) -> bool:
+    def _valid_route(self, points: Route, source: str, target: str | None,
+                     clearance: float) -> bool:
         # Revalidate every segment after moving a lane, including port direction.
+        clear = partial(self._clear, obstacles=self._obstacle_index(clearance))
         for a, b, c in zip(points, points[1:], points[2:]):
             if a[0] == b[0] == c[0] or a[1] == b[1] == c[1]:
                 return False  # Do not introduce retraced legs while nudging.
         first, second = points[:2]
-        if first[1] != second[1] or second[0] < first[0]+CLEARANCE:
+        if first[1] != second[1] or second[0] < first[0]+clearance:
             return False
         if target is not None:
             previous, last = points[-2:]
-            if previous[1] != last[1] or previous[0] > last[0]-CLEARANCE:
+            if previous[1] != last[1] or previous[0] > last[0]-clearance:
                 return False
         for i, (a, b) in enumerate(zip(points, points[1:])):
             if a[0] != b[0] and a[1] != b[1]:
                 return False
             if i == 0:
-                lead = (a[0]+CLEARANCE, a[1])
-                if not self._clear(a, lead, source) or not self._clear(lead, b):
+                lead = (a[0]+clearance, a[1])
+                if not clear(a, lead, source) or not clear(lead, b):
                     return False
             elif i == len(points)-2 and target is not None:
-                lead = (b[0]-CLEARANCE, b[1])
-                if not self._clear(a, lead) or not self._clear(lead, b, target):
+                lead = (b[0]-clearance, b[1])
+                if not clear(a, lead) or not clear(lead, b, target):
                     return False
-            elif not self._clear(a, b):
+            elif not clear(a, b):
                 return False
         return True
 
-    def _spread(self, points: Route, source: str, target: str | None, terminals: frozenset):
+    def _spread(self, points: Route, source: str, target: str | None,
+                terminals: frozenset, clearance: float):
         # Local lane nudges keep node routing cheap and preserve already stable
         # wires. Try the nearest vacant tracks first, bounded and cooperative.
         attempts = 0
@@ -347,8 +375,8 @@ class OrthogonalRouter:
                     attempts += 1
                     if attempts > 64:
                         return points
-                    candidate = self._offset_segment(points, index, offset)
-                    if candidate != points and self._valid_route(candidate, source, target):
+                    candidate = self._offset_segment(points, index, offset, clearance)
+                    if candidate != points and self._valid_route(candidate, source, target, clearance):
                         candidate_score = sum(c[1] for c in self._conflicts(candidate, terminals))
                         if candidate_score == 0:
                             return candidate
@@ -367,39 +395,41 @@ class OrthogonalRouter:
 
     def _search(self, start: Point, end: Point, source: str,
                 target: str | None, terminals: frozenset):
-        points = yield from self._node_route(start, end, source, target)
-        if not points:
-            return points
-        return (yield from self._spread(points, source, target, terminals))
+        for clearance in (CLEARANCE, NARROW_CLEARANCE, 0.0):
+            points = yield from self._node_route(start, end, source, target, clearance)
+            if len(points) < 2:
+                continue
+            if clearance:
+                points = yield from self._spread(points, source, target, terminals, clearance)
+            # With no clearance, rounding can cut across a painted node.
+            return points, min(CORNER_RADIUS, clearance)
+        return (), CORNER_RADIUS
 
     def _node_route(self, start: Point, end: Point, source: str,
-                    target: str | None):
-        a = (start[0]+CLEARANCE, start[1])
-        b = (end[0]-CLEARANCE, end[1]) if target is not None else end
-        if not self._clear(start, a, source) or not self._clear(b, end, target):
+                    target: str | None, clearance: float):
+        obstacles = self._obstacle_index(clearance)
+        clear = partial(self._clear, obstacles=obstacles)
+        a = (start[0]+clearance, start[1])
+        b = (end[0]-clearance, end[1]) if target is not None else end
+        if not clear(start, a, source) or not clear(b, end, target):
             return ()
-        # A cursor inside an obstacle cannot be reached. Port leads may cross
-        # their owner's padded bounds; no other segment gets that exemption.
-        for point in (a, b):
-            for key in self._obstacles.query((*point, *point)):
-                l, t, r, bottom = self._obstacles.rects[key]
-                if l < point[0] < r and t < point[1] < bottom:
-                    return ()
+        if not clear(a, a) or not clear(b, b):
+            return ()
         mid = (a[0]+b[0]) / 2
         candidates = [
             (a, (mid, a[1]), (mid, b[1]), b),
             (a, (b[0], a[1]), b),
             (a, (a[0], b[1]), b),
         ]
-        nearby = self._obstacles.query(_bounds((a, b)))
+        nearby = obstacles.query(_bounds((a, b)))
         if nearby:
-            top = min(self._obstacles.rects[k][1] for k in nearby)
-            bottom = max(self._obstacles.rects[k][3] for k in nearby)
+            top = min(obstacles.rects[k][1] for k in nearby)
+            bottom = max(obstacles.rects[k][3] for k in nearby)
             for y in sorted((top, bottom), key=lambda y: abs(a[1]-y)+abs(b[1]-y)):
                 candidates.append((a, (a[0], y), (b[0], y), b))
         for points in candidates:
             points = _simplify(points)
-            if all(self._clear(p, q) for p, q in zip(points, points[1:])):
+            if all(clear(p, q) for p, q in zip(points, points[1:])):
                 return _simplify((start, *points, end))
             yield
 
@@ -407,14 +437,15 @@ class OrthogonalRouter:
         # exploring every intersection of their slightly different coordinates.
         # These lanes are outside ALL padded obstacles, so vertical/horizontal
         # travel along them is safe regardless of the length of the connection.
-        if self._lanes is None:
-            self._lanes = (self._free_lanes(0, 2), self._free_lanes(1, 3))
-        x_lanes, y_lanes = self._lanes
+        if clearance not in self._lanes:
+            self._lanes[clearance] = (self._free_lanes(0, 2, obstacles),
+                                      self._free_lanes(1, 3, obstacles))
+        x_lanes, y_lanes = self._lanes[clearance]
         escapes = []
         for point in (a, b):
             escape = None
             for x in sorted(x_lanes, key=lambda x: abs(x-point[0])):
-                if self._clear(point, (x, point[1])):
+                if clear(point, (x, point[1])):
                     escape = x
                     break
                 yield
@@ -428,8 +459,8 @@ class OrthogonalRouter:
 
         # Lazy visibility grid: allocate only visited intersections, not an
         # N-by-N grid. Obstacle boundaries guarantee possible rectilinear turns.
-        xs = sorted({a[0], b[0]} | {v for r in self._obstacles.rects.values() for v in (r[0], r[2])})
-        ys = sorted({a[1], b[1]} | {v for r in self._obstacles.rects.values() for v in (r[1], r[3])})
+        xs = sorted({a[0], b[0]} | {v for r in obstacles.rects.values() for v in (r[0], r[2])})
+        ys = sorted({a[1], b[1]} | {v for r in obstacles.rects.values() for v in (r[1], r[3])})
         origin = (bisect_left(xs, a[0]), bisect_left(ys, a[1]), 0)
         goal = (bisect_left(xs, b[0]), bisect_left(ys, b[1]))
         costs = {origin: 0.0}
@@ -457,7 +488,7 @@ class OrthogonalRouter:
                 if not (0 <= nx < len(xs) and 0 <= ny < len(ys)):
                     continue
                 neighbor = (xs[nx], ys[ny])
-                if not self._clear(point, neighbor):
+                if not clear(point, neighbor):
                     continue
                 distance = abs(point[0]-neighbor[0])+abs(point[1]-neighbor[1])
                 new_cost = cost + distance + (BEND_COST if axis != direction else 0)
@@ -474,8 +505,8 @@ class OrthogonalRouter:
                 yield
         return ()
 
-    def _free_lanes(self, low: int, high: int) -> list[float]:
-        intervals = sorted((rect[low], rect[high]) for rect in self._obstacles.rects.values())
+    def _free_lanes(self, low: int, high: int, obstacles: _SpatialIndex) -> list[float]:
+        intervals = sorted((rect[low], rect[high]) for rect in obstacles.rects.values())
         if not intervals:
             return []
         lanes = [intervals[0][0]-CLEARANCE]

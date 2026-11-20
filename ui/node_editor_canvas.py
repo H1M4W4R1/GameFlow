@@ -1132,24 +1132,27 @@ class NodeEditorCanvas(QWidget):
                                          self._routing_deadline, source_pin=source_pin,
                                          target_pin=target_pin)
         segments = (points,) if points else self._wire_router.stubs(start, end, source, target)
+        radius = self._wire_router.corner_radius(wire_id)
+        geometry = (segments, radius)
         cached = self._wire_paths.get(wire_id)
-        if cached is None or cached[0] != segments:
+        if cached is None or cached[0] != geometry:
             path = QPainterPath()
             for segment in segments:
-                path.addPath(self._rounded_wire_path(segment))
+                path.addPath(self._rounded_wire_path(segment, radius))
             stroker = QPainterPathStroker()
             stroker.setWidth(12.0)
-            self._wire_paths[wire_id] = (segments, path, stroker.createStroke(path))
+            self._wire_paths[wire_id] = (geometry, path, stroker.createStroke(path))
         return self._wire_paths[wire_id][1], bool(points)
 
     @staticmethod
-    def _rounded_wire_path(points: tuple) -> QPainterPath:
+    def _rounded_wire_path(points: tuple, corner_radius: float = CORNER_RADIUS) -> QPainterPath:
         path = QPainterPath(QPointF(*points[0]))
         for previous, corner, following in zip(points, points[1:], points[2:]):
             incoming = abs(corner[0]-previous[0]) + abs(corner[1]-previous[1])
             outgoing = abs(following[0]-corner[0]) + abs(following[1]-corner[1])
-            radius = min(CORNER_RADIUS, incoming / 2, outgoing / 2)
+            radius = min(corner_radius, incoming / 2, outgoing / 2)
             if not radius:
+                path.lineTo(QPointF(*corner))
                 continue
             before = QPointF(corner[0] + (previous[0]-corner[0]) * radius / incoming,
                              corner[1] + (previous[1]-corner[1]) * radius / incoming)
