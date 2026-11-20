@@ -107,6 +107,7 @@ The main area of the window is the node canvas. This is where you build your gra
 |---|---|
 | New graph | **Ctrl+N** |
 | Save | **Ctrl+S** |
+| Save As | **Ctrl+Shift+S** |
 | Open | **Ctrl+O** |
 
 Graphs are saved as `.sfgraph` files.

@@ -10,6 +10,7 @@ ui.status.load_failed,Wczytywanie nieudane: {exc}
 ui.status.connecting,Łączenie z {name} @ {addr}…
 ui.button.new_graph,Nowy Flow  (Ctrl+N)
 ui.button.save_graph,Zapisz Flow  (Ctrl+S)
+ui.button.save_graph_as,Zapisz jako  (Ctrl+Shift+S)
 ui.button.load_graph,Wczytaj Flow  (Ctrl+O)
 ui.button.run_graph,Uruchom  (F5)
 ui.button.pause_graph,Pauza  (F7)
@@ -21,6 +22,7 @@ ui.button.cancel,Anuluj
 ui.dialog.unsaved_changes.title,Niezapisane zmiany
 ui.dialog.unsaved_changes.message,Bieżący flow ma niezapisane zmiany.
 ui.dialog.save_graph.title,Zapisz Flow
+ui.dialog.save_graph_as.title,Zapisz Flow jako
 ui.dialog.save_graph.filter,GameFlow Graph (*.sfgraph);;JSON (*.json)
 ui.dialog.load_graph.title,Wczytaj Flow
 ui.untitled,Bez tytułu

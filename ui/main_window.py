@@ -180,9 +180,12 @@ class MainWindow(QWidget):
         # ── File buttons ───────────────────────────────────────────────────
         self._new_btn  = _ToolButton("new.svg", "", tr("ui.button.new_graph"))
         self._save_btn = _ToolButton("save.svg", "", tr("ui.button.save_graph"))
+        self._save_as_btn = _ToolButton("save-as.svg", "", tr("ui.button.save_graph_as"))
+        self._save_as_btn.setAccessibleName(tr("ui.dialog.save_graph_as.title"))
         self._load_btn = _ToolButton("load.svg", "", tr("ui.button.load_graph"))
         layout.addWidget(self._new_btn)
         layout.addWidget(self._save_btn)
+        layout.addWidget(self._save_as_btn)
         layout.addWidget(self._load_btn)
 
         # ── Centre area: left drag zone | project name | right drag zone ──
@@ -254,6 +257,7 @@ class MainWindow(QWidget):
     def _connect_signals(self) -> None:
         self._new_btn.clicked.connect(self._on_new)
         self._save_btn.clicked.connect(self._on_save)
+        self._save_as_btn.clicked.connect(self._on_save_as)
         self._load_btn.clicked.connect(self._on_load)
         self._run_btn.clicked.connect(self._on_run)
         self._pause_btn.clicked.connect(self._on_pause)
@@ -261,6 +265,7 @@ class MainWindow(QWidget):
 
         QShortcut(QKeySequence("Ctrl+N"), self).activated.connect(self._on_new)
         QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._on_save)
+        QShortcut(QKeySequence("Ctrl+Shift+S"), self).activated.connect(self._on_save_as)
         QShortcut(QKeySequence("Ctrl+O"), self).activated.connect(self._on_load)
         QShortcut(QKeySequence("F5"),     self).activated.connect(self._on_run)
         QShortcut(QKeySequence("F6"),     self).activated.connect(self._on_stop)
@@ -424,20 +429,26 @@ class MainWindow(QWidget):
     # ── Save / load ───────────────────────────────────────────────────────────
 
     def _on_save(self) -> None:
-        graph_path = self._graph_path
-        if graph_path is None:
-            directory = self._settings.value(LAST_SAVE_DIRECTORY, "", type=str)
-            suggested = Path("untitled.sfgraph")
-            if directory and Path(directory).is_dir():
-                suggested = Path(directory) / suggested
-            path, _ = QFileDialog.getSaveFileName(
-                self, tr("ui.dialog.save_graph.title"), str(suggested),
-                tr("ui.dialog.save_graph.filter")
-            )
-            if not path:
-                return
-            graph_path = Path(path)
+        if self._graph_path is None:
+            self._choose_save_path(tr("ui.dialog.save_graph.title"))
+        else:
+            self._write_graph(self._graph_path)
 
+    def _on_save_as(self) -> None:
+        self._choose_save_path(tr("ui.dialog.save_graph_as.title"))
+
+    def _choose_save_path(self, title: str) -> None:
+        suggested = self._graph_path or Path("untitled.sfgraph")
+        directory = self._settings.value(LAST_SAVE_DIRECTORY, "", type=str)
+        if directory and Path(directory).is_dir():
+            suggested = Path(directory) / suggested.name
+        path, _ = QFileDialog.getSaveFileName(
+            self, title, str(suggested), tr("ui.dialog.save_graph.filter")
+        )
+        if path:
+            self._write_graph(Path(path))
+
+    def _write_graph(self, graph_path: Path) -> None:
         graph = self._runtime.to_saved_graph(graph_path.stem)
         graph.groups = self._canvas.get_saved_groups()
         graph.visibility = self._canvas.get_visibility_settings()

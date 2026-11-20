@@ -10,6 +10,7 @@ ui.status.load_failed,Load failed: {exc}
 ui.status.connecting,Connecting to {name} @ {addr}…
 ui.button.new_graph,New Graph  (Ctrl+N)
 ui.button.save_graph,Save Graph  (Ctrl+S)
+ui.button.save_graph_as,Save As  (Ctrl+Shift+S)
 ui.button.load_graph,Load Graph  (Ctrl+O)
 ui.button.run_graph,Run Graph  (F5)
 ui.button.pause_graph,Pause Graph  (F7)
@@ -21,6 +22,7 @@ ui.button.cancel,Cancel
 ui.dialog.unsaved_changes.title,Unsaved Changes
 ui.dialog.unsaved_changes.message,The current graph has unsaved changes.
 ui.dialog.save_graph.title,Save Graph
+ui.dialog.save_graph_as.title,Save Graph As
 ui.dialog.save_graph.filter,GameFlow Graph (*.sfgraph);;JSON (*.json)
 ui.dialog.load_graph.title,Load Graph
 ui.untitled,Untitled
